@@ -232,7 +232,7 @@ function getClockSettings() {
     var stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null");
     if (stored) return stored;
   } catch (e) {}
-  return { visible: true, position: "center", label: "San Francisco" };
+  return { visible: true, position: "center", label: "San Francisco", langPosition: "hero-top-right" };
 }
 
 function saveClockSettings(data) {
@@ -490,7 +490,7 @@ function renderGlobalNav() {
     return item.toggle === null || toggles[item.toggle] !== false;
   });
 
-  var maxVisible = 5;
+  var maxVisible = toggles.maxNavItems || 5;
   var visibleItems = navItems.slice(0, maxVisible);
   var overflowItems = navItems.slice(maxVisible);
 
@@ -511,9 +511,14 @@ function renderGlobalNav() {
     '</li>';
   }
 
-  linksHtml += '<li><button class="nav-lang-btn" id="navLangBtn" aria-label="Change language">' +
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
-  '</button></li>';
+  var clockSettings = getClockSettings();
+  var langPosition = clockSettings.langPosition || "nav";
+
+  if (langPosition === "nav") {
+    linksHtml += '<li><button class="nav-lang-btn" id="navLangBtn" aria-label="Change language">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
+    '</button></li>';
+  }
   linksHtml += '<li><a href="#" class="nav-cta">Book a Consultation</a></li>';
 
   nav.innerHTML =
@@ -545,6 +550,23 @@ function renderGlobalNav() {
       e.preventDefault();
       openLanguageModal();
     });
+  }
+
+  // Hero language button (when langPosition is hero-top-left or hero-top-right)
+  if (langPosition === "hero-top-left" || langPosition === "hero-top-right") {
+    var hero = document.querySelector(".hero");
+    if (hero) {
+      var heroLangBtn = document.createElement("button");
+      heroLangBtn.className = "hero-lang-btn" + (langPosition === "hero-top-left" ? " hero-lang-left" : " hero-lang-right");
+      heroLangBtn.id = "heroLangBtn";
+      heroLangBtn.setAttribute("aria-label", "Change language");
+      heroLangBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+      heroLangBtn.addEventListener("click", function(e) {
+        e.preventDefault();
+        openLanguageModal();
+      });
+      hero.appendChild(heroLangBtn);
+    }
   }
 
   // Inject hero clock if hero exists on this page
@@ -1519,22 +1541,26 @@ function triggerGoogleTranslate(langCode) {
   document.cookie = "googtrans=/en/" + langCode + ";path=/;domain=" + domain;
   document.cookie = "googtrans=/en/" + langCode + ";path=/";
 
-  // Try to use the Google Translate combo box if available
-  var frame = document.querySelector(".goog-te-menu-frame");
-  if (frame) {
-    try {
-      var items = frame.contentDocument.querySelectorAll(".goog-te-menu2-item span.text");
-      items.forEach(function(item) {
-        // Match by triggering the select element
-      });
-    } catch (e) {}
+  // Try the combo box immediately, then retry if not yet loaded
+  function tryCombo() {
+    var select = document.querySelector(".goog-te-combo");
+    if (select) {
+      select.value = langCode;
+      select.dispatchEvent(new Event("change"));
+      return true;
+    }
+    return false;
   }
 
-  // Fallback: set the select element value
-  var select = document.querySelector(".goog-te-combo");
-  if (select) {
-    select.value = langCode;
-    select.dispatchEvent(new Event("change"));
+  if (!tryCombo()) {
+    // Retry a few times as Google Translate widget may still be loading
+    var attempts = 0;
+    var retryInterval = setInterval(function() {
+      attempts++;
+      if (tryCombo() || attempts >= 10) {
+        clearInterval(retryInterval);
+      }
+    }, 500);
   }
 }
 

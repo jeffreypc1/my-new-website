@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.9 — 2026-02-14
+
+### Integrated GitHub Media Suite & Translation Fix
+
+- **GitHub Direct Uploader** — The Media tab now features a drag-and-drop upload zone that pushes images directly to the `/assets/` folder in the GitHub repository via the GitHub Contents API. Files are Base64-encoded client-side and committed with a descriptive message. Supports multiple file uploads with a progress bar. The GitHub Personal Access Token (with `repo` scope) is stored in localStorage and prompted on first upload via a modal dialog. A "GitHub Settings" button allows re-configuring the token at any time. A status badge shows connection state.
+- **Media Library Grid** — The media list has been redesigned from a flat row layout to a responsive thumbnail grid (`repeat(auto-fill, minmax(140px, 1fr))`). Each thumbnail has a hover overlay with the filename, a "Copy" button (copies the raw GitHub URL), and a "Del" button. Deleting a GitHub-hosted image also removes it from the repository via the Contents API (using the stored `sha`).
+- **GitHub Sync** — On load, the Media tab fetches the contents of `/assets/` from GitHub and syncs any new images into the local media library, ensuring the grid always reflects the repo state. Existing items have their `sha` updated for accurate deletion.
+- **Smart Picker (Browse buttons)** — Every image URL input field in the admin panel now has a "Browse" button next to its label. Clicking it opens a modal grid of all media library images. Selecting an image auto-fills the URL field. Works on: Hero Day/Night images, Staff photo, Location Day/Night photos, Bento tile Background Image, and Bento tile Modal Image. Bento tile browse buttons are dynamically bound after each render cycle.
+- **Globe Icon to Hero** — The language selector globe icon now defaults to `hero-top-right` positioning (previously `nav`), placing it as a floating glassmorphism button in the top-right corner of the hero section — visually balanced with the clock on the left. The admin can still switch it back to "Nav Bar" or "Hero Top Left" via Clock Settings.
+- **Translation retry logic** — `triggerGoogleTranslate()` now retries the `.goog-te-combo` select element up to 10 times at 500ms intervals if the Google Translate widget hasn't loaded yet. This fixes the race condition where the combo box wasn't available on first call, making language selection from the modal reliably translate the page content.
+- **Navigation limit** — The Max Nav Items slider (v2.8) and header flex protection remain active. The "Book a Consultation" button is protected from wrapping by `flex-shrink: 0; white-space: nowrap`, and excess links collapse into the "More" dropdown.
+
+**Why:** A professional website needs integrated asset management — not scattered Unsplash URLs. The GitHub Direct Uploader lets the admin drag images into the browser and have them committed to the repo instantly, with the correct raw URL auto-populated into any image field via the Smart Picker. Moving the globe to the hero creates a clean, balanced layout with the clock on the left and translation on the right. The retry logic in the translation trigger fixes the timing issue that prevented Google Translate from actually translating the page when a language was selected.
+
+## v2.8 — 2026-02-14
+
+### Translation Activation, Language Selector Positioning & Header Fixes
+
+- **Translation engine cleanup** — Removed the dead `iframe.forEach` block in `triggerGoogleTranslate()` that attempted to query `.goog-te-menu-frame` content but had an empty callback body. The working path (set `googtrans` cookie + dispatch change on `.goog-te-combo` + reload) is now the sole code path.
+- **Dynamic language selector positioning** — New `langPosition` setting in Clock Settings with three options: "Nav Bar" (default — globe icon in the nav `<ul>`), "Hero Top Left", and "Hero Top Right". When set to a hero position, the globe button is removed from the nav and instead rendered as a floating glassmorphism circle (`.hero-lang-btn`) absolutely positioned inside the `.hero` element. Mobile responsive with tighter margins at `<768px`.
+- **Max Nav Items slider** — New "Navigation Layout" panel in Admin > Nav & Visibility with a range slider (`min=2, max=8, default=5`). The value is saved to `sitePageToggles.maxNavItems` and read by `renderGlobalNav()` to control how many links are visible before overflow collapses into the "More" dropdown.
+- **Header flex fix** — Added `white-space: nowrap` to `.nav-links`, `flex-shrink: 0` to `.nav-links li`, and `flex-shrink: 0; white-space: nowrap` to `.nav-cta`. This prevents the "Book a Consultation" button from wrapping to two lines when many nav links are present — overflow links collapse into "More" first.
+
+**Why:** The translation engine had vestigial code from an earlier approach that never worked — cleaning it up makes the flow clear. The language selector position gives the admin flexibility to keep the nav clean while still offering translation access. The nav items slider and flex fix work together to ensure the header never breaks layout, regardless of how many pages are enabled.
+
 ## v2.7 — 2026-02-14
 
 ### Phase 2 Analytics & Global Visibility Enforcement

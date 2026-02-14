@@ -764,6 +764,353 @@
       flex-shrink: 0;
     }
 
+    /* ── GitHub Upload & Media Grid ── */
+
+    .media-drop-zone {
+      border: 2px dashed var(--light-gray);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .media-drop-zone:hover,
+    .media-drop-zone.drag-over {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.04);
+    }
+
+    .media-drop-zone.uploading {
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .media-drop-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .media-drop-text {
+      font-size: 0.9375rem;
+      color: var(--mid-gray);
+      margin-bottom: 4px;
+    }
+
+    .media-drop-hint {
+      font-size: 0.75rem;
+      color: var(--mid-gray);
+      opacity: 0.7;
+    }
+
+    .media-drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .media-progress {
+      margin-top: 12px;
+      display: none;
+    }
+
+    .media-progress.visible {
+      display: block;
+    }
+
+    .media-progress-bar {
+      height: 4px;
+      background: var(--light-gray);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .media-progress-fill {
+      height: 100%;
+      background: #3b82f6;
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+
+    .media-progress-text {
+      font-size: 0.75rem;
+      color: var(--mid-gray);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+    }
+
+    .media-grid-item {
+      position: relative;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--light-gray);
+      aspect-ratio: 1;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .media-grid-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .media-grid-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .media-grid-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 10px;
+    }
+
+    .media-grid-item:hover .media-grid-overlay {
+      opacity: 1;
+    }
+
+    .media-grid-label {
+      font-size: 0.6875rem;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
+    }
+
+    .media-grid-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .media-grid-actions button {
+      flex: 1;
+      padding: 4px 0;
+      font-size: 0.625rem;
+      font-weight: 500;
+      font-family: inherit;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .media-grid-actions .mgrid-copy {
+      background: rgba(255,255,255,0.85);
+      color: var(--dark);
+    }
+
+    .media-grid-actions .mgrid-copy:hover {
+      background: #fff;
+    }
+
+    .media-grid-actions .mgrid-delete {
+      background: rgba(214, 48, 49, 0.85);
+      color: #fff;
+    }
+
+    .media-grid-actions .mgrid-delete:hover {
+      background: #d63031;
+    }
+
+    /* ── GitHub PAT Modal ── */
+
+    .gh-pat-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .gh-pat-modal {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.15);
+    }
+
+    .gh-pat-modal h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .gh-pat-modal p {
+      font-size: 0.8125rem;
+      color: var(--mid-gray);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .gh-pat-modal input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      font-family: monospace;
+      border: 1px solid var(--light-gray);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+
+    .gh-pat-modal input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .gh-pat-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* ── Media Picker Modal ── */
+
+    .media-picker-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .media-picker-modal {
+      background: var(--white);
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 640px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    .media-picker-header {
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .media-picker-header h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .media-picker-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: var(--off-white);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--mid-gray);
+      transition: background 0.15s ease;
+    }
+
+    .media-picker-close:hover {
+      background: var(--light-gray);
+    }
+
+    .media-picker-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .media-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 12px;
+    }
+
+    .media-picker-item {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .media-picker-item:hover {
+      border-color: #3b82f6;
+      transform: scale(1.03);
+    }
+
+    .media-picker-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .media-picker-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--mid-gray);
+      font-size: 0.875rem;
+    }
+
+    /* ── Browse button inline ── */
+
+    .browse-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      font-family: inherit;
+      border: 1px solid var(--light-gray);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--mid-gray);
+      cursor: pointer;
+      transition: border-color 0.15s ease, color 0.15s ease;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .browse-btn:hover {
+      border-color: #3b82f6;
+      color: var(--dark);
+    }
+
     /* ── Responsive ── */
 
     @media (max-width: 768px) {
@@ -1073,11 +1420,11 @@
         <h2>Hero Background</h2>
         <div class="form-row">
           <div class="form-group">
-            <label for="heroImage">Day Image URL</label>
+            <label for="heroImage">Day Image URL <button type="button" class="browse-btn" data-target="heroImage">&#128194; Browse</button></label>
             <input type="text" id="heroImage" placeholder="https://example.com/hero-day.jpg">
           </div>
           <div class="form-group">
-            <label for="heroImageNight">Night Image URL</label>
+            <label for="heroImageNight">Night Image URL <button type="button" class="browse-btn" data-target="heroImageNight">&#128194; Browse</button></label>
             <input type="text" id="heroImageNight" placeholder="https://example.com/hero-night.jpg (optional)">
           </div>
         </div>
@@ -1311,7 +1658,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="staffImageInput">Image URL</label>
+            <label for="staffImageInput">Image URL <button type="button" class="browse-btn" data-target="staffImageInput">&#128194; Browse</button></label>
             <input type="text" id="staffImageInput" placeholder="https://example.com/photo.jpg">
           </div>
         </div>
@@ -1474,11 +1821,11 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="locationPhotoInput">Day Photo URL</label>
+            <label for="locationPhotoInput">Day Photo URL <button type="button" class="browse-btn" data-target="locationPhotoInput">&#128194; Browse</button></label>
             <input type="text" id="locationPhotoInput" placeholder="https://images.unsplash.com/...day">
           </div>
           <div class="form-group">
-            <label for="locationPhotoNightInput">Night Photo URL</label>
+            <label for="locationPhotoNightInput">Night Photo URL <button type="button" class="browse-btn" data-target="locationPhotoNightInput">&#128194; Browse</button></label>
             <input type="text" id="locationPhotoNightInput" placeholder="https://...night (optional)">
           </div>
         </div>
@@ -1567,10 +1914,20 @@
             <input type="checkbox" id="toggleTestimonials" checked>
           </label>
         </div>
-        <div style="margin-top:20px">
-          <button class="btn btn-primary" id="btnSaveToggles">Save Visibility Settings</button>
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Navigation Layout</h2>
+      <div class="panel">
+        <div class="form-group">
+          <label for="maxNavItemsSlider">Max Nav Items: <span id="maxNavItemsValue">5</span></label>
+          <input type="range" id="maxNavItemsSlider" min="2" max="8" value="5" style="width:100%">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Links beyond this limit collapse into a "More" dropdown.</p>
         </div>
       </div>
+
+      <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveToggles">Save Visibility Settings</button>
+        </div>
     </div>
 
     <!-- ── Contact Config ── -->
@@ -1620,6 +1977,16 @@
         <div class="form-group">
           <label for="clockLabelInput">City Label</label>
           <input type="text" id="clockLabelInput" placeholder="e.g. San Francisco, Berkeley, Oakland">
+        </div>
+
+        <div class="form-group">
+          <label for="langPositionSelect">Language Selector Position</label>
+          <select id="langPositionSelect">
+            <option value="nav">Nav Bar</option>
+            <option value="hero-top-left">Hero Top Left</option>
+            <option value="hero-top-right">Hero Top Right</option>
+          </select>
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Choose where the globe language button appears on the public site.</p>
         </div>
 
         <div style="margin-top:20px">
@@ -1720,7 +2087,25 @@
 
     <div id="media" class="section">
       <h1>Media</h1>
-      <p class="subtitle">Manage your media library. Add image URLs and organize them with labels.</p>
+      <p class="subtitle">Upload images directly to your GitHub repo or add external URLs. All files go to the <code>/assets/</code> folder.</p>
+
+      <div class="panel">
+        <h2>Upload to GitHub</h2>
+        <div class="media-drop-zone" id="mediaDropZone">
+          <input type="file" id="mediaFileInput" accept="image/*" multiple>
+          <div class="media-drop-icon">&#128206;</div>
+          <div class="media-drop-text">Drag &amp; drop images here, or click to browse</div>
+          <div class="media-drop-hint">PNG, JPG, GIF, SVG, WebP &mdash; up to 10 MB each</div>
+          <div class="media-progress" id="mediaProgress">
+            <div class="media-progress-bar"><div class="media-progress-fill" id="mediaProgressFill"></div></div>
+            <div class="media-progress-text" id="mediaProgressText">Uploading...</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px">
+          <button class="btn btn-secondary btn-sm" id="btnGhSettings" title="Configure GitHub PAT">&#9881; GitHub Settings</button>
+          <span id="ghStatusBadge" style="font-size:0.75rem;color:var(--mid-gray)"></span>
+        </div>
+      </div>
 
       <div class="panel">
         <div class="page-list-header">
@@ -1744,7 +2129,7 @@
         </div>
 
         <div id="mediaList">
-          <div class="empty-state">No media yet. Click "Add Image URL" to get started.</div>
+          <div class="empty-state">No media yet. Upload files or click "Add Image URL" to get started.</div>
         </div>
       </div>
     </div>
@@ -2251,7 +2636,7 @@
           '</div>' +
           '<div class="tile-image-group" style="' + (!isIcon ? '' : 'display:none') + '">' +
             '<div class="form-group">' +
-              '<label>Background Image URL</label>' +
+              '<label>Background Image URL <button type="button" class="browse-btn tile-browse-btn">&#128194; Browse</button></label>' +
               '<input type="text" class="tile-bgimage-input" value="' + escapeHtml(tile.bgImage || '') + '" placeholder="https://images.unsplash.com/...">' +
             '</div>' +
           '</div>' +
@@ -2262,7 +2647,7 @@
           '<hr style="border:none;border-top:1px solid rgba(0,0,0,0.06);margin:20px 0">' +
           '<div style="margin-bottom:8px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#86868b;font-weight:600">Modal Deep Dive</div>' +
           '<div class="form-group">' +
-            '<label>Modal Image URL</label>' +
+            '<label>Modal Image URL <button type="button" class="browse-btn tile-browse-btn">&#128194; Browse</button></label>' +
             '<input type="text" class="tile-modalimage-input" value="' + escapeHtml(tile.modalImage || '') + '" placeholder="https://images.unsplash.com/... (shown in detail modal)">' +
           '</div>' +
           '<div class="form-group">' +
@@ -2299,6 +2684,16 @@
       container.querySelectorAll("input, textarea, select").forEach((el) => {
         el.addEventListener("input", () => renderBentoPreview());
         el.addEventListener("change", () => renderBentoPreview());
+      });
+
+      // Bind Browse buttons for tile image fields
+      container.querySelectorAll(".tile-browse-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.preventDefault();
+          var formGroup = btn.closest(".form-group");
+          var input = formGroup ? formGroup.querySelector("input[type='text']") : null;
+          if (input) openMediaPicker(input);
+        });
       });
 
       renderBentoPreview();
@@ -3076,8 +3471,20 @@
     renderLocationList();
 
     /* ══════════════════════════════════════════════
-       Media Library
+       Media Library & GitHub Direct Uploader
        ══════════════════════════════════════════════ */
+
+    var GH_REPO_OWNER = "jeffreypc1";
+    var GH_REPO_NAME = "my-new-website";
+    var GH_UPLOAD_PATH = "assets";
+
+    function getGitHubPAT() {
+      return localStorage.getItem("ghPAT") || "";
+    }
+
+    function saveGitHubPAT(pat) {
+      localStorage.setItem("ghPAT", pat);
+    }
 
     function getMediaLibrary() {
       try {
@@ -3091,77 +3498,352 @@
       localStorage.setItem("mediaLibrary", JSON.stringify(items));
     }
 
-    function renderMediaList() {
-      const container = document.getElementById("mediaList");
-      const items = getMediaLibrary();
+    /* ── GitHub upload via Contents API ── */
 
-      if (items.length === 0) {
-        container.innerHTML = '<div class="empty-state">No media yet. Click "Add Image URL" to get started.</div>';
-        return;
-      }
+    function uploadFileToGitHub(file, pat) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() {
+          var base64 = reader.result.split(",")[1];
+          var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          var timestamp = Date.now().toString(36);
+          var filePath = GH_UPLOAD_PATH + "/" + timestamp + "_" + safeName;
 
-      container.innerHTML = items.map((item) => {
-        return '<div class="media-row" data-id="' + item.id + '">' +
-          '<img class="media-thumb" src="' + escapeHtml(item.url) + '" alt="' + escapeHtml(item.label) + '" onerror="this.style.display=\'none\'">' +
-          '<div class="media-info">' +
-            '<div class="media-label">' + escapeHtml(item.label || "Untitled") + '</div>' +
-            '<div class="media-url">' + escapeHtml(item.url) + '</div>' +
-          '</div>' +
-          '<div class="media-actions">' +
-            '<button class="btn btn-secondary btn-sm btn-copy-url">Copy URL</button>' +
-            '<button class="btn btn-danger btn-sm btn-delete-media">Delete</button>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-
-      // Bind copy buttons
-      container.querySelectorAll(".btn-copy-url").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = btn.closest(".media-row").dataset.id;
-          const items = getMediaLibrary();
-          const item = items.find((m) => m.id === id);
-          if (item) {
-            navigator.clipboard.writeText(item.url).then(() => {
-              showToast("URL copied to clipboard");
-            }).catch(() => {
-              showToast("Failed to copy URL");
-            });
-          }
-        });
+          fetch("https://api.github.com/repos/" + GH_REPO_OWNER + "/" + GH_REPO_NAME + "/contents/" + filePath, {
+            method: "PUT",
+            headers: {
+              "Authorization": "Bearer " + pat,
+              "Content-Type": "application/json",
+              "Accept": "application/vnd.github.v3+json"
+            },
+            body: JSON.stringify({
+              message: "Upload " + safeName + " via Media Suite",
+              content: base64
+            })
+          }).then(function(res) {
+            if (!res.ok) {
+              return res.json().then(function(err) {
+                reject(new Error(err.message || "Upload failed (" + res.status + ")"));
+              });
+            }
+            return res.json();
+          }).then(function(data) {
+            if (data && data.content) {
+              resolve({
+                url: data.content.download_url,
+                path: data.content.path,
+                sha: data.content.sha,
+                name: safeName
+              });
+            }
+          }).catch(reject);
+        };
+        reader.onerror = function() { reject(new Error("Failed to read file")); };
+        reader.readAsDataURL(file);
       });
+    }
 
-      // Bind delete buttons
-      container.querySelectorAll(".btn-delete-media").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = btn.closest(".media-row").dataset.id;
-          const items = getMediaLibrary();
-          const updated = items.filter((m) => m.id !== id);
-          saveMediaLibrary(updated);
-          renderMediaList();
-          showToast("Media deleted");
+    function deleteFileFromGitHub(path, sha, pat) {
+      return fetch("https://api.github.com/repos/" + GH_REPO_OWNER + "/" + GH_REPO_NAME + "/contents/" + path, {
+        method: "DELETE",
+        headers: {
+          "Authorization": "Bearer " + pat,
+          "Content-Type": "application/json",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify({
+          message: "Delete " + path.split("/").pop() + " via Media Suite",
+          sha: sha
+        })
+      }).then(function(res) {
+        if (!res.ok) throw new Error("Delete failed (" + res.status + ")");
+        return res.json();
+      });
+    }
+
+    function fetchAssetsFromGitHub(pat) {
+      return fetch("https://api.github.com/repos/" + GH_REPO_OWNER + "/" + GH_REPO_NAME + "/contents/" + GH_UPLOAD_PATH, {
+        headers: {
+          "Authorization": "Bearer " + pat,
+          "Accept": "application/vnd.github.v3+json"
+        }
+      }).then(function(res) {
+        if (res.status === 404) return [];
+        if (!res.ok) throw new Error("Failed to list assets (" + res.status + ")");
+        return res.json();
+      }).then(function(files) {
+        if (!Array.isArray(files)) return [];
+        return files.filter(function(f) {
+          return f.type === "file" && /\.(jpg|jpeg|png|gif|svg|webp|ico)$/i.test(f.name);
+        }).map(function(f) {
+          return { name: f.name, path: f.path, sha: f.sha, url: f.download_url, size: f.size };
         });
       });
     }
 
-    const mediaForm = document.getElementById("mediaForm");
+    /* ── Sync GitHub assets → Media Library ── */
 
-    document.getElementById("btnAddMedia").addEventListener("click", () => {
+    function syncGitHubToLibrary() {
+      var pat = getGitHubPAT();
+      if (!pat) { updateGhBadge(false); return; }
+      updateGhBadge(true);
+
+      fetchAssetsFromGitHub(pat).then(function(ghFiles) {
+        var items = getMediaLibrary();
+        var existingUrls = {};
+        items.forEach(function(m) { existingUrls[m.url] = true; });
+
+        var added = 0;
+        ghFiles.forEach(function(f) {
+          if (!existingUrls[f.url]) {
+            items.push({
+              id: generateId(),
+              url: f.url,
+              label: f.name,
+              ghPath: f.path,
+              ghSha: f.sha
+            });
+            added++;
+          } else {
+            // Update sha/path for existing items
+            for (var i = 0; i < items.length; i++) {
+              if (items[i].url === f.url) {
+                items[i].ghPath = f.path;
+                items[i].ghSha = f.sha;
+                break;
+              }
+            }
+          }
+        });
+
+        if (added > 0) {
+          saveMediaLibrary(items);
+        } else {
+          saveMediaLibrary(items); // Save updated sha/path
+        }
+        renderMediaGrid();
+      }).catch(function(err) {
+        console.warn("GitHub sync:", err.message);
+      });
+    }
+
+    function updateGhBadge(connected) {
+      var badge = document.getElementById("ghStatusBadge");
+      if (connected) {
+        badge.innerHTML = '<span style="color:#34c759">&#9679;</span> Connected';
+      } else {
+        badge.innerHTML = '<span style="color:var(--mid-gray)">&#9679;</span> No PAT configured';
+      }
+    }
+
+    /* ── Render media as grid of thumbnails ── */
+
+    function renderMediaGrid() {
+      var container = document.getElementById("mediaList");
+      var items = getMediaLibrary();
+
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty-state">No media yet. Upload files or click "Add Image URL" to get started.</div>';
+        return;
+      }
+
+      container.innerHTML = '<div class="media-grid">' + items.map(function(item) {
+        return '<div class="media-grid-item" data-id="' + escapeHtml(item.id) + '">' +
+          '<img src="' + escapeHtml(item.url) + '" alt="' + escapeHtml(item.label || '') + '" onerror="this.style.display=\'none\'">' +
+          '<div class="media-grid-overlay">' +
+            '<div class="media-grid-label">' + escapeHtml(item.label || item.url.split("/").pop()) + '</div>' +
+            '<div class="media-grid-actions">' +
+              '<button class="mgrid-copy" title="Copy URL">Copy</button>' +
+              '<button class="mgrid-delete" title="Delete">Del</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+
+      // Bind copy
+      container.querySelectorAll(".mgrid-copy").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var id = btn.closest(".media-grid-item").dataset.id;
+          var item = getMediaLibrary().find(function(m) { return m.id === id; });
+          if (item) {
+            navigator.clipboard.writeText(item.url).then(function() {
+              showToast("URL copied");
+            }).catch(function() { showToast("Copy failed"); });
+          }
+        });
+      });
+
+      // Bind delete
+      container.querySelectorAll(".mgrid-delete").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var id = btn.closest(".media-grid-item").dataset.id;
+          var items = getMediaLibrary();
+          var item = items.find(function(m) { return m.id === id; });
+          if (!item) return;
+
+          if (!confirm("Delete this image?")) return;
+
+          // If it's a GitHub file, delete from repo too
+          var pat = getGitHubPAT();
+          if (item.ghPath && item.ghSha && pat) {
+            deleteFileFromGitHub(item.ghPath, item.ghSha, pat).then(function() {
+              var updated = getMediaLibrary().filter(function(m) { return m.id !== id; });
+              saveMediaLibrary(updated);
+              renderMediaGrid();
+              showToast("Deleted from GitHub & library");
+            }).catch(function(err) {
+              showToast("GitHub delete failed: " + err.message);
+              // Still remove from library
+              var updated = getMediaLibrary().filter(function(m) { return m.id !== id; });
+              saveMediaLibrary(updated);
+              renderMediaGrid();
+            });
+          } else {
+            var updated = items.filter(function(m) { return m.id !== id; });
+            saveMediaLibrary(updated);
+            renderMediaGrid();
+            showToast("Media deleted");
+          }
+        });
+      });
+    }
+
+    /* ── Drag & Drop + File Input ── */
+
+    var dropZone = document.getElementById("mediaDropZone");
+    var fileInput = document.getElementById("mediaFileInput");
+    var progressEl = document.getElementById("mediaProgress");
+    var progressFill = document.getElementById("mediaProgressFill");
+    var progressText = document.getElementById("mediaProgressText");
+
+    function handleFiles(files) {
+      var pat = getGitHubPAT();
+      if (!pat) {
+        promptForPAT(function() { handleFiles(files); });
+        return;
+      }
+
+      var fileArr = Array.from(files).filter(function(f) { return f.type.startsWith("image/"); });
+      if (fileArr.length === 0) { showToast("No image files selected"); return; }
+
+      dropZone.classList.add("uploading");
+      progressEl.classList.add("visible");
+      progressFill.style.width = "0%";
+      progressText.textContent = "Uploading 0 of " + fileArr.length + "...";
+
+      var done = 0;
+      var chain = Promise.resolve();
+
+      fileArr.forEach(function(file) {
+        chain = chain.then(function() {
+          return uploadFileToGitHub(file, pat).then(function(result) {
+            done++;
+            progressFill.style.width = Math.round((done / fileArr.length) * 100) + "%";
+            progressText.textContent = "Uploading " + done + " of " + fileArr.length + "...";
+
+            var items = getMediaLibrary();
+            items.push({
+              id: generateId(),
+              url: result.url,
+              label: result.name,
+              ghPath: result.path,
+              ghSha: result.sha
+            });
+            saveMediaLibrary(items);
+          });
+        });
+      });
+
+      chain.then(function() {
+        progressText.textContent = done + " file(s) uploaded!";
+        setTimeout(function() {
+          progressEl.classList.remove("visible");
+          dropZone.classList.remove("uploading");
+        }, 2000);
+        renderMediaGrid();
+        showToast(done + " image(s) uploaded to GitHub");
+      }).catch(function(err) {
+        progressText.textContent = "Error: " + err.message;
+        dropZone.classList.remove("uploading");
+        showToast("Upload error: " + err.message);
+      });
+    }
+
+    dropZone.addEventListener("dragover", function(e) {
+      e.preventDefault();
+      dropZone.classList.add("drag-over");
+    });
+    dropZone.addEventListener("dragleave", function() {
+      dropZone.classList.remove("drag-over");
+    });
+    dropZone.addEventListener("drop", function(e) {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener("change", function() {
+      if (fileInput.files.length) handleFiles(fileInput.files);
+      fileInput.value = "";
+    });
+
+    /* ── GitHub PAT prompt modal ── */
+
+    function promptForPAT(callback) {
+      var existing = document.querySelector(".gh-pat-overlay");
+      if (existing) existing.remove();
+
+      var overlay = document.createElement("div");
+      overlay.className = "gh-pat-overlay";
+      overlay.innerHTML =
+        '<div class="gh-pat-modal">' +
+          '<h3>GitHub Personal Access Token</h3>' +
+          '<p>To upload images directly to your repository, enter a GitHub Personal Access Token with <strong>repo</strong> scope. Your token is stored locally in this browser only.</p>' +
+          '<input type="password" id="ghPatInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" value="' + escapeHtml(getGitHubPAT()) + '">' +
+          '<div class="gh-pat-actions">' +
+            '<button class="btn btn-secondary btn-sm" id="ghPatCancel">Cancel</button>' +
+            '<button class="btn btn-primary btn-sm" id="ghPatSave">Save &amp; Continue</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+
+      document.getElementById("ghPatCancel").addEventListener("click", function() { overlay.remove(); });
+      document.getElementById("ghPatSave").addEventListener("click", function() {
+        var val = document.getElementById("ghPatInput").value.trim();
+        if (!val) { showToast("Token is required"); return; }
+        saveGitHubPAT(val);
+        updateGhBadge(true);
+        overlay.remove();
+        if (callback) callback();
+      });
+    }
+
+    document.getElementById("btnGhSettings").addEventListener("click", function() {
+      promptForPAT(function() { syncGitHubToLibrary(); });
+    });
+
+    /* ── Manual URL add (preserved) ── */
+
+    var mediaForm = document.getElementById("mediaForm");
+
+    document.getElementById("btnAddMedia").addEventListener("click", function() {
       document.getElementById("mediaUrlInput").value = "";
       document.getElementById("mediaLabelInput").value = "";
       mediaForm.classList.add("visible");
     });
 
-    document.getElementById("btnCancelMedia").addEventListener("click", () => {
+    document.getElementById("btnCancelMedia").addEventListener("click", function() {
       mediaForm.classList.remove("visible");
     });
 
-    document.getElementById("btnSaveMedia").addEventListener("click", () => {
-      const url = document.getElementById("mediaUrlInput").value.trim();
-      const label = document.getElementById("mediaLabelInput").value.trim();
+    document.getElementById("btnSaveMedia").addEventListener("click", function() {
+      var url = document.getElementById("mediaUrlInput").value.trim();
+      var label = document.getElementById("mediaLabelInput").value.trim();
 
       if (!url) { showToast("URL is required"); return; }
 
-      const items = getMediaLibrary();
+      var items = getMediaLibrary();
       items.push({
         id: generateId(),
         url: url,
@@ -3169,11 +3851,74 @@
       });
       saveMediaLibrary(items);
       mediaForm.classList.remove("visible");
-      renderMediaList();
+      renderMediaGrid();
       showToast("Media added");
     });
 
-    renderMediaList();
+    /* ── Media Picker Modal (for Browse buttons) ── */
+
+    function openMediaPicker(targetInput) {
+      var existing = document.querySelector(".media-picker-overlay");
+      if (existing) existing.remove();
+
+      var items = getMediaLibrary();
+      var gridHtml = '';
+
+      if (items.length === 0) {
+        gridHtml = '<div class="media-picker-empty">No media in library. Upload images in the Media tab first.</div>';
+      } else {
+        gridHtml = '<div class="media-picker-grid">' + items.map(function(item) {
+          return '<div class="media-picker-item" data-url="' + escapeHtml(item.url) + '">' +
+            '<img src="' + escapeHtml(item.url) + '" alt="' + escapeHtml(item.label || '') + '" onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22><rect fill=%22%23e8e8ed%22 width=%2280%22 height=%2280%22/><text x=%2240%22 y=%2244%22 text-anchor=%22middle%22 fill=%22%2386868b%22 font-size=%2210%22>No preview</text></svg>\'">' +
+          '</div>';
+        }).join('') + '</div>';
+      }
+
+      var overlay = document.createElement("div");
+      overlay.className = "media-picker-overlay";
+      overlay.innerHTML =
+        '<div class="media-picker-modal">' +
+          '<div class="media-picker-header">' +
+            '<h3>Select Image</h3>' +
+            '<button class="media-picker-close">&times;</button>' +
+          '</div>' +
+          '<div class="media-picker-body">' + gridHtml + '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+
+      // Close
+      overlay.querySelector(".media-picker-close").addEventListener("click", function() { overlay.remove(); });
+      overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+
+      // Select image
+      overlay.querySelectorAll(".media-picker-item").forEach(function(item) {
+        item.addEventListener("click", function() {
+          var url = item.dataset.url;
+          if (typeof targetInput === "string") {
+            var el = document.getElementById(targetInput);
+            if (el) el.value = url;
+          } else if (targetInput && targetInput.tagName) {
+            targetInput.value = url;
+          }
+          overlay.remove();
+          showToast("Image selected");
+        });
+      });
+    }
+
+    /* ── Bind all Browse buttons (static ones) ── */
+
+    document.querySelectorAll(".browse-btn[data-target]").forEach(function(btn) {
+      btn.addEventListener("click", function(e) {
+        e.preventDefault();
+        openMediaPicker(btn.dataset.target);
+      });
+    });
+
+    /* ── Init: render grid + sync GitHub ── */
+
+    renderMediaGrid();
+    syncGitHubToLibrary();
 
     /* ══════════════════════════════════════════════
        Business Hours
@@ -3321,12 +4066,22 @@
       document.getElementById("toggleStaff").checked = toggles.staff !== false;
       document.getElementById("toggleTestimonials").checked = toggles.testimonials !== false;
 
+      var slider = document.getElementById("maxNavItemsSlider");
+      var sliderLabel = document.getElementById("maxNavItemsValue");
+      var maxNav = toggles.maxNavItems || 5;
+      slider.value = maxNav;
+      sliderLabel.textContent = maxNav;
+      slider.addEventListener("input", function() {
+        sliderLabel.textContent = slider.value;
+      });
+
       document.getElementById("btnSaveToggles").addEventListener("click", function() {
         var data = {
           education: document.getElementById("toggleEducation").checked,
           locations: document.getElementById("toggleLocations").checked,
           staff: document.getElementById("toggleStaff").checked,
-          testimonials: document.getElementById("toggleTestimonials").checked
+          testimonials: document.getElementById("toggleTestimonials").checked,
+          maxNavItems: parseInt(slider.value, 10)
         };
         localStorage.setItem("sitePageToggles", JSON.stringify(data));
         showToast("Visibility settings saved");
@@ -3388,17 +4143,19 @@
     (function initClockSettings() {
       var stored = null;
       try { stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null"); } catch (e) {}
-      var settings = stored || { visible: true, position: "center", label: "San Francisco" };
+      var settings = stored || { visible: true, position: "center", label: "San Francisco", langPosition: "hero-top-right" };
 
       document.getElementById("clockVisibleToggle").checked = settings.visible !== false;
       document.getElementById("clockPositionSelect").value = settings.position || "center";
       document.getElementById("clockLabelInput").value = settings.label || "San Francisco";
+      document.getElementById("langPositionSelect").value = settings.langPosition || "nav";
 
       document.getElementById("btnSaveClockSettings").addEventListener("click", function() {
         var data = {
           visible: document.getElementById("clockVisibleToggle").checked,
           position: document.getElementById("clockPositionSelect").value,
-          label: document.getElementById("clockLabelInput").value.trim() || "San Francisco"
+          label: document.getElementById("clockLabelInput").value.trim() || "San Francisco",
+          langPosition: document.getElementById("langPositionSelect").value
         };
         localStorage.setItem("siteClockSettings", JSON.stringify(data));
         showToast("Clock settings saved");

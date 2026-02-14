@@ -218,6 +218,11 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 40px;
+  white-space: nowrap;
+}
+
+.nav-links li {
+  flex-shrink: 0;
 }
 
 .nav-links a {
@@ -413,6 +418,8 @@ h1, h2, h3, h4, h5, h6 {
   --glow-y: 50%;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+  white-space: nowrap;
   background: var(--btn-bg);
   color: var(--btn-color) !important;
   padding: 8px 20px;
@@ -2294,6 +2301,42 @@ body { top: 0 !important; }
 [data-theme="dark"] .nav-lang-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   color: #f5f5f7;
+}
+
+/* Hero language button (floating in hero) */
+.hero-lang-btn {
+  position: absolute;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 0;
+}
+
+.hero-lang-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.hero-lang-left { top: 24px; left: 32px; }
+.hero-lang-right { top: 24px; right: 32px; }
+
+@media (max-width: 768px) {
+  .hero-lang-left { top: 16px; left: 16px; }
+  .hero-lang-right { top: 16px; right: 16px; }
 }
 
 /* Language modal overlay */
