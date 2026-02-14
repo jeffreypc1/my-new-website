@@ -2,6 +2,14 @@
 
 ## 2026-02-14
 
+### Homepage Streamlined & Staff Architecture Cleanup
+- **Removed homepage "Our Team" section** — Deleted the `#staffSection` / `#staffGallery` markup from `index.html`. The homepage now focuses on the Services bento grid and high-level mission. Removed the `renderStaffSection()` function and ~95 lines of homepage staff CSS (`.staff-section`, `.staff-gallery`, `.staff-card`, `.staff-avatar`, `.staff-name`, `.staff-title`, `.staff-office`, `.staff-bio`).
+- **Staff page is the single source** — `staff.html` is now the only place team members are displayed. It reads exclusively from `localStorage` via `getStaff()`.
+- **Centralized seed in `main.js`** — Replaced the inline auto-populate block in `staff.html` with a `seedDefaultStaff()` function in `main.js` that runs on every page load. If `siteStaff` is empty, it writes all 8 team members (Jeffrey O'Brien, Daska Babcock, Elena Applebaum, Rosanna Katz, Maria Amaya, Roshani Sitaula, Esteban Lasso, Guisselle Castellon) to localStorage. This means the Admin Panel's Staff tab also shows them on first visit — no need to open `staff.html` first.
+- **Navigation intact** — The "Staff" link in the navbar on both `index.html` and `staff.html` continues to point to `staff.html`.
+
+**Why:** Eliminated the architectural split where staff appeared on both the homepage and the staff page. The homepage is now a clean services-focused landing, and the staff gallery lives exclusively on its dedicated page, with localStorage as the single source of truth populated by `main.js`.
+
 ### Button Style Engine & Staff Contact Integration
 - **Button Style dropdown** — New "Button Style" panel in Site Settings with three options: **Pill** (rounded 980px, Apple-esque — default), **Modern** (8px rounding, professional), and **Glass** (semi-transparent `rgba(255,255,255,0.15)` with a 1px border and `blur(12px)` backdrop). Selection is saved to `siteSettings` under the `--btn-style` key.
 - **CSS variable-driven buttons** — Added `--btn-radius`, `--btn-bg`, `--btn-color`, `--btn-border`, and `--btn-backdrop` variables to `:root`. The `.nav-cta`, `.hero-btn`, `.consult-submit`, `.careers-cta-btn`, `.staff-modal-form-btn`, and staff modal close button all consume these variables, so changing the dropdown updates every button site-wide instantly.

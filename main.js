@@ -37,8 +37,8 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Bento grid from localStorage ── */
   renderBentoGrid();
 
-  /* ── Staff & Posts from localStorage ── */
-  renderStaffSection();
+  /* ── Seed default staff & render posts ── */
+  seedDefaultStaff();
   renderPostsSection();
 
   /* ── Dynamic navigation & routing ── */
@@ -319,45 +319,23 @@ function handleRoute() {
 }
 
 /* ══════════════════════════════════════════════
-   Staff Gallery (rendered from localStorage)
+   Staff Seed (populate localStorage if empty)
    ══════════════════════════════════════════════ */
 
-function renderStaffSection() {
-  var container = document.getElementById("staffGallery");
-  if (!container) return;
+function seedDefaultStaff() {
+  if (getStaff().length > 0) return;
 
-  var staff = getStaff();
-  if (staff.length === 0) {
-    container.innerHTML = "";
-    var section = document.getElementById("staffSection");
-    if (section) section.style.display = "none";
-    return;
-  }
-
-  var section = document.getElementById("staffSection");
-  if (section) section.style.display = "";
-
-  container.innerHTML = staff.map(function(member) {
-    return '<div class="staff-card reveal">' +
-      '<div class="staff-avatar">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>' +
-      '<h3 class="staff-name">' + escapeHtmlUtil(member.name) + '</h3>' +
-      '<p class="staff-title">' + escapeHtmlUtil(member.title) + '</p>' +
-      '<p class="staff-office">' + escapeHtmlUtil(member.office) + '</p>' +
-      '<p class="staff-bio">' + escapeHtmlUtil(member.bio) + '</p>' +
-    '</div>';
-  }).join('');
-
-  container.querySelectorAll(".reveal").forEach(function(el) {
-    var obs = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          obs.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.15 });
-    obs.observe(el);
-  });
+  var defaults = [
+    { id: "s1", name: "Jeffrey O'Brien", title: "Founding Partner", office: "Berkeley", email: "info@obrienimmigration.com", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Founded the firm in 2010 with a mission to provide high-quality, affordable, and respectful legal representation to immigrants and their families. Recognized for pro bono work by the East Bay Sanctuary Covenant.", createdAt: "Feb 14, 2026" },
+    { id: "s2", name: "Daska Babcock", title: "Senior Attorney", office: "Stockton", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined the firm in 2016 and launched the Central Valley office in 2017. Practices asylum cases and Special Immigrant Juvenile Status petitions. Fourteen years of civil litigation experience and recipient of the Father Cuchulain Moriarty Award.", createdAt: "Feb 14, 2026" },
+    { id: "s3", name: "Elena Applebaum", title: "Senior Attorney", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Focuses on asylum and humanitarian petitions. Prior work with Jesuit Refugee Service in Malta and California immigration clinics. Fluent in multiple languages, including Spanish and Portuguese.", createdAt: "Feb 14, 2026" },
+    { id: "s4", name: "Rosanna Katz", title: "Senior Attorney", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined the firm in 2016. Practices asylum cases and family-based petitions. Prior litigation experience and pro bono work through East Bay Sanctuary Covenant.", createdAt: "Feb 14, 2026" },
+    { id: "s5", name: "Maria Amaya", title: "Senior Paralegal", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Colombian attorney managing case coordination, legal preparation, and team leadership. Handles deadlines, filings, evidence preparation, legal research, and motion drafting.", createdAt: "Feb 14, 2026" },
+    { id: "s6", name: "Roshani Sitaula", title: "Senior Paralegal / Operations Director", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined in 2013 with over a decade of immigration law experience. Fluent in English, Nepali, and Hindi. Holds two Master\u2019s degrees in Environmental Management and Geology.", createdAt: "Feb 14, 2026" },
+    { id: "s7", name: "Esteban Lasso", title: "Paralegal", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Supports case preparation, document review, and client communications. Background in law, international business, and project management. Multilingual.", createdAt: "Feb 14, 2026" },
+    { id: "s8", name: "Guisselle Castellon", title: "Intake Specialist", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Conducts client intake and screening in Spanish; assists with interpretation. Psychology background; helps identify asylum and family-based relief eligibility.", createdAt: "Feb 14, 2026" }
+  ];
+  localStorage.setItem("siteStaff", JSON.stringify(defaults));
 }
 
 /* ══════════════════════════════════════════════

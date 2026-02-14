@@ -503,70 +503,8 @@
   <script src="main.js"></script>
   <script>
     (function() {
-      /* ── Auto-populate default staff if none exist ── */
+      /* ── Read staff from localStorage (seeded by main.js) ── */
       var staff = getStaff();
-      if (staff.length === 0) {
-        var defaults = [
-          {
-            id: "s1", name: "Jeffrey O'Brien", title: "Founding Partner",
-            office: "Berkeley", email: "info@obrienimmigration.com", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Founded the firm in 2010 with a mission to provide high-quality, affordable, and respectful legal representation to immigrants and their families. Recognized for pro bono work by the East Bay Sanctuary Covenant.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s2", name: "Daska Babcock", title: "Senior Attorney",
-            office: "Stockton", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Joined the firm in 2016 and launched the Central Valley office in 2017. Practices asylum cases and Special Immigrant Juvenile Status petitions. Fourteen years of civil litigation experience and recipient of the Father Cuchulain Moriarty Award.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s3", name: "Elena Applebaum", title: "Senior Attorney",
-            office: "Berkeley", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Focuses on asylum and humanitarian petitions. Prior work with Jesuit Refugee Service in Malta and California immigration clinics. Fluent in multiple languages, including Spanish and Portuguese.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s4", name: "Rosanna Katz", title: "Senior Attorney",
-            office: "Berkeley", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Joined the firm in 2016. Practices asylum cases and family-based petitions. Prior litigation experience and pro bono work through East Bay Sanctuary Covenant.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s5", name: "Maria Amaya", title: "Senior Paralegal",
-            office: "Berkeley", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Colombian attorney managing case coordination, legal preparation, and team leadership. Handles deadlines, filings, evidence preparation, legal research, and motion drafting.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s6", name: "Roshani Sitaula", title: "Senior Paralegal / Operations Director",
-            office: "Berkeley", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Joined in 2013 with over a decade of immigration law experience. Fluent in English, Nepali, and Hindi. Holds two Master\u2019s degrees in Environmental Management and Geology.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s7", name: "Esteban Lasso", title: "Paralegal",
-            office: "Berkeley", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Supports case preparation, document review, and client communications. Background in law, international business, and project management. Multilingual.",
-            createdAt: "Feb 14, 2026"
-          },
-          {
-            id: "s8", name: "Guisselle Castellon", title: "Intake Specialist",
-            office: "Berkeley", email: "", phone: "",
-            imageUrl: "", showOnWebsite: true, hiring: false,
-            bio: "Conducts client intake and screening in Spanish; assists with interpretation. Psychology background; helps identify asylum and family-based relief eligibility.",
-            createdAt: "Feb 14, 2026"
-          }
-        ];
-        localStorage.setItem("siteStaff", JSON.stringify(defaults));
-        staff = defaults;
-      }
 
       /* ── Filter to visible members only ── */
       var visibleStaff = staff.filter(function(m) { return m.showOnWebsite !== false; });
