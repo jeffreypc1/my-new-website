@@ -70,6 +70,7 @@
     </footer>
   </main>
 
+  <script src="analytics.js"></script>
   <script src="main.js"></script>
   <script>
     (function() {
@@ -167,7 +168,10 @@
         ctaBtn.textContent = goal.cta || "Request Deep Dive";
         ctaBtn.onclick = function(e) {
           e.preventDefault();
-          openConsultModal();
+          openConsultModal({
+            statusId: selectedPath ? selectedPath.id : "",
+            goalId: goal.id
+          });
         };
 
         var resultEl = document.getElementById("pfResult");

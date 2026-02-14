@@ -74,6 +74,15 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Adaptive images (day/night) — runs after dark mode init ── */
   applyAdaptiveImages();
 
+  /* ── Scroll depth tracking (Services section) ── */
+  initScrollDepthTracking();
+
+  /* ── Page toggle redirect (hidden pages → home) ── */
+  enforcePageToggles();
+
+  /* ── Toggle-aware footer on sub-pages ── */
+  renderToggleAwareFooter();
+
   /* ── Admin shortcut: Cmd+Shift+A / Ctrl+Shift+A ── */
   let adminTriggered = false;
 
@@ -180,6 +189,38 @@ function getLocations() {
 
 function saveLocations(data) {
   localStorage.setItem("siteLocations", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
+   Page Visibility Toggles (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getPageToggles() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("sitePageToggles") || "null");
+    if (stored) return stored;
+  } catch (e) {}
+  return { education: true, locations: true, staff: true, testimonials: true };
+}
+
+function savePageToggles(data) {
+  localStorage.setItem("sitePageToggles", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
+   Contact Config (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getContactConfig() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("siteContactConfig") || "null");
+    if (stored) return stored;
+  } catch (e) {}
+  return { formspreeUrl: "https://formspree.io/f/mpqjddon" };
+}
+
+function saveContactConfig(data) {
+  localStorage.setItem("siteContactConfig", JSON.stringify(data));
 }
 
 /* ══════════════════════════════════════════════
@@ -348,10 +389,16 @@ function renderBentoGrid() {
 
 /* ── Bento Modal System ── */
 
+var _bentoModalOpenTime = 0;
+var _bentoModalTitle = "";
+
 function openBentoModal(tile) {
   // Remove any existing modal
   var existing = document.getElementById("bentoModalOverlay");
   if (existing) existing.remove();
+
+  _bentoModalOpenTime = Date.now();
+  _bentoModalTitle = tile.title || "";
 
   var hasImage = tile.modalImage && tile.modalImage.trim();
   var layoutClass = hasImage ? "bento-modal--split" : "bento-modal--text-only";
@@ -397,6 +444,15 @@ function openBentoModal(tile) {
 function closeBentoModal() {
   var overlay = document.getElementById("bentoModalOverlay");
   if (!overlay) return;
+
+  // Track time-on-modal
+  if (_bentoModalOpenTime && _bentoModalTitle && window.siteAnalytics) {
+    var duration = Date.now() - _bentoModalOpenTime;
+    siteAnalytics.trackModalTime(_bentoModalTitle, duration);
+  }
+  _bentoModalOpenTime = 0;
+  _bentoModalTitle = "";
+
   overlay.classList.remove("bento-modal-active");
   overlay.classList.add("bento-modal-leaving");
   document.removeEventListener("keydown", bentoModalEscHandler);
@@ -421,14 +477,18 @@ function renderGlobalNav() {
   var nav = document.getElementById("globalNav");
   if (!nav) return;
 
-  // All nav links (excluding CTA)
-  var navItems = [
-    { label: "Services", href: "index.html#services-grid" },
-    { label: "Staff", href: "staff.html" },
-    { label: "Testimonials", href: "testimonials.html" },
-    { label: "Education", href: "education.html" },
-    { label: "Locations", href: "locations.html" }
+  // All nav links (excluding CTA), filtered by page toggles
+  var toggles = getPageToggles();
+  var allNavItems = [
+    { label: "Services", href: "index.html#services-grid", toggle: null },
+    { label: "Staff", href: "staff.html", toggle: "staff" },
+    { label: "Testimonials", href: "testimonials.html", toggle: "testimonials" },
+    { label: "Education", href: "education.html", toggle: "education" },
+    { label: "Locations", href: "locations.html", toggle: "locations" }
   ];
+  var navItems = allNavItems.filter(function(item) {
+    return item.toggle === null || toggles[item.toggle] !== false;
+  });
 
   var maxVisible = 5;
   var visibleItems = navItems.slice(0, maxVisible);
@@ -498,7 +558,10 @@ function renderGlobalNav() {
   fab.className = "mobile-fab";
   fab.setAttribute("aria-label", "Book a Consultation");
   fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Book';
-  fab.addEventListener("click", function() { openConsultModal(); });
+  fab.addEventListener("click", function() {
+    if (window.siteAnalytics) siteAnalytics.trackBookClick();
+    openConsultModal();
+  });
   document.body.appendChild(fab);
 }
 
@@ -766,17 +829,26 @@ function isConsultEnabled() {
 function buildConsultModal() {
   if (document.getElementById("consultOverlay")) return;
 
+  var contactConfig = getContactConfig();
+  var formUrl = contactConfig.formspreeUrl || "https://formspree.io/f/mpqjddon";
+
+  // Build Path Finder picklist options for the form
+  var pfData = getPathFinderData();
+  var statusOptions = pfData.paths.map(function(p) {
+    return '<option value="' + escapeHtmlUtil(p.id) + '">' + escapeHtmlUtil(p.label) + '</option>';
+  }).join('');
+
   var overlay = document.createElement("div");
   overlay.id = "consultOverlay";
   overlay.className = "consult-overlay";
   overlay.innerHTML =
     '<div class="consult-modal">' +
       '<button class="consult-close" aria-label="Close">&times;</button>' +
-      '<form id="consultForm" action="https://formspree.io/f/mpqjddon" method="POST">' +
+      '<form id="consultForm" action="' + escapeHtmlUtil(formUrl) + '" method="POST">' +
         '<h2>Book a Consultation</h2>' +
         '<p class="consult-sub">Tell us about your situation and we\u2019ll get back to you within 24 hours.</p>' +
         '<input type="hidden" name="_next" value="' + window.location.origin + '/thank-you.html">' +
-        '<input type="hidden" name="_subject" value="New Consultation Request">' +
+        '<input type="hidden" name="_subject" id="consultSubject" value="New Consultation Request">' +
         '<div class="consult-form-row">' +
           '<div class="consult-form-group">' +
             '<label for="consultName">Name</label>' +
@@ -791,14 +863,20 @@ function buildConsultModal() {
           '<label for="consultEmail">Email</label>' +
           '<input type="email" id="consultEmail" name="email" required placeholder="you@example.com">' +
         '</div>' +
-        '<div class="consult-form-group">' +
-          '<label for="consultIssue">Legal Issue</label>' +
-          '<select id="consultIssue" name="issue">' +
-            '<option value="">Select an issue\u2026</option>' +
-            '<option value="Family">Family</option>' +
-            '<option value="Removal">Removal</option>' +
-            '<option value="Citizenship">Citizenship</option>' +
-          '</select>' +
+        '<div class="consult-form-row">' +
+          '<div class="consult-form-group">' +
+            '<label for="consultStatus">I am\u2026</label>' +
+            '<select id="consultStatus" name="status">' +
+              '<option value="">Choose your status</option>' +
+              statusOptions +
+            '</select>' +
+          '</div>' +
+          '<div class="consult-form-group">' +
+            '<label for="consultGoal">And I want to\u2026</label>' +
+            '<select id="consultGoal" name="goal" disabled>' +
+              '<option value="">Choose your goal</option>' +
+            '</select>' +
+          '</div>' +
         '</div>' +
         '<div class="consult-form-group">' +
           '<label for="consultMessage">Message</label>' +
@@ -808,6 +886,43 @@ function buildConsultModal() {
       '</form>' +
     '</div>';
   document.body.appendChild(overlay);
+
+  // Dependent goal picklist
+  var statusSelect = document.getElementById("consultStatus");
+  var goalSelect = document.getElementById("consultGoal");
+  statusSelect.addEventListener("change", function() {
+    var path = pfData.paths.find(function(p) { return p.id === statusSelect.value; });
+    if (path && path.goals) {
+      goalSelect.disabled = false;
+      goalSelect.innerHTML = '<option value="">Choose your goal</option>' +
+        path.goals.map(function(g) {
+          return '<option value="' + escapeHtmlUtil(g.id) + '">' + escapeHtmlUtil(g.label) + '</option>';
+        }).join('');
+      if (window.siteAnalytics) {
+        var sOpt = statusSelect.options[statusSelect.selectedIndex];
+        siteAnalytics.trackPathFinderChoice("status", statusSelect.value, sOpt ? sOpt.text : "");
+      }
+    } else {
+      goalSelect.disabled = true;
+      goalSelect.innerHTML = '<option value="">Choose your goal</option>';
+    }
+    updateConsultSubject();
+  });
+  goalSelect.addEventListener("change", function() {
+    updateConsultSubject();
+    if (window.siteAnalytics && goalSelect.value) {
+      var gOpt = goalSelect.options[goalSelect.selectedIndex];
+      siteAnalytics.trackPathFinderChoice("goal", goalSelect.value, gOpt ? gOpt.text : "");
+    }
+  });
+
+  function updateConsultSubject() {
+    var statusText = statusSelect.options[statusSelect.selectedIndex] ? statusSelect.options[statusSelect.selectedIndex].text : "";
+    var goalText = goalSelect.options[goalSelect.selectedIndex] ? goalSelect.options[goalSelect.selectedIndex].text : "";
+    var subject = "Consultation: " + statusText;
+    if (goalText && goalText !== "Choose your goal") subject += " \u2014 " + goalText;
+    document.getElementById("consultSubject").value = subject || "New Consultation Request";
+  }
 
   // Close on overlay background click
   overlay.addEventListener("click", function(e) {
@@ -824,7 +939,7 @@ function buildConsultModal() {
     }
   });
 
-  // Client-side validation highlight
+  // Client-side validation highlight + analytics tracking
   overlay.querySelector("#consultForm").addEventListener("submit", function(e) {
     var name = document.getElementById("consultName");
     var email = document.getElementById("consultEmail");
@@ -836,11 +951,21 @@ function buildConsultModal() {
         name.style.borderColor = "";
         email.style.borderColor = "";
       }, 1500);
+    } else {
+      // Track successful submission
+      if (window.siteAnalytics) {
+        var sOpt = statusSelect.options[statusSelect.selectedIndex];
+        var gOpt = goalSelect.options[goalSelect.selectedIndex];
+        siteAnalytics.trackFormSubmission(
+          sOpt ? sOpt.text : "",
+          gOpt ? gOpt.text : ""
+        );
+      }
     }
   });
 }
 
-function openConsultModal() {
+function openConsultModal(prefill) {
   if (!isConsultEnabled()) return;
   buildConsultModal();
 
@@ -849,9 +974,33 @@ function openConsultModal() {
   var success = document.getElementById("consultSuccess");
   if (form) {
     form.style.display = "";
-    form.querySelectorAll("input, select, textarea").forEach(function(el) { el.value = ""; });
+    form.querySelectorAll("input:not([type=hidden]), select, textarea").forEach(function(el) {
+      if (el.tagName === "SELECT") {
+        el.selectedIndex = 0;
+        if (el.id === "consultGoal") el.disabled = true;
+      } else {
+        el.value = "";
+      }
+    });
   }
   if (success) success.classList.remove("visible");
+
+  // Pre-fill from Education Hub bridge
+  if (prefill) {
+    var statusSelect = document.getElementById("consultStatus");
+    var goalSelect = document.getElementById("consultGoal");
+    if (prefill.statusId && statusSelect) {
+      statusSelect.value = prefill.statusId;
+      statusSelect.dispatchEvent(new Event("change"));
+      // Set goal after the change event populates options
+      if (prefill.goalId && goalSelect) {
+        setTimeout(function() {
+          goalSelect.value = prefill.goalId;
+          goalSelect.dispatchEvent(new Event("change"));
+        }, 50);
+      }
+    }
+  }
 
   var overlay = document.getElementById("consultOverlay");
   requestAnimationFrame(function() { overlay.classList.add("visible"); });
@@ -869,6 +1018,7 @@ function initConsultButtons() {
     if (btn.textContent.trim() === "Book a Consultation") {
       btn.addEventListener("click", function(e) {
         e.preventDefault();
+        if (window.siteAnalytics) siteAnalytics.trackBookClick();
         openConsultModal();
       });
     }
@@ -1466,6 +1616,7 @@ function openLanguageModal() {
     opt.addEventListener("click", function() {
       var lang = opt.dataset.lang;
       setSelectedLanguage(lang);
+      if (window.siteAnalytics) siteAnalytics.trackLanguageChange(lang);
 
       if (lang === "en") {
         // Reset to English — remove Google Translate cookie and reload
@@ -1491,6 +1642,80 @@ function closeLanguageModal() {
   overlay.classList.remove("lang-modal-active");
   overlay.classList.add("lang-modal-leaving");
   setTimeout(function() { overlay.remove(); }, 300);
+}
+
+/* ══════════════════════════════════════════════
+   Scroll Depth Tracking (Services / Bento section)
+   ══════════════════════════════════════════════ */
+
+function initScrollDepthTracking() {
+  var section = document.querySelector(".bento-grid") || document.getElementById("services-grid");
+  if (!section || !window.siteAnalytics) return;
+
+  var thresholds = [0.25, 0.5, 0.75, 1.0];
+  var tracked = {};
+
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      thresholds.forEach(function(t) {
+        if (!tracked[t] && entry.intersectionRatio >= t) {
+          tracked[t] = true;
+          siteAnalytics.trackScrollDepth("services", Math.round(t * 100) + "%");
+        }
+      });
+    });
+  }, { threshold: thresholds });
+
+  obs.observe(section);
+}
+
+/* ══════════════════════════════════════════════
+   Page Toggle Enforcement (redirect hidden pages)
+   ══════════════════════════════════════════════ */
+
+function enforcePageToggles() {
+  var toggles = getPageToggles();
+  var page = window.location.pathname.split("/").pop() || "";
+
+  var pageMap = {
+    "education.html": "education",
+    "locations.html": "locations",
+    "staff.html": "staff",
+    "testimonials.html": "testimonials"
+  };
+
+  var toggleKey = pageMap[page];
+  if (toggleKey && toggles[toggleKey] === false) {
+    window.location.replace("index.html");
+  }
+}
+
+/* ══════════════════════════════════════════════
+   Dynamic Footer Links (toggle-aware on sub-pages)
+   ══════════════════════════════════════════════ */
+
+function renderToggleAwareFooter() {
+  var containers = document.querySelectorAll(".footer-links");
+  if (!containers.length) return;
+
+  // Only apply on sub-pages that have static footer links (not index.html's dynamic footer)
+  var container = containers[0];
+  if (container.id === "footerLinks") return; // index.html uses dynamic footer
+
+  var toggles = getPageToggles();
+  var links = [
+    { label: "Home", href: "index.html", toggle: null },
+    { label: "Our Team", href: "staff.html", toggle: "staff" },
+    { label: "Testimonials", href: "testimonials.html", toggle: "testimonials" },
+    { label: "Education", href: "education.html", toggle: "education" },
+    { label: "Locations", href: "locations.html", toggle: "locations" }
+  ];
+
+  container.innerHTML = links.filter(function(link) {
+    return link.toggle === null || toggles[link.toggle] !== false;
+  }).map(function(link) {
+    return '<a href="' + link.href + '">' + link.label + '</a>';
+  }).join('');
 }
 
 function initSmoothScroll() {

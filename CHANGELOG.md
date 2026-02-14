@@ -1,5 +1,57 @@
 # Changelog
 
+## v2.7 — 2026-02-14
+
+### Phase 2 Analytics & Global Visibility Enforcement
+
+- **Geographic Tracking** — `analytics.js` now captures the visitor's general location (City, Region, Country) via a privacy-friendly IP lookup to `ipapi.co/json/`. Results are cached in `siteAnalyticsGeo` localStorage for 24 hours to minimize API calls. Every tracked event now includes `city` and `region` fields alongside the existing `device`, `language`, and `date` data.
+- **Scroll Depth Tracking** — New `initScrollDepthTracking()` function uses an IntersectionObserver on the Bento/Services grid to fire `scroll_depth` events at 25%, 50%, 75%, and 100% visibility thresholds. Each threshold fires only once per page load.
+- **Time-on-Modal Tracking** — `openBentoModal()` records the open timestamp and tile title. `closeBentoModal()` calculates the duration and fires a `modal_time` event with the tile name and milliseconds spent reading. This reveals which services visitors engage with most deeply.
+- **Regional Heatmap** — New admin Insights card showing the top 10 visitor locations ranked by interaction count. Uses the same ranked-list design as Top Interest. Falls back to an empty state when no geographic data exists.
+- **Device Engagement** — New admin Insights card with a Canvas donut pie chart showing Mobile vs Desktop interaction split. Uses the same donut design as Language Pulse with a two-color palette (blue/amber).
+- **Page Toggle Enforcement** — `enforcePageToggles()` runs on every page load. If the current page (education.html, locations.html, staff.html, testimonials.html) is toggled off in admin, the visitor is instantly redirected to the homepage via `window.location.replace()`.
+- **Toggle-Aware Footer** — New `renderToggleAwareFooter()` function dynamically rebuilds the footer links on all sub-pages, filtering out any page that has been toggled off. The footer now stays in sync with the header navigation.
+- **Clock Responsive** — Added `@media (max-width: 768px)` rule that overrides `.clock-positioned` to `position: static; text-align: center`, ensuring positioned clocks revert to a centered layout on mobile screens.
+
+**Why:** Phase 2 completes the analytics picture by adding the "where" (geography) and "how deep" (scroll depth, modal dwell time) dimensions to the existing "what" (clicks, submissions) and "who" (language, device) data. The visibility toggle enforcement closes a gap where toggled-off pages were still accessible via direct URL — now they redirect home. The responsive clock fix ensures the hero section remains clean on mobile regardless of the admin's chosen clock position.
+
+## v2.6 — 2026-02-14
+
+### Analytics Engine & Phase 1 Insights Dashboard
+
+- **`analytics.js`** — New lightweight, privacy-first analytics engine. All data is anonymized and stored in `siteAnalytics` localStorage key — no cookies, no third-party services, no PII collection. Events are capped at 500 entries to prevent localStorage bloat. Each event records: `type`, `meta` (contextual data), `device` (Mobile/Desktop via `window.innerWidth`), `language` (from `siteLanguage`), `date`, and `timestamp`.
+- **Tracked events:**
+  - `book_click` — Every "Book a Consultation" button click (nav CTA, hero button, mobile FAB)
+  - `form_submission` — Every successful Formspree form submission, with status and goal text as metadata
+  - `pathfinder_choice` — Every "I am..." and "And I want to..." selection in the contact form, with step, value, and label
+  - `language_change` — Every language selection from the translation modal
+- **Admin "Insights" accordion group** — New category in the admin sidebar between Firm Operations and System Settings, with an Analytics sub-link.
+- **Analytics dashboard** — Three glassmorphism insight cards:
+  - **Lead Velocity** — Bar chart showing form submissions per day over the last 7 days. Bars use a blue gradient (`#3b82f6` → `#60a5fa`) with rounded tops. Height scales proportionally to the max day count. Each bar shows its count above and date below.
+  - **Top Interest** — Ranked list of the 5 most-selected goals from Path Finder choices and form submissions. Each row shows rank (blue circle), goal label, and count. Falls back to "No data yet" empty state.
+  - **Language Pulse** — Canvas-drawn donut pie chart showing language distribution across book clicks and submissions. Center shows total event count. Legend lists each language with color dot, name, percentage, and raw count. Uses 10-color palette.
+- **Summary stats** — Two stat cards above the insight panels: total Book Clicks and total Submissions.
+- **Clear button** — "Clear All Analytics Data" with confirmation dialog, removing all events from localStorage.
+- **Script inclusion** — `analytics.js` is loaded before `main.js` on all 7 public pages (index, education, staff, testimonials, locations, thank-you) and admin.html. The `window.siteAnalytics` API is available globally.
+
+**Why:** An immigration law firm needs to understand which services drive the most interest and which languages their visitors speak — without compromising visitor privacy. The localStorage-only approach means zero compliance burden (no GDPR cookie banners, no third-party data processors) while still providing actionable insights. The bar chart reveals lead patterns over time, the top interests list shows which practice areas to highlight, and the language pulse informs staffing and translation priorities.
+
+## v2.5 — 2026-02-14
+
+### Master Toggle System & Contact-Education Integration
+
+- **Global Page Toggles** — New "Nav & Visibility" tab under System Settings in admin.html with on/off switches for Education Hub, Locations, Staff Page, and Testimonials. When a page is toggled off, it automatically disappears from the navigation bar across the entire site. Stored in `sitePageToggles` localStorage key. `renderGlobalNav()` filters the nav items array by toggle state before rendering.
+- **Path Finder Contact Form** — The consultation modal's "Legal Issue" dropdown has been replaced with the Education Hub's two-step Path Finder picklists: "I am..." (status) and "And I want to..." (dependent goal). The goal dropdown is disabled until a status is selected, then populates dynamically from `sitePathFinder` data. Both selections are concatenated into the hidden `_subject` field sent to Formspree (e.g., "Consultation: A U.S. Citizen — Sponsor a spouse"), giving the firm precise context before opening the email.
+- **Education Hub Bridge** — When a user gets a result in the Education Path Finder and clicks "Request Deep Dive", the consultation modal opens with their status and goal pre-filled. The `openConsultModal()` function now accepts an optional `prefill` object with `statusId` and `goalId` that auto-selects the correct picklist values.
+- **Admin Contact Config** — New "Contact Config" tab under System Settings with:
+  - **Formspree Endpoint URL** — Text input to set the form submission URL. The consultation modal reads this on build, replacing the hardcoded URL.
+  - **Test Connection** — Button that sends a sample JSON payload to the configured endpoint via `fetch()`. Displays green success or red error feedback inline.
+  - Stored in `siteContactConfig` localStorage key.
+- **Clock Positioning** — Already implemented in v2.1 and confirmed working: admin-controllable position (Center, Top Left, Top Right, Bottom Left, Bottom Right) with absolute positioning within the hero section.
+- **3-second cross-fade** — Already active since v1.8 for both automatic (sun-aware 6PM/6AM) and manual (dark mode toggle) theme transitions via `transition: opacity 3s` on `.hero-crossfade`.
+
+**Why:** The toggle system gives the firm instant control over which pages are publicly visible — useful when content isn't ready or a service is temporarily suspended. Replacing the generic "Legal Issue" dropdown with the Path Finder picklists transforms the contact form into a structured intake tool — the firm knows exactly what kind of case it is before reading the email. The Education Hub bridge creates a seamless funnel from self-service exploration to consultation request.
+
 ## v2.4 — 2026-02-14
 
 ### Smart Translation System

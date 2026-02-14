@@ -231,6 +231,114 @@
       letter-spacing: -0.03em;
     }
 
+    /* ── Insight Cards ── */
+
+    .insight-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: saturate(140%) blur(16px);
+      -webkit-backdrop-filter: saturate(140%) blur(16px);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .velocity-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 140px;
+    }
+
+    .velocity-bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .velocity-bar {
+      width: 100%;
+      max-width: 48px;
+      border-radius: 6px 6px 2px 2px;
+      background: linear-gradient(180deg, #3b82f6 0%, #60a5fa 100%);
+      min-height: 2px;
+      transition: height 0.5s cubic-bezier(0.15, 0.83, 0.66, 1);
+    }
+
+    .velocity-count {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .velocity-label {
+      font-size: 0.625rem;
+      color: var(--mid-gray);
+      text-align: center;
+    }
+
+    .top-interest-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .interest-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--off-white);
+      border-radius: var(--radius-sm);
+    }
+
+    .interest-rank {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .interest-label {
+      flex: 1;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .interest-count {
+      font-size: 0.8125rem;
+      color: var(--mid-gray);
+      font-weight: 500;
+    }
+
+    .lang-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .lang-legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8125rem;
+    }
+
+    .lang-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
     /* ── Table ── */
 
     .panel {
@@ -760,6 +868,17 @@
         </div>
       </div>
 
+      <div class="sidebar-group" data-group="insights">
+        <button class="sidebar-group-header">
+          <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Insights</span>
+          <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-group-items">
+          <a class="sidebar-link" data-section="analytics"><span>Analytics</span></a>
+        </div>
+      </div>
+
       <div class="sidebar-group" data-group="system">
         <button class="sidebar-group-header">
           <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -768,6 +887,8 @@
         </button>
         <div class="sidebar-group-items">
           <a class="sidebar-link" data-section="settings"><span>Site Settings</span></a>
+          <a class="sidebar-link" data-section="navvisibility"><span>Nav & Visibility</span></a>
+          <a class="sidebar-link" data-section="contactconfig"><span>Contact Config</span></a>
           <a class="sidebar-link" data-section="clocksettings"><span>Clock Settings</span></a>
           <a class="sidebar-link" data-section="translation"><span>Translation</span></a>
         </div>
@@ -837,6 +958,72 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ── Analytics / Insights ── -->
+    <div id="analytics" class="section">
+      <h1>Analytics</h1>
+      <p class="subtitle">Privacy-first insights from anonymized, locally stored interaction data. No cookies, no third parties.</p>
+
+      <div class="stats-grid" style="margin-bottom:24px">
+        <div class="stat-card">
+          <div class="label">Book Clicks</div>
+          <div class="value" id="statBookClicks">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Submissions</div>
+          <div class="value" id="statSubmissions">0</div>
+        </div>
+      </div>
+
+      <!-- Lead Velocity -->
+      <div class="panel insight-card">
+        <h2>Lead Velocity</h2>
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:20px">Form submissions over the last 7 days</p>
+        <div id="leadVelocityChart" class="velocity-chart"></div>
+      </div>
+
+      <!-- Top Interest -->
+      <div class="panel insight-card" style="margin-top:24px">
+        <h2>Top Interest</h2>
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:20px">Most selected goals from Path Finder and contact form</p>
+        <div id="topInterestList" class="top-interest-list">
+          <div class="empty-state">No data yet. Interactions will appear here.</div>
+        </div>
+      </div>
+
+      <!-- Language Pulse -->
+      <div class="panel insight-card" style="margin-top:24px">
+        <h2>Language Pulse</h2>
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:20px">Language distribution across book clicks and submissions</p>
+        <div id="languagePulse" style="display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+          <canvas id="langPieCanvas" width="160" height="160" style="flex-shrink:0"></canvas>
+          <div id="langPieLegend" class="lang-legend"></div>
+        </div>
+      </div>
+
+      <!-- Regional Heatmap -->
+      <div class="panel insight-card" style="margin-top:24px">
+        <h2>Regional Heatmap</h2>
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:20px">Top locations by visitor interactions</p>
+        <div id="regionalHeatmap" class="top-interest-list">
+          <div class="empty-state">No geographic data yet. Locations will appear as visitors interact.</div>
+        </div>
+      </div>
+
+      <!-- Device Engagement -->
+      <div class="panel insight-card" style="margin-top:24px">
+        <h2>Device Engagement</h2>
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:20px">Mobile vs Desktop interactions</p>
+        <div id="deviceEngagement" style="display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+          <canvas id="devicePieCanvas" width="160" height="160" style="flex-shrink:0"></canvas>
+          <div id="devicePieLegend" class="lang-legend"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px">
+        <button class="btn btn-secondary" id="btnClearAnalytics">Clear All Analytics Data</button>
       </div>
     </div>
 
@@ -1356,6 +1543,56 @@
       </div>
     </div>
 
+    <!-- ── Navigation & Visibility ── -->
+    <div id="navvisibility" class="section">
+      <h1>Navigation & Visibility</h1>
+      <p class="subtitle">Toggle pages on or off. Disabled pages are hidden from the navigation bar across the entire site.</p>
+
+      <div class="panel">
+        <div style="display:grid;gap:16px">
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Education Hub</span>
+            <input type="checkbox" id="toggleEducation" checked>
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Locations</span>
+            <input type="checkbox" id="toggleLocations" checked>
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Staff Page</span>
+            <input type="checkbox" id="toggleStaff" checked>
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Testimonials</span>
+            <input type="checkbox" id="toggleTestimonials" checked>
+          </label>
+        </div>
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveToggles">Save Visibility Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Contact Config ── -->
+    <div id="contactconfig" class="section">
+      <h1>Contact Config</h1>
+      <p class="subtitle">Configure the consultation form endpoint and test your connection.</p>
+
+      <div class="panel">
+        <div class="form-group">
+          <label for="formspreeUrlInput">Formspree Endpoint URL</label>
+          <input type="text" id="formspreeUrlInput" placeholder="https://formspree.io/f/your-form-id">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">The full Formspree URL where consultation form submissions are sent.</p>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveContactConfig">Save</button>
+          <button class="btn btn-secondary" id="btnTestConnection">Test Connection</button>
+        </div>
+        <div id="testConnectionResult" style="margin-top:12px;font-size:0.875rem;display:none"></div>
+      </div>
+    </div>
+
     <!-- ── Clock Settings ── -->
     <div id="clocksettings" class="section">
       <h1>Clock Settings</h1>
@@ -1516,6 +1753,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="analytics.js"></script>
   <script>
     /* ══════════════════════════════════════════════
        Helpers
@@ -3069,6 +3307,84 @@
        Clock Settings
        ══════════════════════════════════════════════ */
 
+    /* ══════════════════════════════════════════════
+       Navigation & Visibility Toggles
+       ══════════════════════════════════════════════ */
+
+    (function initNavVisibility() {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem("sitePageToggles") || "null"); } catch (e) {}
+      var toggles = stored || { education: true, locations: true, staff: true, testimonials: true };
+
+      document.getElementById("toggleEducation").checked = toggles.education !== false;
+      document.getElementById("toggleLocations").checked = toggles.locations !== false;
+      document.getElementById("toggleStaff").checked = toggles.staff !== false;
+      document.getElementById("toggleTestimonials").checked = toggles.testimonials !== false;
+
+      document.getElementById("btnSaveToggles").addEventListener("click", function() {
+        var data = {
+          education: document.getElementById("toggleEducation").checked,
+          locations: document.getElementById("toggleLocations").checked,
+          staff: document.getElementById("toggleStaff").checked,
+          testimonials: document.getElementById("toggleTestimonials").checked
+        };
+        localStorage.setItem("sitePageToggles", JSON.stringify(data));
+        showToast("Visibility settings saved");
+      });
+    })();
+
+    /* ══════════════════════════════════════════════
+       Contact Config
+       ══════════════════════════════════════════════ */
+
+    (function initContactConfig() {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem("siteContactConfig") || "null"); } catch (e) {}
+      var config = stored || { formspreeUrl: "https://formspree.io/f/mpqjddon" };
+
+      document.getElementById("formspreeUrlInput").value = config.formspreeUrl || "";
+
+      document.getElementById("btnSaveContactConfig").addEventListener("click", function() {
+        var data = {
+          formspreeUrl: document.getElementById("formspreeUrlInput").value.trim()
+        };
+        localStorage.setItem("siteContactConfig", JSON.stringify(data));
+        showToast("Contact config saved");
+      });
+
+      document.getElementById("btnTestConnection").addEventListener("click", function() {
+        var url = document.getElementById("formspreeUrlInput").value.trim();
+        if (!url) { showToast("Enter a Formspree URL first"); return; }
+
+        var resultEl = document.getElementById("testConnectionResult");
+        resultEl.style.display = "block";
+        resultEl.style.color = "var(--mid-gray)";
+        resultEl.textContent = "Sending test\u2026";
+
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({
+            name: "Admin Test",
+            email: "test@obrien-immigration.com",
+            _subject: "Test Connection from Admin Panel",
+            message: "This is a test message sent from the admin panel to verify the Formspree connection is working."
+          })
+        }).then(function(res) {
+          if (res.ok) {
+            resultEl.style.color = "#34c759";
+            resultEl.textContent = "\u2713 Test sent successfully! Check your email.";
+          } else {
+            resultEl.style.color = "#ff3b30";
+            resultEl.textContent = "\u2717 Failed (HTTP " + res.status + "). Check the URL.";
+          }
+        }).catch(function(err) {
+          resultEl.style.color = "#ff3b30";
+          resultEl.textContent = "\u2717 Connection error. Check the URL.";
+        });
+      });
+    })();
+
     (function initClockSettings() {
       var stored = null;
       try { stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null"); } catch (e) {}
@@ -3387,6 +3703,282 @@
     renderPostList();
     renderStaffList();
     refreshDashboard();
+
+    /* ══════════════════════════════════════════════
+       Analytics / Insights Dashboard
+       ══════════════════════════════════════════════ */
+
+    (function initInsights() {
+      // Import analytics data directly from localStorage
+      function getAnalyticsEvents() {
+        try {
+          var data = JSON.parse(localStorage.getItem("siteAnalytics") || '{"events":[]}');
+          return data.events || [];
+        } catch (e) { return []; }
+      }
+
+      function getDateKey(d) {
+        return d.getFullYear() + "-" +
+          String(d.getMonth() + 1).padStart(2, "0") + "-" +
+          String(d.getDate()).padStart(2, "0");
+      }
+
+      function renderInsights() {
+        var events = getAnalyticsEvents();
+
+        // Stat counts
+        var bookClicks = events.filter(function(e) { return e.type === "book_click"; }).length;
+        var submissions = events.filter(function(e) { return e.type === "form_submission"; }).length;
+        document.getElementById("statBookClicks").textContent = bookClicks;
+        document.getElementById("statSubmissions").textContent = submissions;
+
+        // ── Lead Velocity (last 7 days bar chart) ──
+        var now = new Date();
+        var days = [];
+        for (var i = 6; i >= 0; i--) {
+          var d = new Date(now);
+          d.setDate(d.getDate() - i);
+          days.push(getDateKey(d));
+        }
+
+        var dayCounts = {};
+        days.forEach(function(day) { dayCounts[day] = 0; });
+        events.forEach(function(ev) {
+          if (ev.type === "form_submission" && dayCounts[ev.date] !== undefined) {
+            dayCounts[ev.date]++;
+          }
+        });
+
+        var maxCount = Math.max.apply(null, days.map(function(d) { return dayCounts[d]; }));
+        if (maxCount < 1) maxCount = 1;
+
+        var chartEl = document.getElementById("leadVelocityChart");
+        chartEl.innerHTML = days.map(function(day) {
+          var count = dayCounts[day];
+          var pct = (count / maxCount) * 100;
+          var parts = day.split("-");
+          var label = parseInt(parts[1]) + "/" + parseInt(parts[2]);
+          return '<div class="velocity-bar-wrap">' +
+            '<div class="velocity-count">' + count + '</div>' +
+            '<div class="velocity-bar" style="height:' + Math.max(pct, 2) + '%"></div>' +
+            '<div class="velocity-label">' + label + '</div>' +
+          '</div>';
+        }).join('');
+
+        // ── Top Interest ──
+        var goalCounts = {};
+        events.forEach(function(ev) {
+          if (ev.type === "form_submission" && ev.meta && ev.meta.goal && ev.meta.goal !== "Choose your goal") {
+            goalCounts[ev.meta.goal] = (goalCounts[ev.meta.goal] || 0) + 1;
+          }
+          if (ev.type === "pathfinder_choice" && ev.meta && ev.meta.step === "goal" && ev.meta.label) {
+            goalCounts[ev.meta.label] = (goalCounts[ev.meta.label] || 0) + 1;
+          }
+        });
+
+        var sorted = Object.keys(goalCounts).map(function(k) {
+          return { goal: k, count: goalCounts[k] };
+        }).sort(function(a, b) { return b.count - a.count; }).slice(0, 5);
+
+        var listEl = document.getElementById("topInterestList");
+        if (sorted.length === 0) {
+          listEl.innerHTML = '<div class="empty-state">No data yet. Interactions will appear here.</div>';
+        } else {
+          listEl.innerHTML = sorted.map(function(item, idx) {
+            return '<div class="interest-row">' +
+              '<div class="interest-rank">' + (idx + 1) + '</div>' +
+              '<div class="interest-label">' + escapeHtml(item.goal) + '</div>' +
+              '<div class="interest-count">' + item.count + '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        // ── Language Pulse (pie chart via canvas) ──
+        var langCounts = {};
+        events.forEach(function(ev) {
+          if (ev.type === "form_submission" || ev.type === "book_click") {
+            var lang = ev.language || "en";
+            langCounts[lang] = (langCounts[lang] || 0) + 1;
+          }
+        });
+
+        var langEntries = Object.keys(langCounts).map(function(k) {
+          return { lang: k, count: langCounts[k] };
+        }).sort(function(a, b) { return b.count - a.count; });
+
+        var PIE_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16", "#f97316", "#6366f1"];
+        var LANG_NAMES = { en: "English", es: "Español", "zh-CN": "中文", vi: "Tiếng Việt", ko: "한국어", tl: "Tagalog", ar: "العربية", fr: "Français", pt: "Português", ru: "Русский", hi: "हिन्दी" };
+
+        var canvas = document.getElementById("langPieCanvas");
+        var ctx = canvas.getContext("2d");
+        var size = 160;
+        var cx = size / 2, cy = size / 2, r = 65;
+        ctx.clearRect(0, 0, size, size);
+
+        var total = langEntries.reduce(function(s, e) { return s + e.count; }, 0);
+
+        if (total === 0) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fillStyle = "#e8e8ed";
+          ctx.fill();
+          ctx.fillStyle = "#86868b";
+          ctx.font = "12px Inter, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("No data", cx, cy + 4);
+        } else {
+          var startAngle = -Math.PI / 2;
+          langEntries.forEach(function(entry, idx) {
+            var slice = (entry.count / total) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+            ctx.closePath();
+            ctx.fillStyle = PIE_COLORS[idx % PIE_COLORS.length];
+            ctx.fill();
+            startAngle += slice;
+          });
+          // Center hole (donut)
+          ctx.beginPath();
+          ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+          ctx.fillStyle = "#fff";
+          ctx.fill();
+          ctx.fillStyle = "#1d1d1f";
+          ctx.font = "bold 18px Inter, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(total, cx, cy + 2);
+          ctx.font = "10px Inter, sans-serif";
+          ctx.fillStyle = "#86868b";
+          ctx.fillText("events", cx, cy + 16);
+        }
+
+        var legendEl = document.getElementById("langPieLegend");
+        if (langEntries.length === 0) {
+          legendEl.innerHTML = '<span style="font-size:0.8125rem;color:var(--mid-gray)">No language data</span>';
+        } else {
+          legendEl.innerHTML = langEntries.map(function(entry, idx) {
+            var pct = total ? Math.round((entry.count / total) * 100) : 0;
+            var name = LANG_NAMES[entry.lang] || entry.lang;
+            return '<div class="lang-legend-row">' +
+              '<div class="lang-legend-dot" style="background:' + PIE_COLORS[idx % PIE_COLORS.length] + '"></div>' +
+              '<span>' + escapeHtml(name) + ' — ' + pct + '% (' + entry.count + ')</span>' +
+            '</div>';
+          }).join('');
+        }
+
+        // ── Regional Heatmap ──
+        var regionCounts = {};
+        events.forEach(function(ev) {
+          if (ev.city && ev.city !== "Unknown") {
+            var label = ev.city + (ev.region ? ", " + ev.region : "");
+            regionCounts[label] = (regionCounts[label] || 0) + 1;
+          }
+        });
+        var regionSorted = Object.keys(regionCounts).map(function(k) {
+          return { region: k, count: regionCounts[k] };
+        }).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+
+        var regionEl = document.getElementById("regionalHeatmap");
+        if (regionSorted.length === 0) {
+          regionEl.innerHTML = '<div class="empty-state">No geographic data yet. Locations will appear as visitors interact.</div>';
+        } else {
+          regionEl.innerHTML = regionSorted.map(function(item, idx) {
+            return '<div class="interest-row">' +
+              '<div class="interest-rank">' + (idx + 1) + '</div>' +
+              '<div class="interest-label">' + escapeHtml(item.region) + '</div>' +
+              '<div class="interest-count">' + item.count + '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        // ── Device Engagement (pie chart) ──
+        var deviceCounts = { Mobile: 0, Desktop: 0 };
+        events.forEach(function(ev) {
+          if (ev.device === "Mobile") deviceCounts.Mobile++;
+          else deviceCounts.Desktop++;
+        });
+
+        var deviceCanvas = document.getElementById("devicePieCanvas");
+        var dCtx = deviceCanvas.getContext("2d");
+        var dSize = 160;
+        var dCx = dSize / 2, dCy = dSize / 2, dR = 65;
+        dCtx.clearRect(0, 0, dSize, dSize);
+
+        var dTotal = deviceCounts.Mobile + deviceCounts.Desktop;
+        var DEVICE_COLORS = ["#3b82f6", "#f59e0b"];
+
+        if (dTotal === 0) {
+          dCtx.beginPath();
+          dCtx.arc(dCx, dCy, dR, 0, Math.PI * 2);
+          dCtx.fillStyle = "#e8e8ed";
+          dCtx.fill();
+          dCtx.fillStyle = "#86868b";
+          dCtx.font = "12px Inter, sans-serif";
+          dCtx.textAlign = "center";
+          dCtx.fillText("No data", dCx, dCy + 4);
+        } else {
+          var deviceEntries = [
+            { label: "Desktop", count: deviceCounts.Desktop },
+            { label: "Mobile", count: deviceCounts.Mobile }
+          ];
+          var dStart = -Math.PI / 2;
+          deviceEntries.forEach(function(entry, idx) {
+            if (entry.count === 0) return;
+            var slice = (entry.count / dTotal) * Math.PI * 2;
+            dCtx.beginPath();
+            dCtx.moveTo(dCx, dCy);
+            dCtx.arc(dCx, dCy, dR, dStart, dStart + slice);
+            dCtx.closePath();
+            dCtx.fillStyle = DEVICE_COLORS[idx];
+            dCtx.fill();
+            dStart += slice;
+          });
+          // Center hole (donut)
+          dCtx.beginPath();
+          dCtx.arc(dCx, dCy, 38, 0, Math.PI * 2);
+          dCtx.fillStyle = "#fff";
+          dCtx.fill();
+          dCtx.fillStyle = "#1d1d1f";
+          dCtx.font = "bold 18px Inter, sans-serif";
+          dCtx.textAlign = "center";
+          dCtx.fillText(dTotal, dCx, dCy + 2);
+          dCtx.font = "10px Inter, sans-serif";
+          dCtx.fillStyle = "#86868b";
+          dCtx.fillText("events", dCx, dCy + 16);
+        }
+
+        var deviceLegendEl = document.getElementById("devicePieLegend");
+        var deviceItems = [
+          { label: "Desktop", count: deviceCounts.Desktop, color: DEVICE_COLORS[0] },
+          { label: "Mobile", count: deviceCounts.Mobile, color: DEVICE_COLORS[1] }
+        ];
+        deviceLegendEl.innerHTML = deviceItems.map(function(item) {
+          var pct = dTotal ? Math.round((item.count / dTotal) * 100) : 0;
+          return '<div class="lang-legend-row">' +
+            '<div class="lang-legend-dot" style="background:' + item.color + '"></div>' +
+            '<span>' + item.label + ' — ' + pct + '% (' + item.count + ')</span>' +
+          '</div>';
+        }).join('');
+      }
+
+      // Render on section activation
+      var insightsRendered = false;
+      document.querySelectorAll('.sidebar-link[data-section="analytics"]').forEach(function(link) {
+        link.addEventListener("click", function() {
+          renderInsights();
+          insightsRendered = true;
+        });
+      });
+
+      // Clear button
+      document.getElementById("btnClearAnalytics").addEventListener("click", function() {
+        if (confirm("Clear all analytics data? This cannot be undone.")) {
+          localStorage.removeItem("siteAnalytics");
+          renderInsights();
+          showToast("Analytics data cleared");
+        }
+      });
+    })();
   </script>
 </body>
 </html>

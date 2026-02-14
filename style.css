@@ -2526,4 +2526,10 @@ body { top: 0 !important; }
   .bento-modal-body {
     padding: 32px 24px;
   }
+  /* Clock: center on mobile regardless of admin position setting */
+  .hero-clock-line.clock-positioned {
+    position: static;
+    text-align: center;
+    margin-bottom: 12px;
+  }
 }
