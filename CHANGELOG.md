@@ -12,8 +12,10 @@
 - **Migration & backward compatibility** — On first load, if `siteNavFooterSettings` doesn't exist, defaults are constructed from existing `sitePageToggles` and `siteClockSettings`. The save handler continues writing backward-compatible `sitePageToggles` so `enforcePageToggles()` keeps working for page redirect enforcement.
 - **Analytics button renamed** — "Clear All Analytics Data" renamed to "Clear Test Data" for clarity.
 - **Clock settings simplified** — Removed the `langPosition` dropdown from Clock Settings (now managed by the Navigation & Footer tab).
+- **Admin gear button** — A subtle, semi-transparent gear icon is now fixed to the bottom-left corner of every page, providing quick access to the admin panel without relying solely on the keyboard shortcut (Ctrl/Cmd+Shift+A, which is also still active).
+- **CMS page dedup in nav** — `renderDynamicNav()` now filters out CMS pages whose title matches a built-in nav item label (e.g., a CMS "Locations" page no longer duplicates the built-in Locations link). This also prevents stale test pages from appearing in the header.
 
-**Why:** Navigation and footer settings were scattered across three admin sections (Nav & Visibility, Clock Settings, Translation), making it confusing to configure the site's header and footer. The new centralized tab puts everything in one place, makes the footer fully configurable, locks the globe to a consistent position, and adds copyright/disclaimer fields that were previously hardcoded.
+**Why:** Navigation and footer settings were scattered across three admin sections (Nav & Visibility, Clock Settings, Translation), making it confusing to configure the site's header and footer. The new centralized tab puts everything in one place, makes the footer fully configurable, locks the globe to a consistent position, and adds copyright/disclaimer fields that were previously hardcoded. The admin gear button ensures the admin panel is always one click away.
 
 ## v3.0 — 2026-02-14
 
