@@ -1464,7 +1464,8 @@
           <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="sidebar-group-items">
-          <a class="sidebar-link" data-section="locations"><span>Locations</span></a>
+          <a class="sidebar-link" data-section="officelocations"><span>Office Locations</span></a>
+          <a class="sidebar-link" data-section="locations"><span>Locations Pages</span></a>
           <a class="sidebar-link" data-section="businesshours"><span>Business Hours</span></a>
           <a class="sidebar-link" data-section="education"><span>Education Logic</span></a>
         </div>
@@ -1908,8 +1909,7 @@
           <div class="form-group">
             <label for="staffOfficeInput">Primary Location</label>
             <select id="staffOfficeInput">
-              <option value="San Francisco">San Francisco</option>
-              <option value="Stockton">Stockton</option>
+              <!-- Populated dynamically from siteOfficeLocations -->
             </select>
           </div>
           <div class="form-group">
@@ -2022,6 +2022,20 @@
         <div style="display:flex;gap:12px">
           <button class="btn btn-primary" id="btnSaveTestimonial">Save Testimonial</button>
           <button class="btn btn-secondary" id="btnCancelTestimonial">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Office Locations Picklist ── -->
+    <div id="officelocations" class="section">
+      <h1>Office Locations</h1>
+      <p class="subtitle">Manage the master list of office names. This list feeds into the Staff page location filter, the staff edit form, and the consultation contact form.</p>
+
+      <div class="panel">
+        <div id="officeLocationsList" style="display:grid;gap:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="newOfficeLocationInput" placeholder="e.g. Oakland" style="flex:1">
+          <button class="btn btn-primary" id="btnAddOfficeLocation">Add Location</button>
         </div>
       </div>
     </div>
@@ -3314,7 +3328,8 @@
       document.getElementById("staffEditId").value = "";
       document.getElementById("staffNameInput").value = "";
       document.getElementById("staffTitleInput").value = "";
-      document.getElementById("staffOfficeInput").value = "San Francisco";
+      var officeSelect = document.getElementById("staffOfficeInput");
+      if (officeSelect.options.length > 0) officeSelect.selectedIndex = 0;
       document.getElementById("staffImageInput").value = "";
       document.getElementById("staffEmailInput").value = "";
       document.getElementById("staffPhoneInput").value = "";
@@ -3420,6 +3435,99 @@
       refreshDashboard();
       showToast("Staff member deleted");
     }
+
+    /* ══════════════════════════════════════════════
+       Office Locations Picklist
+       ══════════════════════════════════════════════ */
+
+    function getOfficeLocations() {
+      try {
+        var stored = JSON.parse(localStorage.getItem("siteOfficeLocations") || "null");
+        if (stored && stored.length) return stored;
+      } catch (e) {}
+      return ["San Francisco", "Stockton"];
+    }
+
+    function saveOfficeLocations(data) {
+      localStorage.setItem("siteOfficeLocations", JSON.stringify(data));
+    }
+
+    function populateStaffOfficeDropdown() {
+      var select = document.getElementById("staffOfficeInput");
+      if (!select) return;
+      var currentVal = select.value;
+      var locations = getOfficeLocations();
+      select.innerHTML = locations.map(function(loc) {
+        return '<option value="' + loc.replace(/"/g, '&quot;') + '">' + loc + '</option>';
+      }).join('');
+      // Restore previous selection if still valid
+      if (currentVal && locations.indexOf(currentVal) !== -1) {
+        select.value = currentVal;
+      }
+    }
+
+    (function initOfficeLocations() {
+      var locations = getOfficeLocations();
+
+      function renderList() {
+        var container = document.getElementById("officeLocationsList");
+        if (!container) return;
+        locations = getOfficeLocations();
+
+        if (locations.length === 0) {
+          container.innerHTML = '<div class="empty-state">No office locations. Add one below.</div>';
+          return;
+        }
+
+        container.innerHTML = locations.map(function(loc, idx) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--off-white);border-radius:var(--radius-sm)">' +
+            '<span style="font-size:0.875rem;font-weight:500">' + loc + '</span>' +
+            '<button class="btn btn-secondary" data-idx="' + idx + '" style="padding:4px 10px;font-size:0.75rem">Remove</button>' +
+          '</div>';
+        }).join('');
+
+        container.querySelectorAll("button[data-idx]").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var idx = parseInt(btn.dataset.idx, 10);
+            var locName = locations[idx];
+            if (!confirm('Remove "' + locName + '"? Staff members assigned to this location will keep their current value.')) return;
+            locations.splice(idx, 1);
+            saveOfficeLocations(locations);
+            renderList();
+            populateStaffOfficeDropdown();
+            showToast('"' + locName + '" removed');
+          });
+        });
+      }
+
+      document.getElementById("btnAddOfficeLocation").addEventListener("click", function() {
+        var input = document.getElementById("newOfficeLocationInput");
+        var name = input.value.trim();
+        if (!name) { showToast("Enter a location name"); return; }
+
+        // Check for duplicates (case-insensitive)
+        var exists = locations.some(function(loc) { return loc.toLowerCase() === name.toLowerCase(); });
+        if (exists) { showToast("This location already exists"); return; }
+
+        locations.push(name);
+        saveOfficeLocations(locations);
+        input.value = "";
+        renderList();
+        populateStaffOfficeDropdown();
+        showToast('"' + name + '" added');
+      });
+
+      // Enter key support
+      document.getElementById("newOfficeLocationInput").addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          document.getElementById("btnAddOfficeLocation").click();
+        }
+      });
+
+      renderList();
+      populateStaffOfficeDropdown();
+    })();
 
     /* ══════════════════════════════════════════════
        Testimonials CRUD

@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.2 — 2026-02-14
+
+### Centralized Office Location Picklist
+
+- **Master Location List** — New "Office Locations" section under Firm Operations in the admin panel. A simple add/remove list manager (stored in `siteOfficeLocations` localStorage key) that serves as the single source of truth for all office names across the site. Default locations: "San Francisco" and "Stockton".
+- **Staff form integration** — The "Primary Location" dropdown in the Staff edit form now pulls its options dynamically from the master location list. Adding a new location in Firm Operations immediately makes it available for all staff members.
+- **Public staff page** — Each staff card on the live Our Team page now displays the member's office location prominently below their title, using a map-pin icon for visual clarity. The location filter (segmented control) is also built dynamically from the master list — no more hardcoded buttons.
+- **Consultation form sync** — The consultation modal now includes a "Preferred Office" dropdown, populated from the same master location list. The selection is submitted to Formspree as `preferred_office`, giving the firm immediate routing context.
+
+**Why:** Office locations were hardcoded in three separate places (staff form dropdown, staff page switcher, and nowhere in the contact form). The centralized picklist ensures consistency — add "Oakland" once in admin and it appears everywhere. The location display on staff cards helps clients identify their local team, and the preferred office field in the contact form enables smarter lead routing.
+
 ## v3.1 — 2026-02-14
 
 ### Centralized Navigation & Footer Manager

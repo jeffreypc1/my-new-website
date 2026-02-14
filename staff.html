@@ -184,6 +184,20 @@
       font-weight: 500;
     }
 
+    .staff-grid-location {
+      font-size: 0.75rem;
+      color: var(--mid-gray);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+      opacity: 0.8;
+    }
+
+    .staff-grid-location svg {
+      flex-shrink: 0;
+    }
+
     /* ── Focus Modal ── */
 
     .staff-modal-overlay {
@@ -572,9 +586,7 @@
 
     <div class="staff-location-switcher">
       <div class="segmented-control" id="locationSwitcher">
-        <button class="active" data-location="all">All</button>
-        <button data-location="San Francisco">San Francisco</button>
-        <button data-location="Stockton">Stockton</button>
+        <!-- Populated dynamically from siteOfficeLocations -->
       </div>
     </div>
 
@@ -645,6 +657,9 @@
           '<div class="staff-grid-info">' +
             '<h2 class="staff-grid-name">' + escapeHtmlUtil(member.name) + '</h2>' +
             '<p class="staff-grid-role">' + escapeHtmlUtil(member.title) + '</p>' +
+            (member.office ? '<p class="staff-grid-location">' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ' +
+              escapeHtmlUtil(member.office) + '</p>' : '') +
           '</div>' +
         '</div>';
       }).join('');
@@ -754,8 +769,17 @@
         }
       });
 
-      /* ── Location Switcher ── */
+      /* ── Location Switcher (dynamic from master list) ── */
       var switcher = document.getElementById("locationSwitcher");
+      var officeLocations = getOfficeLocations();
+
+      // Build switcher buttons dynamically
+      var switcherHtml = '<button class="active" data-location="all">All</button>';
+      officeLocations.forEach(function(loc) {
+        switcherHtml += '<button data-location="' + escapeHtmlUtil(loc) + '">' + escapeHtmlUtil(loc) + '</button>';
+      });
+      switcher.innerHTML = switcherHtml;
+
       var switcherBtns = switcher.querySelectorAll("button");
 
       switcherBtns.forEach(function(btn) {

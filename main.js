@@ -192,6 +192,22 @@ function saveLocations(data) {
 }
 
 /* ══════════════════════════════════════════════
+   Office Locations Picklist (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getOfficeLocations() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("siteOfficeLocations") || "null");
+    if (stored && stored.length) return stored;
+  } catch (e) {}
+  return ["San Francisco", "Stockton"];
+}
+
+function saveOfficeLocations(data) {
+  localStorage.setItem("siteOfficeLocations", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
    Page Visibility Toggles (localStorage)
    ══════════════════════════════════════════════ */
 
@@ -949,6 +965,12 @@ function buildConsultModal() {
     return '<option value="' + escapeHtmlUtil(p.id) + '">' + escapeHtmlUtil(p.label) + '</option>';
   }).join('');
 
+  // Build office location options
+  var officeLocations = getOfficeLocations();
+  var officeOptions = officeLocations.map(function(loc) {
+    return '<option value="' + escapeHtmlUtil(loc) + '">' + escapeHtmlUtil(loc) + '</option>';
+  }).join('');
+
   var overlay = document.createElement("div");
   overlay.id = "consultOverlay";
   overlay.className = "consult-overlay";
@@ -988,6 +1010,13 @@ function buildConsultModal() {
               '<option value="">Choose your goal</option>' +
             '</select>' +
           '</div>' +
+        '</div>' +
+        '<div class="consult-form-group">' +
+          '<label for="consultOffice">Preferred Office</label>' +
+          '<select id="consultOffice" name="preferred_office">' +
+            '<option value="">No preference</option>' +
+            officeOptions +
+          '</select>' +
         '</div>' +
         '<div class="consult-form-group">' +
           '<label for="consultMessage">Message</label>' +
