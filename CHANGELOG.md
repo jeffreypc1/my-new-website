@@ -2,6 +2,16 @@
 
 ## 2026-02-14
 
+### Bento Grid — Dynamic Sync & Dense Spanning
+- **Removed hardcoded bento cards** — Deleted the 3 static service cards (Family Petitions, Removal Defense, Citizenship) from `index.html`. The `.bento-grid` container is now empty on load and populated entirely by `renderBentoGrid()` in `main.js` from the `bentoTiles` localStorage key. Whatever you configure in the Admin Panel's Homepage Layout tab is exactly what appears on the homepage.
+- **Dense grid flow** — Added `grid-auto-flow: dense` to `.bento-grid` so tiles pack tightly and never leave awkward holes in the layout.
+- **3-column spanning system** — Updated the size classes to span the full 3-column grid: **Large** spans all 3 columns (full width), **Medium** spans 2 columns, **Small** spans 1 column. On mobile, all tiles collapse to full-width (`1 / -1`).
+- **Consistent 24px gap** — Changed the grid gap from 20px to 24px for uniform spacing between all tiles.
+- **Legacy classes simplified** — The old `card-wide`, `card-tall`, and `card-short` classes are preserved for backward compatibility but simplified to basic span rules.
+- **Admin preview updated** — The live preview in the Homepage Layout tab now uses the same 3-column spanning logic.
+
+**Why:** The homepage bento grid was split between hardcoded HTML and a dynamic renderer, causing stale content and empty white space. Now the admin panel is the single source of truth, tiles pack densely with no gaps, and the 3-column span system gives clean, predictable layouts at every size.
+
 ### Homepage Streamlined & Staff Architecture Cleanup
 - **Removed homepage "Our Team" section** — Deleted the `#staffSection` / `#staffGallery` markup from `index.html`. The homepage now focuses on the Services bento grid and high-level mission. Removed the `renderStaffSection()` function and ~95 lines of homepage staff CSS (`.staff-section`, `.staff-gallery`, `.staff-card`, `.staff-avatar`, `.staff-name`, `.staff-title`, `.staff-office`, `.staff-bio`).
 - **Staff page is the single source** — `staff.html` is now the only place team members are displayed. It reads exclusively from `localStorage` via `getStaff()`.

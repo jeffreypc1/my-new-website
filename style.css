@@ -218,8 +218,8 @@ body {
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto;
-  gap: 20px;
+  grid-auto-flow: dense;
+  gap: 24px;
 }
 
 .card {
@@ -244,25 +244,10 @@ body {
               0 16px 48px rgba(0, 0, 0, 0.07);
 }
 
-/* Family Petitions — spans 2 columns, tall */
-.card.card-wide {
-  grid-column: 1 / 3;
-  grid-row: 1 / 2;
-  min-height: 320px;
-}
-
-/* Removal Defense — single column, tall */
-.card.card-tall {
-  grid-column: 3 / 4;
-  grid-row: 1 / 3;
-  min-height: 320px;
-}
-
-/* Citizenship — spans 2 columns, shorter */
-.card.card-short {
-  grid-column: 1 / 3;
-  grid-row: 2 / 3;
-}
+/* Legacy layout classes (kept for backward compat) */
+.card.card-wide { grid-column: span 2; }
+.card.card-tall { grid-column: span 1; }
+.card.card-short { grid-column: span 2; }
 
 .card-icon {
   margin-bottom: 24px;
@@ -288,13 +273,13 @@ body {
 /* ── Bento Size System (Small / Medium / Large) ── */
 
 .card.card-large {
-  grid-column: span 2;
-  min-height: 320px;
+  grid-column: span 3;
+  min-height: 240px;
 }
 
 .card.card-medium {
-  grid-column: span 1;
-  min-height: 260px;
+  grid-column: span 2;
+  min-height: 220px;
 }
 
 .card.card-small {
@@ -856,7 +841,7 @@ body {
   .card.card-large,
   .card.card-medium,
   .card.card-small {
-    grid-column: auto;
+    grid-column: 1 / -1;
     grid-row: auto;
     min-height: auto;
   }
