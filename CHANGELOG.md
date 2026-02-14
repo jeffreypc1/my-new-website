@@ -1,5 +1,32 @@
 # Changelog
 
+## v3.5 — 2026-02-14
+
+### Bento Modal Images & Mobile UI Recovery
+
+- **Bento modal image fallback** — When a Bento tile is clicked, the modal now uses the tile's `modalImage` with automatic fallback to `bgImage`. This means any tile with a background image set in Admin will display that image in the split-layout modal (image left, text right on desktop; image top, text below on mobile). The image uses `object-fit: cover` with absolute positioning to fill the image area without stretching.
+- **Mobile menu moved to `<body>`** — The mobile menu overlay was previously rendered inside the `<nav>` element, which has `position: sticky` and `backdrop-filter`. This created a new stacking context that could clip or hide the fixed-position overlay on some browsers. The overlay is now appended to `document.body`, ensuring it sits above all content with `z-index: 10000`.
+- **Mobile panel solid background fallback** — The glassmorphism panel now has a solid `#ffffff` (or `#1e1e1e` in dark mode) fallback before the semi-transparent RGBA value, ensuring links are always visible even when `backdrop-filter` isn't supported.
+- **Hamburger tap target enlarged** — Increased from 36×36px to 44×44px for better mobile accessibility, with `-webkit-tap-highlight-color: transparent` for a clean touch experience.
+- **Duplicate nav link cleanup** — Strengthened the CMS page dedup filter to also block common aliases ("Our Team", "Team", "Contact") and any page whose title starts with "Test". This prevents "Test Page" and duplicate "Locations" links from appearing in the navigation.
+- **Success ribbon border fix** — Corrected the inline border style from `borderBottomColor` to `borderTopColor` to match the CSS `border-top` property (ribbon sits at hero bottom).
+
+**Why:** The bento modals were showing text-only even when tiles had images, because only `modalImage` was checked while most admins set `bgImage`. The mobile menu was invisible because the overlay inside a sticky nav with backdrop-filter was getting clipped by the browser's stacking context rules. Moving it to body and adding solid color fallbacks ensures it works everywhere.
+
+## v3.4 — 2026-02-14
+
+### Styled Success Ribbon & Mobile Navigation Architecture
+
+- **Ribbon repositioned inside hero** — The success ribbon now sits at the absolute bottom of the hero section (using `position: absolute; bottom: 0`) instead of as a sibling element below it. This creates a more integrated, premium look with the ribbon overlaying the hero's bottom edge.
+- **Admin ribbon style controls** — The Trust & Social Proof tab now includes: a font-size slider (10–20px), bold/italic toggles, a color picker for text color, and a bar opacity slider (0–100%). All settings are stored in `siteSuccessRibbon` and applied inline at render time.
+- **Dynamic Mobile Collapse Trigger** — New "Mobile Collapse Trigger" slider in the Navigation & Footer admin tab lets you choose the exact breakpoint (480–1200px) where the navigation collapses from a full nav bar to a hamburger menu. Default remains 768px. The breakpoint CSS is injected dynamically at runtime instead of being hardcoded in the stylesheet.
+- **Mobile FAB permanently removed** — The floating "Book" consultation button on mobile has been completely removed from both JS and CSS. The hamburger menu's pinned CTA button handles this function instead.
+- **Globe in mobile menu** — When the language globe is enabled, a "Language" link with globe icon now appears in the hamburger menu, opening the language modal on tap. This ensures translation access is maintained on mobile.
+- **Mobile menu z-index elevated** — The mobile menu overlay z-index increased from 9999 to 10000 to ensure it sits above all other UI layers including modals and floating buttons.
+- **Book a Consultation `white-space: nowrap`** — Verified the CTA button prevents line breaks across all viewport sizes.
+
+**Why:** The ribbon looked disconnected floating below the hero — anchoring it inside the hero creates visual cohesion. Admin style controls let the firm customize ribbon appearance without touching code. The hardcoded 768px breakpoint was inflexible for sites with many nav items; the configurable slider lets admins choose the right collapse point. The mobile FAB was redundant with the hamburger menu CTA and cluttered the mobile viewport.
+
 ## v3.3 — 2026-02-14
 
 ### Success Ribbon & Mobile Navigation Overhaul

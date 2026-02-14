@@ -253,6 +253,7 @@ function getNavFooterSettings() {
     },
     globe: { visible: true, position: "hero-top-right" },
     maxNavItems: toggles.maxNavItems || 5,
+    mobileCollapseBreakpoint: 768,
     footer: {
       home:         { visible: true,  label: "Home",         href: "index.html" },
       services:     { visible: false, label: "Services",     href: "index.html#services-grid" },
@@ -319,7 +320,12 @@ function getSuccessRibbon() {
       "Recognized by the East Bay Sanctuary Covenant for pro bono excellence",
       "Serving the Bay Area and Central Valley since 2010",
       "Multilingual team fluent in Spanish, Portuguese, Nepali, and Hindi"
-    ]
+    ],
+    fontSize: 13,
+    bold: false,
+    italic: false,
+    color: "#3b82f6",
+    bgOpacity: 6
   };
 }
 
@@ -334,14 +340,31 @@ function renderSuccessRibbon() {
   var hero = document.querySelector(".hero");
   if (!hero) return;
 
+  // Ensure hero is positioned for absolute child
+  hero.style.position = "relative";
+
   var el = document.createElement("div");
   el.className = "success-ribbon";
   el.innerHTML = '<span class="success-ribbon-text" id="successRibbonText"></span>';
 
-  // Insert after hero
-  hero.parentNode.insertBefore(el, hero.nextSibling);
+  // Apply admin style settings
+  var fontSize = (ribbon.fontSize || 13) + "px";
+  var color = ribbon.color || "#3b82f6";
+  var bgOpacity = ribbon.bgOpacity != null ? ribbon.bgOpacity : 6;
+  var bgAlpha = (bgOpacity / 100).toFixed(2);
 
-  var textEl = document.getElementById("successRibbonText");
+  el.style.background = "rgba(59, 130, 246, " + bgAlpha + ")";
+  el.style.borderTopColor = "rgba(59, 130, 246, " + Math.min(bgAlpha * 1.6, 1).toFixed(2) + ")";
+
+  var textEl = el.querySelector("#successRibbonText");
+  textEl.style.fontSize = fontSize;
+  textEl.style.color = color;
+  if (ribbon.bold) textEl.style.fontWeight = "700";
+  if (ribbon.italic) textEl.style.fontStyle = "italic";
+
+  // Place inside hero at absolute bottom
+  hero.appendChild(el);
+
   var phrases = ribbon.phrases;
   var idx = 0;
 
@@ -349,10 +372,8 @@ function renderSuccessRibbon() {
     textEl.textContent = phrases[idx];
     textEl.classList.add("visible");
 
-    // Stay visible for 5 seconds, then fade out over 2 seconds
     setTimeout(function() {
       textEl.classList.remove("visible");
-      // After fade-out completes, advance to next phrase
       setTimeout(function() {
         idx = (idx + 1) % phrases.length;
         showPhrase();
@@ -524,7 +545,8 @@ function openBentoModal(tile) {
   _bentoModalOpenTime = Date.now();
   _bentoModalTitle = tile.title || "";
 
-  var hasImage = tile.modalImage && tile.modalImage.trim();
+  var imageUrl = (tile.modalImage && tile.modalImage.trim()) || (tile.bgImage && tile.bgImage.trim()) || "";
+  var hasImage = !!imageUrl;
   var layoutClass = hasImage ? "bento-modal--split" : "bento-modal--text-only";
 
   var overlay = document.createElement("div");
@@ -533,7 +555,7 @@ function openBentoModal(tile) {
   overlay.innerHTML =
     '<div class="bento-modal-aurora"></div>' +
     '<div class="bento-modal ' + layoutClass + '">' +
-      (hasImage ? '<div class="bento-modal-image"><img src="' + escapeHtmlUtil(tile.modalImage) + '" alt="' + escapeHtmlUtil(tile.title) + '"></div>' : '') +
+      (hasImage ? '<div class="bento-modal-image"><img src="' + escapeHtmlUtil(imageUrl) + '" alt="' + escapeHtmlUtil(tile.title) + '"></div>' : '') +
       '<div class="bento-modal-body">' +
         '<h2 class="bento-modal-title">' + escapeHtmlUtil(tile.title) + '</h2>' +
         '<div class="bento-modal-desc">' + escapeHtmlUtil(tile.fullDescription || tile.description) + '</div>' +
@@ -645,6 +667,12 @@ function renderGlobalNav() {
   var mobileLinksHtml = allMobileItems.map(function(item) {
     return '<a href="' + item.href + '" class="mobile-menu-link">' + escapeHtmlUtil(item.label) + '</a>';
   }).join('');
+  // Add globe/language link in mobile menu if globe is visible
+  if (settings.globe && settings.globe.visible) {
+    mobileLinksHtml += '<a href="#" class="mobile-menu-link mobile-menu-globe" data-action="language">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
+      'Language</a>';
+  }
   if (ctaItem && ctaItem.visible) {
     mobileLinksHtml += '<a href="#" class="mobile-menu-cta">' + escapeHtmlUtil(ctaItem.label) + '</a>';
   }
@@ -656,13 +684,20 @@ function renderGlobalNav() {
       '<button class="nav-hamburger" id="navHamburger" aria-label="Open menu">' +
         '<span></span><span></span><span></span>' +
       '</button>' +
-    '</div>' +
-    '<div class="mobile-menu-overlay" id="mobileMenuOverlay">' +
-      '<div class="mobile-menu-panel">' +
-        '<button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">&times;</button>' +
-        '<div class="mobile-menu-links">' + mobileLinksHtml + '</div>' +
-      '</div>' +
     '</div>';
+
+  // Append mobile menu overlay to body (not inside nav) to avoid stacking context issues
+  var existingOverlay = document.getElementById("mobileMenuOverlay");
+  if (existingOverlay) existingOverlay.remove();
+  var overlayDiv = document.createElement("div");
+  overlayDiv.className = "mobile-menu-overlay";
+  overlayDiv.id = "mobileMenuOverlay";
+  overlayDiv.innerHTML =
+    '<div class="mobile-menu-panel">' +
+      '<button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">&times;</button>' +
+      '<div class="mobile-menu-links">' + mobileLinksHtml + '</div>' +
+    '</div>';
+  document.body.appendChild(overlayDiv);
 
   // Bind "More" dropdown toggle
   var moreEl = document.getElementById("navMore");
@@ -706,6 +741,16 @@ function renderGlobalNav() {
       link.addEventListener("click", closeMobileMenu);
     });
 
+    // Mobile globe link
+    var mobileGlobe = mobileOverlay.querySelector(".mobile-menu-globe");
+    if (mobileGlobe) {
+      mobileGlobe.addEventListener("click", function(e) {
+        e.preventDefault();
+        closeMobileMenu();
+        openLanguageModal();
+      });
+    }
+
     // Mobile CTA opens consultation modal
     var mobileCta = mobileOverlay.querySelector(".mobile-menu-cta");
     if (mobileCta) {
@@ -742,6 +787,20 @@ function renderGlobalNav() {
     }
   }
 
+  // Inject dynamic mobile collapse breakpoint CSS
+  var breakpoint = settings.mobileCollapseBreakpoint || 768;
+  var existingStyle = document.getElementById("mobileCollapseStyle");
+  if (existingStyle) existingStyle.remove();
+  var styleEl = document.createElement("style");
+  styleEl.id = "mobileCollapseStyle";
+  styleEl.textContent = "@media (max-width: " + breakpoint + "px) { " +
+    ".nav-links { display: none !important; } " +
+    ".nav-hamburger { display: flex !important; } " +
+    ".mobile-menu-overlay { display: block !important; pointer-events: none; } " +
+    ".mobile-menu-overlay.open { pointer-events: auto; } " +
+  "}";
+  document.head.appendChild(styleEl);
+
   // Inject hero clock if hero exists on this page
   initHeroClock();
 
@@ -758,16 +817,6 @@ function renderGlobalNav() {
   });
   document.body.appendChild(adminBtn);
 
-  // Mobile FAB
-  var fab = document.createElement("button");
-  fab.className = "mobile-fab";
-  fab.setAttribute("aria-label", "Book a Consultation");
-  fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Book';
-  fab.addEventListener("click", function() {
-    if (window.siteAnalytics) siteAnalytics.trackBookClick();
-    openConsultModal();
-  });
-  document.body.appendChild(fab);
 }
 
 /* ══════════════════════════════════════════════
@@ -783,7 +832,7 @@ function renderDynamicNav() {
   // Only show published pages with showInNav
   var pages = getPages().filter(function(p) { return p.showInNav && p.published !== false; });
 
-  // Filter out CMS pages that duplicate built-in nav items
+  // Filter out CMS pages that duplicate built-in nav items or are test pages
   var settings = getNavFooterSettings();
   var builtInLabels = {};
   var navKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers"];
@@ -791,9 +840,17 @@ function renderDynamicNav() {
     var item = settings.nav[key];
     if (item) builtInLabels[item.label.toLowerCase()] = true;
   });
+  // Also block common aliases and test pages
+  builtInLabels["our team"] = true;
+  builtInLabels["team"] = true;
+  builtInLabels["contact"] = true;
 
   pages = pages.filter(function(p) {
-    return !builtInLabels[p.title.toLowerCase()];
+    var title = p.title.toLowerCase().trim();
+    if (builtInLabels[title]) return false;
+    // Filter out test/placeholder pages
+    if (/^test\b/i.test(p.title)) return false;
+    return true;
   });
 
   var cta = navUl.querySelector(".nav-cta");
@@ -1642,7 +1699,7 @@ function initAmbientGlow() {
    ══════════════════════════════════════════════ */
 
 function initAuroraGlow() {
-  var selectors = ".nav-links a, .nav-cta, .hero-btn, .consult-submit, .mobile-fab";
+  var selectors = ".nav-links a, .nav-cta, .hero-btn, .consult-submit";
 
   document.addEventListener("mousemove", function(e) {
     document.querySelectorAll(selectors).forEach(function(el) {

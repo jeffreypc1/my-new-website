@@ -1757,6 +1757,38 @@
         </div>
       </div>
 
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Text Styles</h2>
+      <div class="panel">
+        <div class="form-group" style="margin-bottom:16px">
+          <label for="ribbonFontSize">Font Size: <span id="ribbonFontSizeValue">13</span>px</label>
+          <input type="range" id="ribbonFontSize" min="10" max="20" value="13" style="width:100%">
+        </div>
+        <div style="display:flex;gap:16px;margin-bottom:16px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:normal">
+            <input type="checkbox" id="ribbonBold"> Bold
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:normal">
+            <input type="checkbox" id="ribbonItalic"> Italic
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="ribbonColor">Text Color</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="color" id="ribbonColor" value="#3b82f6" style="width:48px;height:36px;border:1px solid var(--light-gray);border-radius:8px;cursor:pointer;padding:2px">
+            <span id="ribbonColorHex" style="font-size:0.8125rem;color:var(--mid-gray)">#3b82f6</span>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Background Style</h2>
+      <div class="panel">
+        <div class="form-group">
+          <label for="ribbonBgOpacity">Bar Opacity: <span id="ribbonBgOpacityValue">6</span>%</label>
+          <input type="range" id="ribbonBgOpacity" min="0" max="100" value="6" style="width:100%">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Controls the background opacity of the ribbon bar. 0% = fully transparent, 100% = fully opaque.</p>
+        </div>
+      </div>
+
       <div style="margin-top:20px">
         <button class="btn btn-primary" id="btnSaveRibbon">Save Ribbon Settings</button>
       </div>
@@ -2244,6 +2276,15 @@
           <label for="nfMaxNavItems">Max Nav Items: <span id="nfMaxNavItemsValue">5</span></label>
           <input type="range" id="nfMaxNavItems" min="2" max="8" value="5" style="width:100%">
           <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Links beyond this limit collapse into a "More" dropdown.</p>
+        </div>
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Mobile Collapse Trigger</h2>
+      <div class="panel">
+        <div class="form-group">
+          <label for="nfMobileBreakpoint">Collapse below: <span id="nfMobileBreakpointValue">768</span>px</label>
+          <input type="range" id="nfMobileBreakpoint" min="480" max="1200" step="8" value="768" style="width:100%">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Screen widths below this value will show a hamburger menu instead of the full navigation bar.</p>
         </div>
       </div>
 
@@ -2896,6 +2937,28 @@
 
       document.getElementById("ribbonEnabled").checked = ribbon.enabled !== false;
 
+      // Style controls
+      var fontSizeSlider = document.getElementById("ribbonFontSize");
+      var fontSizeLabel = document.getElementById("ribbonFontSizeValue");
+      fontSizeSlider.value = ribbon.fontSize || 13;
+      fontSizeLabel.textContent = fontSizeSlider.value;
+      fontSizeSlider.addEventListener("input", function() { fontSizeLabel.textContent = fontSizeSlider.value; });
+
+      document.getElementById("ribbonBold").checked = !!ribbon.bold;
+      document.getElementById("ribbonItalic").checked = !!ribbon.italic;
+
+      var colorInput = document.getElementById("ribbonColor");
+      var colorHex = document.getElementById("ribbonColorHex");
+      colorInput.value = ribbon.color || "#3b82f6";
+      colorHex.textContent = colorInput.value;
+      colorInput.addEventListener("input", function() { colorHex.textContent = colorInput.value; });
+
+      var bgOpacitySlider = document.getElementById("ribbonBgOpacity");
+      var bgOpacityLabel = document.getElementById("ribbonBgOpacityValue");
+      bgOpacitySlider.value = ribbon.bgOpacity != null ? ribbon.bgOpacity : 6;
+      bgOpacityLabel.textContent = bgOpacitySlider.value;
+      bgOpacitySlider.addEventListener("input", function() { bgOpacityLabel.textContent = bgOpacitySlider.value; });
+
       function renderPhrases() {
         var container = document.getElementById("ribbonPhrasesList");
         if (!ribbon.phrases || ribbon.phrases.length === 0) {
@@ -2937,6 +3000,11 @@
 
       document.getElementById("btnSaveRibbon").addEventListener("click", function() {
         ribbon.enabled = document.getElementById("ribbonEnabled").checked;
+        ribbon.fontSize = parseInt(fontSizeSlider.value, 10);
+        ribbon.bold = document.getElementById("ribbonBold").checked;
+        ribbon.italic = document.getElementById("ribbonItalic").checked;
+        ribbon.color = colorInput.value;
+        ribbon.bgOpacity = parseInt(bgOpacitySlider.value, 10);
         localStorage.setItem("siteSuccessRibbon", JSON.stringify(ribbon));
         showToast("Ribbon settings saved");
       });
@@ -4576,6 +4644,7 @@
         },
         globe: { visible: true, position: "hero-top-right" },
         maxNavItems: toggles.maxNavItems || 5,
+        mobileCollapseBreakpoint: 768,
         footer: {
           home:         { visible: true,  label: "Home",         href: "index.html" },
           services:     { visible: false, label: "Services",     href: "index.html#services-grid" },
@@ -4614,6 +4683,16 @@
         sliderLabel.textContent = slider.value;
       });
 
+      // Mobile collapse breakpoint slider
+      var bpSlider = document.getElementById("nfMobileBreakpoint");
+      var bpLabel = document.getElementById("nfMobileBreakpointValue");
+      var bpVal = settings.mobileCollapseBreakpoint || 768;
+      bpSlider.value = bpVal;
+      bpLabel.textContent = bpVal;
+      bpSlider.addEventListener("input", function() {
+        bpLabel.textContent = bpSlider.value;
+      });
+
       // Footer checkboxes
       document.getElementById("nfFooterHome").checked = settings.footer.home && settings.footer.home.visible;
       document.getElementById("nfFooterServices").checked = settings.footer.services && settings.footer.services.visible;
@@ -4645,6 +4724,7 @@
           },
           globe: { visible: document.getElementById("nfGlobeVisible").checked, position: "hero-top-right" },
           maxNavItems: parseInt(slider.value, 10),
+          mobileCollapseBreakpoint: parseInt(bpSlider.value, 10),
           footer: {
             home:         { visible: document.getElementById("nfFooterHome").checked,         label: footerBase.home.label,         href: footerBase.home.href },
             services:     { visible: document.getElementById("nfFooterServices").checked,     label: footerBase.services.label,     href: footerBase.services.href },
