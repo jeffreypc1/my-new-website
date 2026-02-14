@@ -2256,6 +2256,10 @@
             <input type="checkbox" id="nfNavCareers">
           </label>
           <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Client Portal</span>
+            <input type="checkbox" id="nfNavPortal">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
             <span style="font-size:0.875rem;font-weight:500">Book a Consultation (CTA)</span>
             <input type="checkbox" id="nfNavBookConsultation">
           </label>
@@ -4707,6 +4711,7 @@
       document.getElementById("nfNavEducation").checked = settings.nav.education && settings.nav.education.visible;
       document.getElementById("nfNavLocations").checked = settings.nav.locations && settings.nav.locations.visible;
       document.getElementById("nfNavCareers").checked = settings.nav.careers && settings.nav.careers.visible;
+      document.getElementById("nfNavPortal").checked = settings.nav.portal && settings.nav.portal.visible;
       document.getElementById("nfNavBookConsultation").checked = settings.nav.bookConsultation && settings.nav.bookConsultation.visible;
 
       // Max nav items slider
@@ -4756,6 +4761,7 @@
             education:        { visible: document.getElementById("nfNavEducation").checked,        label: navBase.education.label,        href: navBase.education.href },
             locations:        { visible: document.getElementById("nfNavLocations").checked,        label: navBase.locations.label,        href: navBase.locations.href },
             careers:          { visible: document.getElementById("nfNavCareers").checked,          label: navBase.careers.label,          href: navBase.careers.href },
+            portal:           { visible: document.getElementById("nfNavPortal").checked,           label: (navBase.portal && navBase.portal.label) || "Client Portal", href: (navBase.portal && navBase.portal.href) || "portal-login.html" },
             bookConsultation: { visible: document.getElementById("nfNavBookConsultation").checked, label: navBase.bookConsultation.label, href: navBase.bookConsultation.href, isCta: true }
           },
           globe: { visible: false, position: "hero-top-right" },

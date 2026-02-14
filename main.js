@@ -249,6 +249,7 @@ function getNavFooterSettings() {
       education:        { visible: toggles.education !== false,         label: "Education",           href: "education.html" },
       locations:        { visible: toggles.locations !== false,         label: "Locations",           href: "locations.html" },
       careers:          { visible: false, label: "Careers",             href: "staff.html" },
+      portal:           { visible: true,  label: "Client Portal",      href: "portal-login.html" },
       bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
     },
     globe: { visible: false, position: "hero-top-right" },
@@ -624,7 +625,7 @@ function renderGlobalNav() {
   if (!nav) return;
 
   var settings = getNavFooterSettings();
-  var navKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers"];
+  var navKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers", "portal"];
 
   // Build nav items from settings, filtering by visible
   var navItems = [];
@@ -801,7 +802,7 @@ function renderDynamicNav() {
   // Filter out CMS pages that duplicate built-in nav items or are test pages
   var settings = getNavFooterSettings();
   var builtInLabels = {};
-  var navKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers"];
+  var navKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers", "portal"];
   navKeys.forEach(function(key) {
     var item = settings.nav[key];
     if (item) builtInLabels[item.label.toLowerCase()] = true;
