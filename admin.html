@@ -635,6 +635,7 @@
       <li><a data-section="testimonials"><span>Testimonials</span></a></li>
       <li><a data-section="locations"><span>Locations</span></a></li>
       <li><a data-section="businesshours"><span>Business Hours</span></a></li>
+      <li><a data-section="clocksettings"><span>Clock Settings</span></a></li>
       <li><a data-section="education"><span>Education Logic</span></a></li>
       <li><a data-section="media"><span>Media</span></a></li>
     </ul>
@@ -1221,6 +1222,41 @@
       </div>
     </div>
 
+    <!-- ── Clock Settings ── -->
+    <div id="clocksettings" class="section">
+      <h1>Clock Settings</h1>
+      <p class="subtitle">Control the living clock display on the hero section. Change visibility, position, and city label.</p>
+
+      <div class="panel">
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:normal">
+            <input type="checkbox" id="clockVisibleToggle" checked>
+            Show Clock on Hero Section
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="clockPositionSelect">Position</label>
+          <select id="clockPositionSelect">
+            <option value="center">Center (above headline)</option>
+            <option value="top-left">Top Left</option>
+            <option value="top-right">Top Right</option>
+            <option value="bottom-left">Bottom Left</option>
+            <option value="bottom-right">Bottom Right</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="clockLabelInput">City Label</label>
+          <input type="text" id="clockLabelInput" placeholder="e.g. San Francisco, Berkeley, Oakland">
+        </div>
+
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveClockSettings">Save Clock Settings</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Education Logic ── -->
     <div id="education" class="section">
       <h1>Education Logic</h1>
@@ -1724,9 +1760,9 @@
 
     function getDefaultBentoTiles() {
       return [
-        { id: generateId(), title: "Family Petitions", description: "", icon: "users", layout: "large", displayMode: "icon", bgImage: "" },
-        { id: generateId(), title: "Removal Defense", description: "", icon: "shield", layout: "medium", displayMode: "icon", bgImage: "" },
-        { id: generateId(), title: "Citizenship", description: "", icon: "document", layout: "small", displayMode: "icon", bgImage: "" }
+        { id: generateId(), title: "Family Petitions", description: "", icon: "users", layout: "large", displayMode: "icon", bgImage: "", modalImage: "", fullDescription: "" },
+        { id: generateId(), title: "Removal Defense", description: "", icon: "shield", layout: "medium", displayMode: "icon", bgImage: "", modalImage: "", fullDescription: "" },
+        { id: generateId(), title: "Citizenship", description: "", icon: "document", layout: "small", displayMode: "icon", bgImage: "", modalImage: "", fullDescription: "" }
       ];
     }
 
@@ -1742,8 +1778,8 @@
             if (parsed.tile3) arr.push({ id: generateId(), title: parsed.tile3.title || "", description: parsed.tile3.description || "", icon: parsed.tile3.icon || "document", layout: "small", displayMode: "icon", bgImage: "" });
             return arr;
           }
-          // Ensure displayMode exists on migrated tiles
-          return parsed.map(t => ({ displayMode: "icon", bgImage: "", ...t }));
+          // Ensure all fields exist on migrated tiles
+          return parsed.map(t => ({ displayMode: "icon", bgImage: "", modalImage: "", fullDescription: "", ...t }));
         } catch (e) {
           return getDefaultBentoTiles();
         }
@@ -1811,6 +1847,16 @@
             '<label>Tile Size</label>' +
             '<select class="tile-size-input">' + sizeOptions + '</select>' +
           '</div>' +
+          '<hr style="border:none;border-top:1px solid rgba(0,0,0,0.06);margin:20px 0">' +
+          '<div style="margin-bottom:8px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#86868b;font-weight:600">Modal Deep Dive</div>' +
+          '<div class="form-group">' +
+            '<label>Modal Image URL</label>' +
+            '<input type="text" class="tile-modalimage-input" value="' + escapeHtml(tile.modalImage || '') + '" placeholder="https://images.unsplash.com/... (shown in detail modal)">' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label>Full Description</label>' +
+            '<textarea class="tile-fulldesc-input" rows="4" placeholder="Detailed content shown when the tile is clicked...">' + escapeHtml(tile.fullDescription || '') + '</textarea>' +
+          '</div>' +
         '</div>';
       }).join('');
 
@@ -1859,7 +1905,9 @@
           icon: editor.querySelector(".tile-icon-input").value,
           layout: editor.querySelector(".tile-size-input").value,
           displayMode: displayMode,
-          bgImage: editor.querySelector(".tile-bgimage-input") ? editor.querySelector(".tile-bgimage-input").value.trim() : ""
+          bgImage: editor.querySelector(".tile-bgimage-input") ? editor.querySelector(".tile-bgimage-input").value.trim() : "",
+          modalImage: editor.querySelector(".tile-modalimage-input") ? editor.querySelector(".tile-modalimage-input").value.trim() : "",
+          fullDescription: editor.querySelector(".tile-fulldesc-input") ? editor.querySelector(".tile-fulldesc-input").value : ""
         });
       });
       return tiles;
@@ -1901,7 +1949,7 @@
     document.getElementById("btnAddTile").addEventListener("click", () => {
       const tiles = loadBentoTiles();
       if (tiles.length >= MAX_TILES) { showToast("Maximum of " + MAX_TILES + " tiles"); return; }
-      tiles.push({ id: generateId(), title: "", description: "", icon: "scale", layout: "medium", displayMode: "icon", bgImage: "" });
+      tiles.push({ id: generateId(), title: "", description: "", icon: "scale", layout: "medium", displayMode: "icon", bgImage: "", modalImage: "", fullDescription: "" });
       localStorage.setItem("bentoTiles", JSON.stringify(tiles));
       renderBentoEditors();
       showToast("Tile added");
@@ -2842,6 +2890,30 @@
 
     renderHoursGrid();
     renderClosureList();
+
+    /* ══════════════════════════════════════════════
+       Clock Settings
+       ══════════════════════════════════════════════ */
+
+    (function initClockSettings() {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null"); } catch (e) {}
+      var settings = stored || { visible: true, position: "center", label: "San Francisco" };
+
+      document.getElementById("clockVisibleToggle").checked = settings.visible !== false;
+      document.getElementById("clockPositionSelect").value = settings.position || "center";
+      document.getElementById("clockLabelInput").value = settings.label || "San Francisco";
+
+      document.getElementById("btnSaveClockSettings").addEventListener("click", function() {
+        var data = {
+          visible: document.getElementById("clockVisibleToggle").checked,
+          position: document.getElementById("clockPositionSelect").value,
+          label: document.getElementById("clockLabelInput").value.trim() || "San Francisco"
+        };
+        localStorage.setItem("siteClockSettings", JSON.stringify(data));
+        showToast("Clock settings saved");
+      });
+    })();
 
     /* ══════════════════════════════════════════════
        Education Logic (Path Finder)

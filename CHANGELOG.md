@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.1 — 2026-02-14
+
+### Dynamic Clock Controller, Nav Refinement & Bento Deep-Dive
+
+- **Nav link refinement** — Font-size reduced from `0.875rem` to `0.8125rem` with `letter-spacing: 0.04em`, giving the navigation a lighter, more refined feel with improved legibility at a glance.
+- **Smart Collapse** — When nav links exceed 5 items, overflow links are grouped under a "More" dropdown. The dropdown uses a glassmorphism panel (`backdrop-filter: blur(20px)`) with fade-in animation (`translateY(-8px) → 0`, `scale(0.97) → 1`), matching the site's design language. The trigger button rotates its chevron `180deg` when open. Closes on outside click. Dark mode supported.
+- **Admin Clock Settings** — New "Clock Settings" tab in admin.html with three controls:
+  - **Show/Hide toggle** — Checkbox to show or hide the clock entirely from the hero section.
+  - **Position dropdown** — Five options: Center (above headline), Top Left, Top Right, Bottom Left, Bottom Right. Non-center positions use absolute positioning within the hero.
+  - **City Label input** — Change "San Francisco" to "Berkeley", "Oakland", or any city name. Defaults to "San Francisco".
+  - Stored in `siteClockSettings` localStorage key.
+- **Clock reads settings** — `initHeroClock()` now reads from `siteClockSettings` on every page load. When `visible` is `false`, the clock is not rendered. When a position other than "center" is selected, the clock uses `position: absolute` with appropriate corner offsets (`24px` top/bottom, `32px` left/right`).
+- **All bento tiles clickable** — Every bento tile on the homepage is now clickable (not just those with modal content). Clicking any tile opens the glassmorphism modal with the tile's full description (or short description as fallback). The `card-clickable` class with `cursor: pointer` is applied universally.
+- **Theme cross-fade** — The hero background image cross-fades over 3 seconds when the theme is toggled between Day/Night, using the existing `hero-crossfade` layer with `transition: opacity 3s`.
+
+## v2.0 — 2026-02-14
+
+### Interactive Bento Modal System
+
+- **Bento Deep Dive modals** — Clicking any bento tile on the homepage now opens a premium glassmorphism modal. Tiles with a "Modal Image URL" display a split layout: the high-res image fills the left half and the full description fills the right. Tiles without an image show a centered text-only layout. Each modal includes a "Book a Consultation" CTA that opens the consultation modal.
+- **Aurora Click effect** — When a modal opens, a subtle blue aurora glow (`radial-gradient` of `rgba(59, 130, 246, 0.3)`) blooms from the center of the screen, expanding from `0` to `120vmax` over `0.8s` with the site's premium cubic-bezier curve. The aurora fades on close, creating an ethereal atmosphere.
+- **Modal entrance/exit** — The overlay fades in with `backdrop-filter: blur(12px)` and a dimmed background. The modal card scales from `0.92` to `1` with a `translateY(20px → 0)` entrance over `0.5s`. On close, it scales to `0.95` and fades out over `0.4s`. Escape key and click-outside-to-close are supported.
+- **Admin "Modal Deep Dive" fields** — Each bento tile in the admin panel's Homepage Layout tab now has two new fields below a "Modal Deep Dive" divider:
+  - **Modal Image URL** — A high-res image displayed only in the detail modal (not on the homepage card).
+  - **Full Description** — A textarea for detailed content shown when the tile is clicked. If left empty, the card's short description is used as a fallback.
+- **Dark mode support** — The modal adapts to dark mode with `rgba(40, 40, 40, 0.8)` background, light text, and adjusted close button contrast.
+- **Responsive** — On mobile (`< 768px`), the split layout collapses to a single column with the image capped at `240px` height and reduced body padding.
+- **Clickable cursor** — Only tiles with modal content (image or full description) show a pointer cursor, signaling interactivity.
+
+**Why:** The bento grid served as a visual showcase but offered no depth. Now each tile is a doorway into detailed practice area content — visitors can explore at their own pace without navigating away from the homepage. The aurora bloom creates a moment of delight that reinforces the premium feel, while the admin fields give the firm full control over each modal's content and imagery.
+
 ## v1.9 — 2026-02-14
 
 ### Hero Clock Relocation & Education Path Finder

@@ -185,6 +185,22 @@ function saveLocations(data) {
 }
 
 /* ══════════════════════════════════════════════
+   Clock Settings (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getClockSettings() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null");
+    if (stored) return stored;
+  } catch (e) {}
+  return { visible: true, position: "center", label: "San Francisco" };
+}
+
+function saveClockSettings(data) {
+  localStorage.setItem("siteClockSettings", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
    Path Finder Data (localStorage)
    ══════════════════════════════════════════════ */
 
@@ -287,12 +303,12 @@ function renderBentoGrid() {
     small: "card-small", medium: "card-medium", large: "card-large"
   };
 
-  container.innerHTML = tiles.map(function(tile) {
+  container.innerHTML = tiles.map(function(tile, idx) {
     var cls = layoutClasses[tile.layout] || "card-medium";
     var isImage = tile.displayMode === "image" && tile.bgImage;
 
     if (isImage) {
-      return '<div class="card ' + cls + ' card-bg-image reveal" style="background-image:url(\'' + escapeHtmlUtil(tile.bgImage) + '\')">' +
+      return '<div class="card ' + cls + ' card-bg-image card-clickable reveal" data-tile-idx="' + idx + '" style="background-image:url(\'' + escapeHtmlUtil(tile.bgImage) + '\')">' +
         '<div class="card-bg-overlay"></div>' +
         '<div class="card-bg-content">' +
           '<h3>' + escapeHtmlUtil(tile.title) + '</h3>' +
@@ -302,12 +318,21 @@ function renderBentoGrid() {
     }
 
     var iconHtml = BENTO_ICON_MAP[tile.icon] || BENTO_ICON_MAP.scale;
-    return '<div class="card ' + cls + ' reveal">' +
+    return '<div class="card ' + cls + ' card-clickable reveal" data-tile-idx="' + idx + '">' +
       '<div class="card-icon">' + iconHtml + '</div>' +
       '<h3>' + escapeHtmlUtil(tile.title) + '</h3>' +
       '<p>' + escapeHtmlUtil(tile.description) + '</p>' +
     '</div>';
   }).join('');
+
+  // Bind click → modal for all tiles
+  container.querySelectorAll(".card-clickable").forEach(function(card) {
+    card.addEventListener("click", function() {
+      var idx = parseInt(card.dataset.tileIdx, 10);
+      var tile = tiles[idx];
+      if (tile) openBentoModal(tile);
+    });
+  });
 
   // Re-observe for reveal animation
   container.querySelectorAll(".reveal").forEach(function(el) {
@@ -321,6 +346,67 @@ function renderBentoGrid() {
     }, { threshold: 0.15 });
     obs.observe(el);
   });
+}
+
+/* ── Bento Modal System ── */
+
+function openBentoModal(tile) {
+  // Remove any existing modal
+  var existing = document.getElementById("bentoModalOverlay");
+  if (existing) existing.remove();
+
+  var hasImage = tile.modalImage && tile.modalImage.trim();
+  var layoutClass = hasImage ? "bento-modal--split" : "bento-modal--text-only";
+
+  var overlay = document.createElement("div");
+  overlay.id = "bentoModalOverlay";
+  overlay.className = "bento-modal-overlay";
+  overlay.innerHTML =
+    '<div class="bento-modal-aurora"></div>' +
+    '<div class="bento-modal ' + layoutClass + '">' +
+      (hasImage ? '<div class="bento-modal-image"><img src="' + escapeHtmlUtil(tile.modalImage) + '" alt="' + escapeHtmlUtil(tile.title) + '"></div>' : '') +
+      '<div class="bento-modal-body">' +
+        '<h2 class="bento-modal-title">' + escapeHtmlUtil(tile.title) + '</h2>' +
+        '<div class="bento-modal-desc">' + escapeHtmlUtil(tile.fullDescription || tile.description) + '</div>' +
+        '<button class="bento-modal-cta" id="bentoModalCta">Book a Consultation</button>' +
+      '</div>' +
+      '<button class="bento-modal-close" aria-label="Close">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  // Trigger entrance animation
+  requestAnimationFrame(function() {
+    overlay.classList.add("bento-modal-active");
+  });
+
+  // Close handlers
+  overlay.querySelector(".bento-modal-close").addEventListener("click", closeBentoModal);
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) closeBentoModal();
+  });
+  document.addEventListener("keydown", bentoModalEscHandler);
+
+  // CTA opens consultation modal
+  document.getElementById("bentoModalCta").addEventListener("click", function() {
+    closeBentoModal();
+    openConsultModal();
+  });
+}
+
+function closeBentoModal() {
+  var overlay = document.getElementById("bentoModalOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("bento-modal-active");
+  overlay.classList.add("bento-modal-leaving");
+  document.removeEventListener("keydown", bentoModalEscHandler);
+  setTimeout(function() { overlay.remove(); }, 400);
+}
+
+function bentoModalEscHandler(e) {
+  if (e.key === "Escape") closeBentoModal();
 }
 
 function escapeHtmlUtil(str) {
@@ -337,18 +423,59 @@ function renderGlobalNav() {
   var nav = document.getElementById("globalNav");
   if (!nav) return;
 
+  // All nav links (excluding CTA)
+  var navItems = [
+    { label: "Services", href: "index.html#services-grid" },
+    { label: "Staff", href: "staff.html" },
+    { label: "Testimonials", href: "testimonials.html" },
+    { label: "Education", href: "education.html" },
+    { label: "Locations", href: "locations.html" }
+  ];
+
+  var maxVisible = 5;
+  var visibleItems = navItems.slice(0, maxVisible);
+  var overflowItems = navItems.slice(maxVisible);
+
+  var linksHtml = visibleItems.map(function(item) {
+    return '<li><a href="' + item.href + '">' + item.label + '</a></li>';
+  }).join('');
+
+  // Smart Collapse: group overflow into "More" dropdown
+  if (overflowItems.length > 0) {
+    var moreLinks = overflowItems.map(function(item) {
+      return '<a href="' + item.href + '">' + item.label + '</a>';
+    }).join('');
+    linksHtml += '<li class="nav-more" id="navMore">' +
+      '<button class="nav-more-trigger" aria-expanded="false">More ' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+      '</button>' +
+      '<div class="nav-more-dropdown">' + moreLinks + '</div>' +
+    '</li>';
+  }
+
+  linksHtml += '<li><a href="#" class="nav-cta">Book a Consultation</a></li>';
+
   nav.innerHTML =
     '<div class="nav-content">' +
       '<a href="index.html" class="nav-logo">O\u2019Brien Immigration</a>' +
-      '<ul class="nav-links" id="navLinks">' +
-        '<li><a href="index.html#services-grid">Services</a></li>' +
-        '<li><a href="staff.html">Staff</a></li>' +
-        '<li><a href="testimonials.html">Testimonials</a></li>' +
-        '<li><a href="education.html">Education</a></li>' +
-        '<li><a href="locations.html">Locations</a></li>' +
-        '<li><a href="#" class="nav-cta">Book a Consultation</a></li>' +
-      '</ul>' +
+      '<ul class="nav-links" id="navLinks">' + linksHtml + '</ul>' +
     '</div>';
+
+  // Bind "More" dropdown toggle
+  var moreEl = document.getElementById("navMore");
+  if (moreEl) {
+    var moreTrigger = moreEl.querySelector(".nav-more-trigger");
+    moreTrigger.addEventListener("click", function(e) {
+      e.stopPropagation();
+      var isOpen = moreEl.classList.contains("open");
+      moreEl.classList.toggle("open");
+      moreTrigger.setAttribute("aria-expanded", !isOpen);
+    });
+    document.addEventListener("click", function() {
+      moreEl.classList.remove("open");
+      moreTrigger.setAttribute("aria-expanded", "false");
+    });
+  }
 
   // Inject hero clock if hero exists on this page
   initHeroClock();
@@ -961,24 +1088,41 @@ function formatClockTime(date) {
 var _lastSunAwareTheme = null;
 
 function initHeroClock() {
-  var heroInner = document.querySelector(".hero-inner");
-  if (!heroInner) return;
+  var settings = getClockSettings();
 
-  // Create the clock whisper element and insert as first child of hero-inner
+  // If clock is hidden via admin, don't render it
+  if (settings.visible === false) return;
+
+  var heroInner = document.querySelector(".hero-inner");
+  var hero = document.querySelector(".hero");
+  if (!heroInner || !hero) return;
+
+  // Create the clock whisper element
   var clockLine = document.createElement("div");
   clockLine.className = "hero-clock-line reveal";
+
+  // Apply positioning from settings
+  var pos = settings.position || "center";
+  if (pos !== "center") {
+    clockLine.classList.add("clock-positioned", "clock-" + pos);
+    // Positioned clock goes in the hero (absolute), not hero-inner
+    hero.appendChild(clockLine);
+  } else {
+    heroInner.insertBefore(clockLine, heroInner.firstChild);
+  }
+
   clockLine.innerHTML = '<span class="status-dot" id="statusDot"></span><span id="clockText" class="hero-clock-text"></span>';
-  heroInner.insertBefore(clockLine, heroInner.firstChild);
 
   var clockEl = document.getElementById("clockText");
   var dotEl = document.getElementById("statusDot");
+  var cityLabel = settings.label || "San Francisco";
 
   function update() {
     var now = new Date();
     var timeStr = formatClockTime(now);
     var info = getOfficeStatus();
 
-    clockEl.textContent = "San Francisco, CA \u2014 " + timeStr + " \u00b7 Office is " + info.label;
+    clockEl.textContent = cityLabel + ", CA \u2014 " + timeStr + " \u00b7 Office is " + info.label;
     dotEl.className = "status-dot status-" + info.color;
 
     // Sun-aware auto-transition at 6 PM / 6 AM
