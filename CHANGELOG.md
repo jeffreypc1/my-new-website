@@ -2,6 +2,15 @@
 
 ## 2026-02-14
 
+### Bento Grid — 12-Column System
+- **12-column grid** — Replaced `repeat(3, 1fr)` with `repeat(12, 1fr)` on `.bento-grid`. This gives precise fractional control: **Small** = `span 3` (1/4 row), **Medium** = `span 6` (1/2 row), **Large** = `span 12` (full row).
+- **Dense auto-fill** — `grid-auto-rows: 1fr` combined with `grid-auto-flow: dense` ensures the browser back-fills any holes by promoting smaller tiles upward, eliminating white space gaps.
+- **Uniform card height** — Added `height: 100%` to `.card` so tiles stretch to match their row neighbors perfectly, regardless of content length.
+- **Admin preview synced** — The live preview in the Homepage Layout tab now uses the same 12-column dense grid so what you see in admin is exactly what renders on the homepage.
+- **Mobile fallback** — On screens below 768px, the grid collapses to `grid-template-columns: 1fr` with `grid-auto-rows: auto`, and all size classes reset to natural height.
+
+**Why:** The previous 3-column grid couldn't cleanly handle mixed tile sizes without leaving awkward holes. The 12-column system gives mathematical precision — 4 Small tiles fill a row exactly, 2 Medium tiles fill a row, and 1 Large tile fills a row — with `dense` packing as a safety net.
+
 ### Bento Grid — Dynamic Sync & Dense Spanning
 - **Removed hardcoded bento cards** — Deleted the 3 static service cards (Family Petitions, Removal Defense, Citizenship) from `index.html`. The `.bento-grid` container is now empty on load and populated entirely by `renderBentoGrid()` in `main.js` from the `bentoTiles` localStorage key. Whatever you configure in the Admin Panel's Homepage Layout tab is exactly what appears on the homepage.
 - **Dense grid flow** — Added `grid-auto-flow: dense` to `.bento-grid` so tiles pack tightly and never leave awkward holes in the layout.

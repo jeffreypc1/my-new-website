@@ -789,7 +789,7 @@
       <div class="panel" style="margin-top:24px">
         <h2>Preview</h2>
         <p class="subtitle" style="margin-bottom:16px">Live preview of your bento grid layout.</p>
-        <div id="bentoPreview" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:100%"></div>
+        <div id="bentoPreview" style="display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:1fr;grid-auto-flow:dense;gap:12px;max-width:100%"></div>
       </div>
     </div>
 
@@ -1579,7 +1579,7 @@
       const preview = document.getElementById("bentoPreview");
       if (!preview) return;
       const tiles = collectTilesFromEditors();
-      const sizeMap = { small: "span 1", medium: "span 2", large: "span 3" };
+      const sizeMap = { small: "span 3", medium: "span 6", large: "span 12" };
       const heightMap = { small: "100px", medium: "120px", large: "140px" };
 
       preview.innerHTML = tiles.map((tile) => {
