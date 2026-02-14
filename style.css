@@ -42,25 +42,150 @@ body {
   background: var(--white);
   -webkit-font-smoothing: antialiased;
   line-height: 1.6;
+  transition: background 0.4s ease, color 0.4s ease;
 }
+
+/* ── Typography — Apple-style heading tightening ── */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.01em;
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] {
+  --white: #1a1a1a;
+  --off-white: #111111;
+  --light-gray: #2a2a2a;
+  --mid-gray: #999999;
+  --dark: #f5f5f7;
+  --black: #ffffff;
+}
+
+[data-theme="dark"] .navbar {
+  background: rgba(26, 26, 26, 0.7);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .navbar.scrolled {
+  background: rgba(26, 26, 26, 0.6);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .card {
+  background: rgba(40, 40, 40, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .post-card {
+  background: rgba(40, 40, 40, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .hero-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--dark);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .consult-modal {
+  background: rgba(30, 30, 30, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .consult-form-group input,
+[data-theme="dark"] .consult-form-group select,
+[data-theme="dark"] .consult-form-group textarea {
+  background: rgba(50, 50, 50, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--dark);
+}
+
+[data-theme="dark"] .consult-form-group input:focus,
+[data-theme="dark"] .consult-form-group select:focus,
+[data-theme="dark"] .consult-form-group textarea:focus {
+  background: rgba(60, 60, 60, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .consult-close {
+  background: rgba(255, 255, 255, 0.1);
+  color: #999;
+}
+
+[data-theme="dark"] .consult-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* ── Dark Mode Toggle ── */
+.theme-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9998;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.2s ease,
+              background 0.3s ease;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.2s ease;
+}
+
+[data-theme="dark"] .theme-toggle {
+  background: rgba(50, 50, 50, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
 /* ── Navbar ── */
 
 .navbar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: saturate(180%) blur(15px);
+  -webkit-backdrop-filter: saturate(180%) blur(15px);
   border-bottom: 1px solid var(--light-gray);
   transition: background 0.4s ease, border-color 0.4s ease;
 }
 
 .navbar.scrolled {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.6);
   border-bottom-color: rgba(232, 232, 237, 0.5);
 }
 
@@ -98,7 +223,7 @@ body {
   font-size: 0.875rem;
   color: var(--mid-gray);
   text-decoration: none;
-  transition: color var(--transition);
+  transition: color 0.2s ease;
 }
 
 .nav-links a:hover {
@@ -113,13 +238,14 @@ body {
   border: var(--btn-border);
   backdrop-filter: var(--btn-backdrop);
   -webkit-backdrop-filter: var(--btn-backdrop);
-  transition: background var(--transition), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background var(--transition),
+              transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 0.2s ease;
 }
 
 .nav-cta:hover {
   background: var(--accent-color) !important;
   filter: brightness(0.85);
-  transform: scale(0.96);
 }
 
 .nav-cta:active {
@@ -136,7 +262,7 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 120px 24px 80px;
+  padding: 80px 24px 80px;
   background-image: var(--hero-bg-image);
   background-size: cover;
   background-position: center;
@@ -194,12 +320,14 @@ body {
   -webkit-backdrop-filter: blur(8px);
   border-radius: var(--btn-radius);
   text-decoration: none;
-  transition: background var(--transition), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background var(--transition),
+              transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.25s ease;
 }
 
 .hero-btn:hover {
   background: var(--white);
-  transform: scale(0.96);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
 }
 
 .hero-btn:active {
@@ -241,9 +369,9 @@ body {
 }
 
 .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04),
-              0 16px 48px rgba(0, 0, 0, 0.07);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04),
+              0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
 /* Legacy layout classes (mapped to 12-col) */
@@ -414,7 +542,7 @@ body {
 /* ── Individual post view ── */
 
 .post-view {
-  padding: 140px 24px 80px;
+  padding: 80px 24px 80px;
   min-height: 100vh;
 }
 
@@ -461,7 +589,7 @@ body {
 /* ── Dynamic page view ── */
 
 .page-view {
-  padding: 140px 24px 80px;
+  padding: 80px 24px 80px;
   min-height: 100vh;
 }
 
@@ -749,7 +877,6 @@ body {
 
 .consult-submit:hover {
   background: #000;
-  transform: scale(0.98);
 }
 
 .consult-submit:active {

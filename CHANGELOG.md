@@ -2,6 +2,26 @@
 
 ## v1.0 — 2026-02-14
 
+### Global Navigation & Glassmorphism Refresh
+- **`renderGlobalNav()` in main.js** — Single function that builds the identical navigation bar on every page. All three public pages (`index.html`, `staff.html`, `thank-you.html`) now use an empty `<nav class="navbar" id="globalNav">` placeholder that `renderGlobalNav()` populates on `DOMContentLoaded`. This eliminates the prior inconsistencies: staff.html had an inline `style` override on the Staff link, thank-you.html had "Home" instead of "Book a Consultation" as its CTA, and each page had a slightly different link structure.
+- **Smart links** — The Services link auto-detects whether you're on the homepage (`#services`) or a subpage (`index.html#services`). The Staff link always points to `staff.html`. The logo always links back to `index.html`.
+- **Glassmorphism navbar** — Switched from `position: fixed` to `position: sticky; top: 0; z-index: 1000` with `backdrop-filter: saturate(180%) blur(15px)` and `background: rgba(255,255,255,0.7)`. The bento grid and page content now visibly blur behind the nav as you scroll. Adjusted hero, page-view, and post-view top padding from 120–140px down to 80px since the sticky nav is in the document flow.
+- **200ms nav link hover** — All `.nav-links a` elements use `transition: color 0.2s ease` for a subtle, consistent fade on hover.
+- **Magnetic "Book a Consultation"** — The CTA button in the global nav (and the hero) follows the cursor with a gentle `translate()` on `mousemove`, built in the prior polish layer and now working across all pages via the shared nav.
+- **Enhanced smooth scroll** — Updated `initSmoothScroll()` to handle both pure anchors (`#services`) and same-page anchors with a path prefix (`index.html#services`), with a 60px navbar offset.
+
+**Why:** A single source of truth for navigation means zero drift between pages. The sticky glassmorphism bar creates the signature "content sliding behind frosted glass" effect that defines the Apple aesthetic, while the micro-interactions (magnetic CTA, 200ms fade) add tactile polish.
+
+### Sophisticated Polish Layer
+- **Typography tightening** — Added `letter-spacing: -0.01em` baseline to all heading elements (h1–h6) for that Apple typographic feel. Body text `line-height: 1.6` was already in place.
+- **Magnetic button hover** — Primary buttons (nav CTA, hero CTA, consultation submit) now subtly follow the cursor with a `translate()` effect on `mousemove`, snapping back on `mouseleave`. Gives an interactive, tactile feel without being distracting.
+- **Enhanced bento card lift** — Bento cards now lift higher on hover (`translateY(-6px) scale(1.01)`) with a deeper, more diffused shadow (`0 20px 60px`) for a premium floating effect.
+- **Smooth scroll** — All internal anchor links (`href="#..."`) now use JS-based smooth scrolling with a 60px navbar offset, delegated at the document level so dynamically rendered links also work.
+- **Navbar glassmorphism tuned** — Reduced navbar `backdrop-filter` from `blur(20px)` to `blur(10px)` so content sliding underneath is subtly visible through the frosted glass, adding depth without sacrificing readability.
+- **Dark mode** — A small circular toggle (moon/sun icons) fixed in the bottom-right corner switches between light and dark themes. Dark mode overrides the CSS custom property palette (`--white`, `--off-white`, `--light-gray`, `--mid-gray`, `--dark`), plus targeted overrides for the navbar, bento cards, post cards, footer, hero button, consultation modal, and form inputs. Preference is persisted to `localStorage` under the `theme` key and restored on every page load.
+
+**Why:** Elevates the site from functional to premium with attention to micro-interactions, typographic precision, and adaptive theming — the kind of details that distinguish an Apple-quality experience.
+
 ### Formspree Integration & Thank-You Page
 - **Live form submissions** — Both the Consultation Concierge modal (on all pages) and the Staff Contact form (on `staff.html`) now submit to Formspree at `https://formspree.io/f/mpqjddon` via real `<form method="POST">` elements. Previously, submissions only logged to the console.
 - **Proper `name` attributes** — All form inputs carry `name` attributes (`name`, `email`, `phone`, `issue`, `message`, `inquiry`) so Formspree captures every field.

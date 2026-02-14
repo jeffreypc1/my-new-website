@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
+  /* ── Global navigation (must run first) ── */
+  renderGlobalNav();
+
   /* ── Scroll-to-reveal ── */
   const reveals = document.querySelectorAll(".reveal");
 
@@ -50,6 +53,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ── Consultation modal ── */
   initConsultButtons();
+
+  /* ── Dark mode ── */
+  initDarkMode();
+
+  /* ── Magnetic buttons ── */
+  initMagneticButtons();
+
+  /* ── Smooth scroll for internal anchor links ── */
+  initSmoothScroll();
 
   /* ── Admin shortcut: Cmd+Shift+A / Ctrl+Shift+A ── */
   let adminTriggered = false;
@@ -193,6 +205,30 @@ function escapeHtmlUtil(str) {
   var div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+/* ══════════════════════════════════════════════
+   Global Navigation (shared across all pages)
+   ══════════════════════════════════════════════ */
+
+function renderGlobalNav() {
+  var nav = document.getElementById("globalNav");
+  if (!nav) return;
+
+  // Detect if we're on the homepage (index.html or root)
+  var path = window.location.pathname;
+  var isHome = path.endsWith("/") || path.endsWith("/index.html") || path.endsWith("index.html");
+  var servicesHref = isHome ? "#services" : "index.html#services";
+
+  nav.innerHTML =
+    '<div class="nav-content">' +
+      '<a href="index.html" class="nav-logo">O\u2019Brien Immigration</a>' +
+      '<ul class="nav-links" id="navLinks">' +
+        '<li><a href="' + servicesHref + '">Services</a></li>' +
+        '<li><a href="staff.html">Staff</a></li>' +
+        '<li><a href="#" class="nav-cta">Book a Consultation</a></li>' +
+      '</ul>' +
+    '</div>';
 }
 
 /* ══════════════════════════════════════════════
@@ -549,5 +585,94 @@ function initConsultButtons() {
         openConsultModal();
       });
     }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Dark Mode Toggle
+   ══════════════════════════════════════════════ */
+
+function initDarkMode() {
+  // Restore saved preference
+  var saved = localStorage.getItem("theme");
+  if (saved === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+
+  // Build toggle button
+  var toggle = document.createElement("button");
+  toggle.className = "theme-toggle";
+  toggle.setAttribute("aria-label", "Toggle dark mode");
+  toggle.innerHTML =
+    '<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>' +
+    '<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  document.body.appendChild(toggle);
+
+  toggle.addEventListener("click", function() {
+    var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (isDark) {
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("theme", "dark");
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Magnetic Button Effect
+   ══════════════════════════════════════════════ */
+
+function initMagneticButtons() {
+  var selectors = ".nav-cta, .hero-btn, .consult-submit";
+  document.querySelectorAll(selectors).forEach(function(btn) {
+    btn.addEventListener("mousemove", function(e) {
+      var rect = btn.getBoundingClientRect();
+      var x = e.clientX - rect.left - rect.width / 2;
+      var y = e.clientY - rect.top - rect.height / 2;
+      btn.style.transform = "translate(" + (x * 0.15) + "px, " + (y * 0.15) + "px)";
+    });
+
+    btn.addEventListener("mouseleave", function() {
+      btn.style.transform = "";
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Smooth Scroll for Internal Links
+   ══════════════════════════════════════════════ */
+
+function initSmoothScroll() {
+  document.addEventListener("click", function(e) {
+    var link = e.target.closest("a[href]");
+    if (!link) return;
+
+    var href = link.getAttribute("href");
+    if (!href) return;
+
+    // Pure anchor: #services
+    var hash;
+    if (href.charAt(0) === "#") {
+      hash = href;
+    } else {
+      // Same-page link with anchor: index.html#services
+      var parts = href.split("#");
+      if (parts.length < 2 || !parts[1]) return;
+      var linkPath = parts[0];
+      var currentPath = window.location.pathname.split("/").pop() || "index.html";
+      if (linkPath && linkPath !== currentPath) return;
+      hash = "#" + parts[1];
+    }
+
+    if (hash === "#") return;
+    var target = document.querySelector(hash);
+    if (!target) return;
+
+    e.preventDefault();
+    var navHeight = 60;
+    var top = target.getBoundingClientRect().top + window.pageYOffset - navHeight;
+    window.scrollTo({ top: top, behavior: "smooth" });
   });
 }
