@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our Team — O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Staff Page Hero ── */
+
+    .staff-hero {
+      padding: 140px 24px 60px;
+      text-align: center;
+      background: var(--white);
+    }
+
+    .staff-hero h1 {
+      font-family: var(--heading-font);
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      color: var(--dark);
+      margin-bottom: 16px;
+    }
+
+    .staff-hero p {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: var(--mid-gray);
+      max-width: 560px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Staff Grid ── */
+
+    .staff-grid {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 40px 24px 120px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .staff-grid-card {
+      background: var(--white);
+      border: 1px solid var(--light-gray);
+      border-radius: 20px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1),
+                  box-shadow 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+
+    .staff-grid-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .staff-grid-card:active {
+      transform: scale(0.98);
+    }
+
+    .staff-grid-photo {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      background: var(--off-white);
+      display: block;
+    }
+
+    .staff-grid-avatar {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: var(--off-white);
+      color: var(--mid-gray);
+      font-size: 3.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.02em;
+    }
+
+    .staff-grid-info {
+      padding: 20px 24px 24px;
+    }
+
+    .staff-grid-name {
+      font-family: var(--heading-font);
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--dark);
+      margin-bottom: 4px;
+    }
+
+    .staff-grid-role {
+      font-size: 0.875rem;
+      color: var(--mid-gray);
+      font-weight: 500;
+    }
+
+    /* ── Focus Modal ── */
+
+    .staff-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      transition: opacity 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
+    }
+
+    .staff-modal-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+      backdrop-filter: saturate(120%) blur(15px);
+      -webkit-backdrop-filter: saturate(120%) blur(15px);
+    }
+
+    .staff-modal {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: saturate(180%) blur(40px);
+      -webkit-backdrop-filter: saturate(180%) blur(40px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 24px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      gap: 40px;
+      padding: 40px;
+      position: relative;
+      transform: scale(0.88);
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.3s ease;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12),
+                  0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .staff-modal-overlay.visible .staff-modal {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    .staff-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 50%;
+      font-size: 1.125rem;
+      color: var(--mid-gray);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      line-height: 1;
+      z-index: 1;
+    }
+
+    .staff-modal-close:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: var(--dark);
+    }
+
+    .staff-modal-photo {
+      width: 260px;
+      height: 320px;
+      border-radius: 16px;
+      object-fit: cover;
+      background: var(--off-white);
+      flex-shrink: 0;
+    }
+
+    .staff-modal-avatar {
+      width: 260px;
+      height: 320px;
+      border-radius: 16px;
+      background: var(--off-white);
+      color: var(--mid-gray);
+      font-size: 5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .staff-modal-details {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .staff-modal-name {
+      font-family: var(--heading-font);
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--dark);
+      margin-bottom: 4px;
+    }
+
+    .staff-modal-role {
+      font-size: 1.0625rem;
+      color: var(--mid-gray);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .staff-modal-office {
+      font-size: 0.875rem;
+      color: var(--mid-gray);
+      margin-bottom: 20px;
+    }
+
+    .staff-modal-contact {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .staff-modal-contact a {
+      font-size: 0.875rem;
+      color: var(--dark);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s;
+    }
+
+    .staff-modal-contact a:hover {
+      color: var(--accent-color, #0071e3);
+    }
+
+    .staff-modal-contact svg {
+      flex-shrink: 0;
+      color: var(--mid-gray);
+    }
+
+    .staff-modal-bio {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: var(--dark);
+      flex: 1;
+    }
+
+    /* ── Careers CTA Section ── */
+
+    .careers-cta {
+      text-align: center;
+      padding: 80px 24px;
+      background: var(--off-white);
+    }
+
+    .careers-cta h2 {
+      font-family: var(--heading-font);
+      font-size: clamp(1.5rem, 4vw, 2.25rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--dark);
+      margin-bottom: 12px;
+    }
+
+    .careers-cta p {
+      font-size: 1.0625rem;
+      color: var(--mid-gray);
+      max-width: 480px;
+      margin: 0 auto 28px;
+      line-height: 1.6;
+    }
+
+    .careers-cta-btn {
+      display: inline-block;
+      padding: 12px 28px;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--white);
+      background: var(--dark);
+      border: none;
+      border-radius: 980px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .careers-cta-btn:hover {
+      background: #000;
+      transform: scale(0.97);
+    }
+
+    .careers-cta-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* ── Empty State ── */
+
+    .staff-empty {
+      text-align: center;
+      padding: 80px 24px;
+      color: var(--mid-gray);
+      font-size: 1.0625rem;
+      grid-column: 1 / -1;
+    }
+
+    /* ── Responsive ── */
+
+    @media (max-width: 900px) {
+      .staff-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .staff-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+      }
+      .staff-modal {
+        flex-direction: column;
+        padding: 28px;
+        gap: 24px;
+      }
+      .staff-modal-photo,
+      .staff-modal-avatar {
+        width: 100%;
+        height: 240px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-content">
+      <a href="index.html" class="nav-logo">O'Brien Immigration</a>
+      <ul class="nav-links">
+        <li><a href="index.html#services">Services</a></li>
+        <li><a href="staff.html" style="color:var(--dark)">Staff</a></li>
+        <li><a href="#" class="nav-cta">Book a Consultation</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <section class="staff-hero">
+      <h1 class="reveal">Our Team</h1>
+      <p class="reveal">Experienced attorneys and staff dedicated to protecting your immigration rights across Berkeley and Stockton.</p>
+    </section>
+
+    <div class="staff-grid" id="staffGrid">
+      <div class="staff-empty">Loading team members...</div>
+    </div>
+
+    <!-- Focus Modal (built by JS) -->
+    <div class="staff-modal-overlay" id="staffModalOverlay">
+      <div class="staff-modal" id="staffModal">
+        <button class="staff-modal-close" aria-label="Close">&times;</button>
+        <div id="staffModalPhoto"></div>
+        <div class="staff-modal-details" id="staffModalDetails"></div>
+      </div>
+    </div>
+
+    <section class="careers-cta" id="careersCta" style="display:none">
+      <h2>Interested in Joining Our Team?</h2>
+      <p>We're always looking for passionate advocates to help families navigate the immigration system.</p>
+      <a href="mailto:careers@obrienimmigration.com" class="careers-cta-btn">Get in Touch</a>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="staff.html">Our Team</a>
+      </div>
+      <p>&copy; 2026 O'Brien Immigration Law. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <script src="main.js"></script>
+  <script>
+    (function() {
+      /* ── Auto-populate default staff if none exist ── */
+      var staff = getStaff();
+      if (staff.length === 0) {
+        var defaults = [
+          {
+            id: "s1", name: "Jeffrey O'Brien", title: "Founding Partner",
+            office: "Berkeley", email: "info@obrienimmigration.com", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Founded the firm in 2010 with a mission to provide high-quality, affordable, and respectful legal representation to immigrants and their families. Recognized for pro bono work by the East Bay Sanctuary Covenant.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s2", name: "Daska Babcock", title: "Senior Attorney",
+            office: "Stockton", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Joined the firm in 2016 and launched the Central Valley office in 2017. Practices asylum cases and Special Immigrant Juvenile Status petitions. Fourteen years of civil litigation experience and recipient of the Father Cuchulain Moriarty Award.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s3", name: "Elena Applebaum", title: "Senior Attorney",
+            office: "Berkeley", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Focuses on asylum and humanitarian petitions. Prior work with Jesuit Refugee Service in Malta and California immigration clinics. Fluent in multiple languages, including Spanish and Portuguese.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s4", name: "Rosanna Katz", title: "Senior Attorney",
+            office: "Berkeley", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Joined the firm in 2016. Practices asylum cases and family-based petitions. Prior litigation experience and pro bono work through East Bay Sanctuary Covenant.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s5", name: "Maria Amaya", title: "Senior Paralegal",
+            office: "Berkeley", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Colombian attorney managing case coordination, legal preparation, and team leadership. Handles deadlines, filings, evidence preparation, legal research, and motion drafting.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s6", name: "Roshani Sitaula", title: "Senior Paralegal / Operations Director",
+            office: "Berkeley", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Joined in 2013 with over a decade of immigration law experience. Fluent in English, Nepali, and Hindi. Holds two Master\u2019s degrees in Environmental Management and Geology.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s7", name: "Esteban Lasso", title: "Paralegal",
+            office: "Berkeley", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Supports case preparation, document review, and client communications. Background in law, international business, and project management. Multilingual.",
+            createdAt: "Feb 14, 2026"
+          },
+          {
+            id: "s8", name: "Guisselle Castellon", title: "Intake Specialist",
+            office: "Berkeley", email: "", phone: "",
+            imageUrl: "", hiring: false,
+            bio: "Conducts client intake and screening in Spanish; assists with interpretation. Psychology background; helps identify asylum and family-based relief eligibility.",
+            createdAt: "Feb 14, 2026"
+          }
+        ];
+        localStorage.setItem("siteStaff", JSON.stringify(defaults));
+        staff = defaults;
+      }
+
+      /* ── Render Grid ── */
+      var container = document.getElementById("staffGrid");
+      var careersCta = document.getElementById("careersCta");
+      var hasHiring = false;
+
+      if (staff.length === 0) {
+        container.innerHTML = '<div class="staff-empty">No team members have been added yet.</div>';
+        return;
+      }
+
+      container.innerHTML = staff.map(function(member, idx) {
+        if (member.hiring) hasHiring = true;
+
+        var photoHtml;
+        if (member.imageUrl) {
+          photoHtml = '<img class="staff-grid-photo" src="' + escapeHtmlUtil(member.imageUrl) + '" alt="' + escapeHtmlUtil(member.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+            '<div class="staff-grid-avatar" style="display:none">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>';
+        } else {
+          photoHtml = '<div class="staff-grid-avatar">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>';
+        }
+
+        return '<div class="staff-grid-card reveal" data-staff-idx="' + idx + '">' +
+          photoHtml +
+          '<div class="staff-grid-info">' +
+            '<h2 class="staff-grid-name">' + escapeHtmlUtil(member.name) + '</h2>' +
+            '<p class="staff-grid-role">' + escapeHtmlUtil(member.title) + '</p>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      if (hasHiring && careersCta) careersCta.style.display = '';
+
+      /* ── Focus Modal ── */
+      var overlay = document.getElementById("staffModalOverlay");
+      var modal = document.getElementById("staffModal");
+      var modalPhoto = document.getElementById("staffModalPhoto");
+      var modalDetails = document.getElementById("staffModalDetails");
+
+      function openStaffModal(member) {
+        // Photo
+        if (member.imageUrl) {
+          modalPhoto.innerHTML = '<img class="staff-modal-photo" src="' + escapeHtmlUtil(member.imageUrl) + '" alt="' + escapeHtmlUtil(member.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+            '<div class="staff-modal-avatar" style="display:none">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>';
+        } else {
+          modalPhoto.innerHTML = '<div class="staff-modal-avatar">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>';
+        }
+
+        // Details
+        var contactHtml = '';
+        if (member.email || member.phone) {
+          contactHtml = '<div class="staff-modal-contact">';
+          if (member.email) {
+            contactHtml += '<a href="mailto:' + escapeHtmlUtil(member.email) + '">' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>' +
+              escapeHtmlUtil(member.email) + '</a>';
+          }
+          if (member.phone) {
+            contactHtml += '<a href="tel:' + escapeHtmlUtil(member.phone) + '">' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' +
+              escapeHtmlUtil(member.phone) + '</a>';
+          }
+          contactHtml += '</div>';
+        }
+
+        modalDetails.innerHTML =
+          '<h2 class="staff-modal-name">' + escapeHtmlUtil(member.name) + '</h2>' +
+          '<p class="staff-modal-role">' + escapeHtmlUtil(member.title) + '</p>' +
+          '<p class="staff-modal-office">' + escapeHtmlUtil(member.office || '') + ' Office</p>' +
+          contactHtml +
+          '<p class="staff-modal-bio">' + escapeHtmlUtil(member.bio || '') + '</p>';
+
+        requestAnimationFrame(function() {
+          overlay.classList.add("visible");
+        });
+      }
+
+      function closeStaffModal() {
+        overlay.classList.remove("visible");
+      }
+
+      // Card clicks
+      container.querySelectorAll(".staff-grid-card").forEach(function(card) {
+        card.addEventListener("click", function() {
+          var idx = parseInt(card.dataset.staffIdx, 10);
+          if (staff[idx]) openStaffModal(staff[idx]);
+        });
+      });
+
+      // Close on background click
+      overlay.addEventListener("click", function(e) {
+        if (e.target === overlay) closeStaffModal();
+      });
+
+      // Close button
+      modal.querySelector(".staff-modal-close").addEventListener("click", closeStaffModal);
+
+      // Escape key
+      document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && overlay.classList.contains("visible")) {
+          closeStaffModal();
+        }
+      });
+
+      /* ── Reveal animations ── */
+      container.querySelectorAll(".reveal").forEach(function(el) {
+        var obs = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+              obs.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15 });
+        obs.observe(el);
+      });
+    })();
+  </script>
+</body>
+</html>

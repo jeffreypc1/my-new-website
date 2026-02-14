@@ -48,6 +48,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("popstate", handleRoute);
 
+  /* ── Consultation modal ── */
+  initConsultButtons();
+
   /* ── Admin shortcut: Cmd+Shift+A / Ctrl+Shift+A ── */
   let adminTriggered = false;
 
@@ -109,14 +112,10 @@ function getPosts() {
    ══════════════════════════════════════════════ */
 
 var BENTO_ICON_MAP = {
-  users: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  scale: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M4 7l8-4 8 4"/><path d="M1 14l3-7 3 7a4.24 4.24 0 0 1-6 0z"/><path d="M17 14l3-7 3 7a4.24 4.24 0 0 1-6 0z"/></svg>',
   shield: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-  flag: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
-  heart: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
-  star: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-  gavel: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="8" height="8" rx="1" transform="rotate(-45 6 10)"/><path d="M14.5 9.5L18 6l-3-3-3.5 3.5"/><line x1="3" y1="21" x2="21" y2="21"/></svg>',
-  home: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
-  globe: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+  users: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  document: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'
 };
 
 function getBentoTiles() {
@@ -138,9 +137,9 @@ function getBentoTiles() {
   return [
     { id: "tile1", title: "Family Petitions", description: "Reuniting families through spousal visas, parent and child petitions, and adjustment of status. We guide you through every step of the process.", icon: "users", layout: "large" },
     { id: "tile2", title: "Removal Defense", description: "Experienced representation in immigration court. We fight to protect your right to remain in the United States through asylum, cancellation of removal, and other forms of relief.", icon: "shield", layout: "large" },
-    { id: "tile3", title: "Citizenship", description: "From naturalization applications to citizenship interviews, we help you reach the final milestone on your immigration journey.", icon: "flag", layout: "medium" },
-    { id: "tile4", title: "Work Visas", description: "H-1B, L-1, O-1 and other employment-based visas for professionals and their families.", icon: "globe", layout: "medium" },
-    { id: "tile5", title: "Asylum", description: "Protection for those fleeing persecution. We build strong cases grounded in compassion and legal expertise.", icon: "heart", layout: "small" }
+    { id: "tile3", title: "Citizenship", description: "From naturalization applications to citizenship interviews, we help you reach the final milestone on your immigration journey.", icon: "document", layout: "medium" },
+    { id: "tile4", title: "Work Visas", description: "H-1B, L-1, O-1 and other employment-based visas for professionals and their families.", icon: "scale", layout: "medium" },
+    { id: "tile5", title: "Asylum", description: "Protection for those fleeing persecution. We build strong cases grounded in compassion and legal expertise.", icon: "shield", layout: "small" }
   ];
 }
 
@@ -155,8 +154,20 @@ function renderBentoGrid() {
   };
 
   container.innerHTML = tiles.map(function(tile) {
-    var iconHtml = BENTO_ICON_MAP[tile.icon] || BENTO_ICON_MAP.star;
     var cls = layoutClasses[tile.layout] || "card-medium";
+    var isImage = tile.displayMode === "image" && tile.bgImage;
+
+    if (isImage) {
+      return '<div class="card ' + cls + ' card-bg-image reveal" style="background-image:url(\'' + escapeHtmlUtil(tile.bgImage) + '\')">' +
+        '<div class="card-bg-overlay"></div>' +
+        '<div class="card-bg-content">' +
+          '<h3>' + escapeHtmlUtil(tile.title) + '</h3>' +
+          '<p>' + escapeHtmlUtil(tile.description) + '</p>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var iconHtml = BENTO_ICON_MAP[tile.icon] || BENTO_ICON_MAP.scale;
     return '<div class="card ' + cls + ' reveal">' +
       '<div class="card-icon">' + iconHtml + '</div>' +
       '<h3>' + escapeHtmlUtil(tile.title) + '</h3>' +
@@ -426,4 +437,143 @@ function loadSiteSettings() {
 function saveSiteSettings(settings) {
   localStorage.setItem("siteSettings", JSON.stringify(settings));
   applySiteSettings(settings);
+}
+
+/* ══════════════════════════════════════════════
+   Consultation Modal
+   ══════════════════════════════════════════════ */
+
+function isConsultEnabled() {
+  try {
+    var settings = JSON.parse(localStorage.getItem("siteSettings") || "{}");
+    return settings["--consult-popup"] !== "disabled";
+  } catch (e) { return true; }
+}
+
+function buildConsultModal() {
+  if (document.getElementById("consultOverlay")) return;
+
+  var overlay = document.createElement("div");
+  overlay.id = "consultOverlay";
+  overlay.className = "consult-overlay";
+  overlay.innerHTML =
+    '<div class="consult-modal">' +
+      '<button class="consult-close" aria-label="Close">&times;</button>' +
+      '<div id="consultForm">' +
+        '<h2>Book a Consultation</h2>' +
+        '<p class="consult-sub">Tell us about your situation and we\u2019ll get back to you within 24 hours.</p>' +
+        '<div class="consult-form-row">' +
+          '<div class="consult-form-group">' +
+            '<label for="consultName">Name</label>' +
+            '<input type="text" id="consultName" placeholder="Your full name">' +
+          '</div>' +
+          '<div class="consult-form-group">' +
+            '<label for="consultPhone">Phone</label>' +
+            '<input type="tel" id="consultPhone" placeholder="(555) 123-4567">' +
+          '</div>' +
+        '</div>' +
+        '<div class="consult-form-group">' +
+          '<label for="consultEmail">Email</label>' +
+          '<input type="email" id="consultEmail" placeholder="you@example.com">' +
+        '</div>' +
+        '<div class="consult-form-group">' +
+          '<label for="consultIssue">Legal Issue</label>' +
+          '<select id="consultIssue">' +
+            '<option value="">Select an issue\u2026</option>' +
+            '<option value="Family">Family</option>' +
+            '<option value="Removal">Removal</option>' +
+            '<option value="Citizenship">Citizenship</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="consult-form-group">' +
+          '<label for="consultMessage">Message</label>' +
+          '<textarea id="consultMessage" placeholder="Briefly describe your situation\u2026"></textarea>' +
+        '</div>' +
+        '<button class="consult-submit" id="consultSubmit">Send Request</button>' +
+      '</div>' +
+      '<div id="consultSuccess" class="consult-success">' +
+        '<div class="consult-checkmark">' +
+          '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>' +
+        '</div>' +
+        '<h3>Thank You</h3>' +
+        '<p>Your consultation request has been received.<br>We\u2019ll be in touch within 24 hours.</p>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  // Close on overlay background click
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) closeConsultModal();
+  });
+
+  // Close button
+  overlay.querySelector(".consult-close").addEventListener("click", closeConsultModal);
+
+  // Escape key
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && overlay.classList.contains("visible")) {
+      closeConsultModal();
+    }
+  });
+
+  // Submit
+  document.getElementById("consultSubmit").addEventListener("click", function() {
+    var name = document.getElementById("consultName").value.trim();
+    var email = document.getElementById("consultEmail").value.trim();
+    var phone = document.getElementById("consultPhone").value.trim();
+    var issue = document.getElementById("consultIssue").value;
+    var message = document.getElementById("consultMessage").value.trim();
+
+    if (!name || !email) {
+      // Subtle shake (just highlight empty fields)
+      if (!name) document.getElementById("consultName").style.borderColor = "#d63031";
+      if (!email) document.getElementById("consultEmail").style.borderColor = "#d63031";
+      setTimeout(function() {
+        document.getElementById("consultName").style.borderColor = "";
+        document.getElementById("consultEmail").style.borderColor = "";
+      }, 1500);
+      return;
+    }
+
+    console.log("Consultation Request:", { name: name, email: email, phone: phone, issue: issue, message: message });
+
+    // Show success state
+    document.getElementById("consultForm").style.display = "none";
+    document.getElementById("consultSuccess").classList.add("visible");
+  });
+}
+
+function openConsultModal() {
+  if (!isConsultEnabled()) return;
+  buildConsultModal();
+
+  // Reset form state
+  var form = document.getElementById("consultForm");
+  var success = document.getElementById("consultSuccess");
+  if (form) {
+    form.style.display = "";
+    form.querySelectorAll("input, select, textarea").forEach(function(el) { el.value = ""; });
+  }
+  if (success) success.classList.remove("visible");
+
+  var overlay = document.getElementById("consultOverlay");
+  requestAnimationFrame(function() { overlay.classList.add("visible"); });
+}
+
+function closeConsultModal() {
+  var overlay = document.getElementById("consultOverlay");
+  if (overlay) overlay.classList.remove("visible");
+}
+
+function initConsultButtons() {
+  if (!isConsultEnabled()) return;
+
+  document.querySelectorAll(".nav-cta, .hero-btn").forEach(function(btn) {
+    if (btn.textContent.trim() === "Book a Consultation") {
+      btn.addEventListener("click", function(e) {
+        e.preventDefault();
+        openConsultModal();
+      });
+    }
+  });
 }

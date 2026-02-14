@@ -2,6 +2,45 @@
 
 ## 2026-02-14
 
+### Interactive Staff Gallery with Focus Modal
+- **Admin expansion** — Added Email and Phone Number fields to the Staff form in `admin.html`, alongside the existing Name, Title, Office, Image URL, Bio, and Hiring toggle. Both fields are saved to the staff data model and pre-populated on edit.
+- **Staff grid layout** — Replaced the vertical card list on `staff.html` with a responsive 3-column grid (2-column on tablet, 1-column on mobile). Each card shows a square photo (or initial avatar fallback), name, and job title with hover lift and press-down transitions.
+- **Focus modal** — Clicking any staff card opens a liquid glass modal that scales up from `scale(0.88)` to `scale(1)` with a spring curve. The background site gets a heavy `backdrop-filter: blur(15px)` overlay. Inside the modal: large photo on the left, Name, Title, Office, Email (with envelope icon), Phone (with phone icon), and full Bio on the right. On mobile the layout stacks vertically.
+- **Close behaviors** — Close via the X button (circular, top-right), clicking the blurred background overlay, or pressing Escape.
+- **Auto-populated staff** — When the `siteStaff` localStorage key is empty, `staff.html` pre-fills 8 team members sourced from obrienimmigration.com: Jeffrey O'Brien (Founding Partner), Daska Babcock, Elena Applebaum, and Rosanna Katz (Senior Attorneys), Maria Amaya and Roshani Sitaula (Senior Paralegals), Esteban Lasso (Paralegal), and Guisselle Castellon (Intake Specialist). Each includes office location and bio text.
+
+**Why:** Transformed the staff page from a simple list into a high-end interactive gallery with an Apple-style grid and focus modal, letting visitors explore team profiles without leaving the page. Real firm data provides meaningful placeholder content out of the box.
+
+### Bento Manager — Icon/Image Toggle & Live Preview
+- **Display mode toggle** — Each bento tile in the admin Homepage Layout now has an "Use Icon" / "Use Background Image" radio toggle. The icon picker shows when icon mode is selected; a background image URL input shows when image mode is selected.
+- **New Apple-style icon set** — Replaced the 8-icon set with 4 clean icons: Scale (balance/justice), Shield, Users, and Document. Applied across both admin selectors and the public-facing bento grid.
+- **Background image mode** — When a tile uses a background image, the card renders with `background-size: cover`, a gradient darken overlay (`rgba(0,0,0,0.25)` to `rgba(0,0,0,0.6)`), and a subtle `blur(2px)` so white text remains perfectly readable over any photo.
+- **Live preview panel** — A new "Preview" section below the tile editors renders a miniature bento grid in real-time as you type. Shows the same grid layout (span sizes), icon/image modes, and text truncation so you can check if a card looks too busy before saving.
+- **Data model update** — Tile objects now include `displayMode` ("icon" or "image") and `bgImage` (URL string). Existing tiles are automatically migrated with `displayMode: "icon"` as default.
+
+**Why:** Gives the admin fine-grained visual control over each bento card — choose between a clean icon or a rich background photo — while the live preview eliminates save-and-check guesswork.
+
+### Consultation Concierge Modal
+- **Liquid Glass modal overlay** — "Book a Consultation" buttons on both `index.html` and `staff.html` now open a frosted-glass modal instead of navigating away. The overlay uses `backdrop-filter: blur(20px)` with a dark tint, and the modal panel uses `blur(40px)` with translucent white for the signature liquid glass effect. Appears with a smooth `scale(0.92) -> scale(1)` spring animation.
+- **Consultation form** — Modal contains Name, Phone (side-by-side row), Email, Legal Issue dropdown (Family, Removal, Citizenship), and a Message textarea. Clean uppercase labels with the same form styling used across the site.
+- **Thank-you success state** — On submit, the form fades out and a checkmark animation plays (green circle scales in via `consult-pop`, then the check path draws itself via `consult-draw` with `stroke-dashoffset`). "Thank You" heading with a follow-up message. Submission data is logged to the console for future email routing.
+- **Form validation** — Name and Email are required. Empty required fields flash red borders for 1.5 seconds on submit attempt.
+- **Close behaviors** — Close via the X button, clicking outside the modal, or pressing Escape.
+- **Admin toggle** — New "Consultation Pop-up" panel in Site Settings with an "Enable Consultation Pop-up" checkbox. When disabled, the CTA buttons remain inert. Setting stored in `siteSettings` under the `--consult-popup` key.
+- **Shared across pages** — The modal is built dynamically by `main.js` on first open and works on any page that loads `main.js` and `style.css`, including `index.html` and `staff.html`.
+
+**Why:** Converted the static "Book a Consultation" CTA into an interactive intake form with a premium liquid glass design, keeping visitors on-page instead of navigating away. The admin toggle provides easy control over the feature without touching code.
+
+### Staff & Careers Management System
+- **Enhanced Staff tab in admin** — Added Image URL field and "Actively Hiring" checkbox to the Staff form. Staff list rows now show hiring badges (green) and office location badges (blue). The staff data object now includes `imageUrl` and `hiring` properties.
+- **Created `staff.html`** — Dedicated staff page with Apple-style gallery layout: large vertical cards with 160px rounded photos (or initial avatars as fallback), generous white space, and clean typography. Each card shows name, title, office, and full bio.
+- **Hiring integration** — When "Actively Hiring" is checked for a staff member, their card displays a green "Join the Team" badge (positioned top-right on desktop, inline on mobile) and a "View Job Description" pill button that opens an email to `careers@obrienimmigration.com` with the role pre-filled in the subject line.
+- **Careers CTA section** — A bottom section on staff.html reading "Interested in Joining Our Team?" auto-shows only when at least one staff member is marked as hiring.
+- **Navigation updates** — Added "Staff" link to the top navbar in `index.html` pointing to `staff.html`. Added a static "Careers" link to the footer. The staff.html page includes its own navbar with the Staff link highlighted.
+- **Responsive layout** — Staff cards stack vertically on mobile with centered content, smaller avatars (120px), and the hiring badge repositioned inline above the card content.
+
+**Why:** Gave the firm a professional public-facing team page with a clean Apple aesthetic, and integrated a lightweight careers system that flags open positions with hiring badges and email-driven applications — all without a backend.
+
 ### Staff Gallery, Newsroom & Enhanced Bento Manager
 - **Staff Manager tab in admin** — Full CRUD interface for team members with Name, Title (e.g., Senior Attorney), Office Location (Berkeley/Stockton dropdown), and Bio. Staff data stored in localStorage under `siteStaff`. Each member has an auto-generated avatar initial, and the admin list shows office badges with Edit/Delete controls.
 - **Posts Manager tab in admin** — Full CRUD interface for Immigration News articles with Title, auto-generated Slug, Date picker, Category (News, Policy Update, Case Study, Community), rich Content textarea, and Published checkbox. Posts stored in localStorage under `sitePosts`. Post list shows category and published/draft badges.

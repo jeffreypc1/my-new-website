@@ -743,6 +743,16 @@
         </div>
       </div>
 
+      <div class="panel">
+        <h2>Consultation Pop-up</h2>
+        <div class="checkbox-row">
+          <label>
+            <input type="checkbox" id="consultPopupEnabled" checked>
+            Enable Consultation Pop-up
+          </label>
+        </div>
+      </div>
+
       <button class="btn-save" id="saveSettings">Save Settings</button>
 
       <iframe id="previewFrame" class="preview-frame" src="index.html" title="Live Preview"></iframe>
@@ -762,6 +772,12 @@
         <div id="bentoTileEditors"></div>
 
         <button class="btn-save" id="saveBentoTiles">Save Layout</button>
+      </div>
+
+      <div class="panel" style="margin-top:24px">
+        <h2>Preview</h2>
+        <p class="subtitle" style="margin-bottom:16px">Live preview of your bento grid layout.</p>
+        <div id="bentoPreview" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:100%"></div>
       </div>
     </div>
 
@@ -934,17 +950,41 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="staffOfficeInput">Office Location</label>
-          <select id="staffOfficeInput">
-            <option value="Berkeley">Berkeley</option>
-            <option value="Stockton">Stockton</option>
-          </select>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staffOfficeInput">Office Location</label>
+            <select id="staffOfficeInput">
+              <option value="Berkeley">Berkeley</option>
+              <option value="Stockton">Stockton</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="staffImageInput">Image URL</label>
+            <input type="text" id="staffImageInput" placeholder="https://example.com/photo.jpg">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staffEmailInput">Email</label>
+            <input type="email" id="staffEmailInput" placeholder="name@obrienimmigration.com">
+          </div>
+          <div class="form-group">
+            <label for="staffPhoneInput">Phone</label>
+            <input type="tel" id="staffPhoneInput" placeholder="(510) 555-0100">
+          </div>
         </div>
 
         <div class="form-group">
           <label for="staffBioInput">Bio</label>
           <textarea id="staffBioInput" placeholder="Staff member bio..."></textarea>
+        </div>
+
+        <div class="checkbox-row">
+          <label>
+            <input type="checkbox" id="staffHiring">
+            Actively Hiring
+          </label>
         </div>
 
         <div style="display:flex;gap:12px">
@@ -1323,12 +1363,17 @@
     const accentColorInput = document.getElementById("accentColor");
     const heroImageInput = document.getElementById("heroImage");
 
+    const consultToggle = document.getElementById("consultPopupEnabled");
+
     if (saved["--primary-font"]) primaryFontSelect.value = saved["--primary-font"];
     if (saved["--heading-font"]) headingFontSelect.value = saved["--heading-font"];
     if (saved["--accent-color"]) accentColorInput.value = saved["--accent-color"];
     if (saved["--hero-bg-image"]) {
       const url = saved["--hero-bg-image"].replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
       if (url !== "none") heroImageInput.value = url;
+    }
+    if (saved["--consult-popup"] === "disabled") {
+      consultToggle.checked = false;
     }
 
     document.getElementById("saveSettings").addEventListener("click", () => {
@@ -1339,6 +1384,7 @@
         "--heading-font": headingFontSelect.value,
         "--accent-color": accentColorInput.value,
         "--hero-bg-image": heroUrl ? "url('" + heroUrl + "')" : "none",
+        "--consult-popup": consultToggle.checked ? "enabled" : "disabled",
       };
 
       localStorage.setItem("siteSettings", JSON.stringify(settings));
@@ -1354,14 +1400,21 @@
        Homepage Layout — Dynamic Bento Tiles
        ══════════════════════════════════════════════ */
 
-    const ICON_OPTIONS = ["users", "shield", "flag", "heart", "star", "gavel", "home", "globe"];
+    const ICON_OPTIONS = ["scale", "shield", "users", "document"];
+    const ICON_LABELS = { scale: "Scale", shield: "Shield", users: "Users", document: "Document" };
+    const PREVIEW_ICON_MAP = {
+      scale: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M4 7l8-4 8 4"/><path d="M1 14l3-7 3 7a4.24 4.24 0 0 1-6 0z"/><path d="M17 14l3-7 3 7a4.24 4.24 0 0 1-6 0z"/></svg>',
+      shield: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+      users: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      document: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'
+    };
     const MAX_TILES = 5;
 
     function getDefaultBentoTiles() {
       return [
-        { id: generateId(), title: "Family Petitions", description: "", icon: "users", layout: "large" },
-        { id: generateId(), title: "Removal Defense", description: "", icon: "shield", layout: "medium" },
-        { id: generateId(), title: "Citizenship", description: "", icon: "flag", layout: "small" }
+        { id: generateId(), title: "Family Petitions", description: "", icon: "users", layout: "large", displayMode: "icon", bgImage: "" },
+        { id: generateId(), title: "Removal Defense", description: "", icon: "shield", layout: "medium", displayMode: "icon", bgImage: "" },
+        { id: generateId(), title: "Citizenship", description: "", icon: "document", layout: "small", displayMode: "icon", bgImage: "" }
       ];
     }
 
@@ -1370,15 +1423,15 @@
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          // Migrate from old object format to array format
           if (!Array.isArray(parsed)) {
             const arr = [];
-            if (parsed.tile1) arr.push({ id: generateId(), title: parsed.tile1.title || "", description: parsed.tile1.description || "", icon: parsed.tile1.icon || "users", layout: "large" });
-            if (parsed.tile2) arr.push({ id: generateId(), title: parsed.tile2.title || "", description: parsed.tile2.description || "", icon: parsed.tile2.icon || "shield", layout: "medium" });
-            if (parsed.tile3) arr.push({ id: generateId(), title: parsed.tile3.title || "", description: parsed.tile3.description || "", icon: parsed.tile3.icon || "flag", layout: "small" });
+            if (parsed.tile1) arr.push({ id: generateId(), title: parsed.tile1.title || "", description: parsed.tile1.description || "", icon: parsed.tile1.icon || "users", layout: "large", displayMode: "icon", bgImage: "" });
+            if (parsed.tile2) arr.push({ id: generateId(), title: parsed.tile2.title || "", description: parsed.tile2.description || "", icon: parsed.tile2.icon || "shield", layout: "medium", displayMode: "icon", bgImage: "" });
+            if (parsed.tile3) arr.push({ id: generateId(), title: parsed.tile3.title || "", description: parsed.tile3.description || "", icon: parsed.tile3.icon || "document", layout: "small", displayMode: "icon", bgImage: "" });
             return arr;
           }
-          return parsed;
+          // Ensure displayMode exists on migrated tiles
+          return parsed.map(t => ({ displayMode: "icon", bgImage: "", ...t }));
         } catch (e) {
           return getDefaultBentoTiles();
         }
@@ -1394,16 +1447,18 @@
 
       if (tiles.length === 0) {
         container.innerHTML = '<div class="empty-state">No tiles yet. Click "Add Tile" to get started.</div>';
+        renderBentoPreview();
         return;
       }
 
       container.innerHTML = tiles.map((tile, idx) => {
         const iconOptions = ICON_OPTIONS.map((ic) =>
-          '<option value="' + ic + '"' + (tile.icon === ic ? ' selected' : '') + '>' + ic + '</option>'
+          '<option value="' + ic + '"' + (tile.icon === ic ? ' selected' : '') + '>' + ICON_LABELS[ic] + '</option>'
         ).join('');
         const sizeOptions = ["small", "medium", "large"].map((s) =>
           '<option value="' + s + '"' + (tile.layout === s ? ' selected' : '') + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>'
         ).join('');
+        const isIcon = tile.displayMode !== "image";
         return '<div class="tile-editor" data-tile-id="' + tile.id + '">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
             '<h3>Tile ' + (idx + 1) + '</h3>' +
@@ -1417,15 +1472,32 @@
             '<label>Description</label>' +
             '<textarea class="tile-desc-input" placeholder="Tile description">' + escapeHtml(tile.description || '') + '</textarea>' +
           '</div>' +
-          '<div class="form-row">' +
+          '<div class="form-group">' +
+            '<label>Display Mode</label>' +
+            '<div style="display:flex;gap:12px;margin-top:4px">' +
+              '<label style="display:flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:400;text-transform:none;letter-spacing:normal;cursor:pointer">' +
+                '<input type="radio" name="displayMode_' + tile.id + '" value="icon" class="tile-mode-input"' + (isIcon ? ' checked' : '') + '> Use Icon' +
+              '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:400;text-transform:none;letter-spacing:normal;cursor:pointer">' +
+                '<input type="radio" name="displayMode_' + tile.id + '" value="image" class="tile-mode-input"' + (!isIcon ? ' checked' : '') + '> Use Background Image' +
+              '</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="tile-icon-group" style="' + (isIcon ? '' : 'display:none') + '">' +
             '<div class="form-group">' +
               '<label>Icon</label>' +
               '<select class="tile-icon-input">' + iconOptions + '</select>' +
             '</div>' +
+          '</div>' +
+          '<div class="tile-image-group" style="' + (!isIcon ? '' : 'display:none') + '">' +
             '<div class="form-group">' +
-              '<label>Tile Size</label>' +
-              '<select class="tile-size-input">' + sizeOptions + '</select>' +
+              '<label>Background Image URL</label>' +
+              '<input type="text" class="tile-bgimage-input" value="' + escapeHtml(tile.bgImage || '') + '" placeholder="https://images.unsplash.com/...">' +
             '</div>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label>Tile Size</label>' +
+            '<select class="tile-size-input">' + sizeOptions + '</select>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -1441,29 +1513,90 @@
           showToast("Tile removed");
         });
       });
+
+      // Bind display mode toggles
+      container.querySelectorAll(".tile-mode-input").forEach((radio) => {
+        radio.addEventListener("change", () => {
+          const editor = radio.closest(".tile-editor");
+          const isIcon = radio.value === "icon";
+          editor.querySelector(".tile-icon-group").style.display = isIcon ? "" : "none";
+          editor.querySelector(".tile-image-group").style.display = isIcon ? "none" : "";
+          renderBentoPreview();
+        });
+      });
+
+      // Bind live preview updates on any input change
+      container.querySelectorAll("input, textarea, select").forEach((el) => {
+        el.addEventListener("input", () => renderBentoPreview());
+        el.addEventListener("change", () => renderBentoPreview());
+      });
+
+      renderBentoPreview();
+    }
+
+    function collectTilesFromEditors() {
+      const editors = document.querySelectorAll("#bentoTileEditors .tile-editor");
+      const tiles = [];
+      editors.forEach((editor) => {
+        const modeRadio = editor.querySelector('.tile-mode-input:checked');
+        const displayMode = modeRadio ? modeRadio.value : "icon";
+        tiles.push({
+          id: editor.dataset.tileId,
+          title: editor.querySelector(".tile-title-input").value.trim(),
+          description: editor.querySelector(".tile-desc-input").value,
+          icon: editor.querySelector(".tile-icon-input").value,
+          layout: editor.querySelector(".tile-size-input").value,
+          displayMode: displayMode,
+          bgImage: editor.querySelector(".tile-bgimage-input") ? editor.querySelector(".tile-bgimage-input").value.trim() : ""
+        });
+      });
+      return tiles;
+    }
+
+    function renderBentoPreview() {
+      const preview = document.getElementById("bentoPreview");
+      if (!preview) return;
+      const tiles = collectTilesFromEditors();
+      const sizeMap = { small: "span 1", medium: "span 1", large: "span 2" };
+      const heightMap = { small: "100px", medium: "120px", large: "140px" };
+
+      preview.innerHTML = tiles.map((tile) => {
+        const span = sizeMap[tile.layout] || "span 1";
+        const h = heightMap[tile.layout] || "120px";
+        const isImage = tile.displayMode === "image" && tile.bgImage;
+
+        if (isImage) {
+          return '<div style="grid-column:' + span + ';min-height:' + h + ';border-radius:16px;overflow:hidden;position:relative;background:url(\'' + escapeHtml(tile.bgImage) + '\') center/cover">' +
+            '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.25),rgba(0,0,0,0.6));backdrop-filter:blur(2px);border-radius:inherit"></div>' +
+            '<div style="position:relative;z-index:1;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;height:100%">' +
+              '<strong style="color:#fff;font-size:0.8rem">' + escapeHtml(tile.title || 'Untitled') + '</strong>' +
+              (tile.description ? '<span style="color:rgba(255,255,255,0.8);font-size:0.7rem;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + escapeHtml(tile.description) + '</span>' : '') +
+            '</div>' +
+          '</div>';
+        }
+
+        const iconSvg = PREVIEW_ICON_MAP[tile.icon] || PREVIEW_ICON_MAP.scale;
+        return '<div style="grid-column:' + span + ';min-height:' + h + ';border-radius:16px;background:rgba(255,255,255,0.6);backdrop-filter:blur(12px);border:1px solid rgba(0,0,0,0.06);padding:16px;display:flex;flex-direction:column;justify-content:space-between">' +
+          '<div style="color:#1d1d1f">' + iconSvg + '</div>' +
+          '<div>' +
+            '<strong style="font-size:0.8rem;color:#1d1d1f">' + escapeHtml(tile.title || 'Untitled') + '</strong>' +
+            (tile.description ? '<p style="font-size:0.7rem;color:#86868b;margin:4px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + escapeHtml(tile.description) + '</p>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
 
     document.getElementById("btnAddTile").addEventListener("click", () => {
       const tiles = loadBentoTiles();
       if (tiles.length >= MAX_TILES) { showToast("Maximum of " + MAX_TILES + " tiles"); return; }
-      tiles.push({ id: generateId(), title: "", description: "", icon: "star", layout: "medium" });
+      tiles.push({ id: generateId(), title: "", description: "", icon: "scale", layout: "medium", displayMode: "icon", bgImage: "" });
       localStorage.setItem("bentoTiles", JSON.stringify(tiles));
       renderBentoEditors();
       showToast("Tile added");
     });
 
     document.getElementById("saveBentoTiles").addEventListener("click", () => {
-      const editors = document.querySelectorAll("#bentoTileEditors .tile-editor");
-      const tiles = [];
-      editors.forEach((editor) => {
-        tiles.push({
-          id: editor.dataset.tileId,
-          title: editor.querySelector(".tile-title-input").value.trim(),
-          description: editor.querySelector(".tile-desc-input").value,
-          icon: editor.querySelector(".tile-icon-input").value,
-          layout: editor.querySelector(".tile-size-input").value
-        });
-      });
+      const tiles = collectTilesFromEditors();
       localStorage.setItem("bentoTiles", JSON.stringify(tiles));
       console.log("Bento tiles saved:", tiles);
       showToast("Homepage layout saved");
@@ -1664,11 +1797,15 @@
       }
 
       container.innerHTML = staff.map((s) => {
+        const badges = [];
+        if (s.hiring) badges.push('<span class="badge published">Hiring</span>');
+        badges.push('<span class="badge nav-badge">' + escapeHtml(s.office) + '</span>');
         return '<div class="page-row" data-id="' + s.id + '">' +
           '<div class="page-row-info">' +
             '<div class="page-row-title">' + escapeHtml(s.name) + '</div>' +
-            '<div class="page-row-slug">' + escapeHtml(s.title) + ' &mdash; ' + escapeHtml(s.office) + '</div>' +
+            '<div class="page-row-slug">' + escapeHtml(s.title) + '</div>' +
           '</div>' +
+          '<div class="page-row-badges">' + badges.join('') + '</div>' +
           '<div class="page-row-actions">' +
             '<button class="btn btn-secondary btn-sm btn-edit-staff">Edit</button>' +
             '<button class="btn btn-danger btn-sm btn-delete-staff">Delete</button>' +
@@ -1710,7 +1847,11 @@
       document.getElementById("staffNameInput").value = "";
       document.getElementById("staffTitleInput").value = "";
       document.getElementById("staffOfficeInput").value = "Berkeley";
+      document.getElementById("staffImageInput").value = "";
+      document.getElementById("staffEmailInput").value = "";
+      document.getElementById("staffPhoneInput").value = "";
       document.getElementById("staffBioInput").value = "";
+      document.getElementById("staffHiring").checked = false;
       document.getElementById("staffFormTitle").textContent = "Add Staff Member";
     }
 
@@ -1725,7 +1866,11 @@
       const name = document.getElementById("staffNameInput").value.trim();
       const title = document.getElementById("staffTitleInput").value.trim();
       const office = document.getElementById("staffOfficeInput").value;
+      const imageUrl = document.getElementById("staffImageInput").value.trim();
+      const email = document.getElementById("staffEmailInput").value.trim();
+      const phone = document.getElementById("staffPhoneInput").value.trim();
       const bio = document.getElementById("staffBioInput").value;
+      const hiring = document.getElementById("staffHiring").checked;
       const editId = document.getElementById("staffEditId").value;
 
       if (!name) { showToast("Name is required"); return; }
@@ -1739,7 +1884,11 @@
           staff[idx].name = name;
           staff[idx].title = title;
           staff[idx].office = office;
+          staff[idx].imageUrl = imageUrl;
+          staff[idx].email = email;
+          staff[idx].phone = phone;
           staff[idx].bio = bio;
+          staff[idx].hiring = hiring;
         }
         showToast("Staff member updated");
       } else {
@@ -1750,7 +1899,11 @@
           name: name,
           title: title,
           office: office,
+          imageUrl: imageUrl,
+          email: email,
+          phone: phone,
           bio: bio,
+          hiring: hiring,
           createdAt: dateStr
         });
         showToast("Staff member added");
@@ -1771,7 +1924,11 @@
       document.getElementById("staffNameInput").value = member.name;
       document.getElementById("staffTitleInput").value = member.title;
       document.getElementById("staffOfficeInput").value = member.office || "Berkeley";
+      document.getElementById("staffImageInput").value = member.imageUrl || "";
+      document.getElementById("staffEmailInput").value = member.email || "";
+      document.getElementById("staffPhoneInput").value = member.phone || "";
       document.getElementById("staffBioInput").value = member.bio || "";
+      document.getElementById("staffHiring").checked = member.hiring || false;
       document.getElementById("staffFormTitle").textContent = "Edit Staff Member";
 
       showStaffForm();
