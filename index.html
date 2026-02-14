@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-content">
+      <a href="index.html" class="nav-logo">O'Brien Immigration</a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#services">Services</a></li>
+        <!-- Dynamic nav links injected here by main.js -->
+        <li><a href="#" class="nav-cta">Book a Consultation</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main id="mainContent">
+
+    <!-- ── Home (default view) ── -->
+    <div id="homeView">
+      <section class="hero">
+        <div class="hero-inner">
+          <h1 class="reveal">Protecting the Path to a New Beginning.</h1>
+          <p class="hero-sub reveal">Compassionate legal counsel for families and individuals navigating the U.S. immigration system. Based in Berkeley and Stockton.</p>
+          <a href="#services" class="hero-btn reveal">Book a Consultation</a>
+        </div>
+      </section>
+
+      <section id="services" class="features">
+        <div class="bento-grid">
+          <div class="card card-wide reveal">
+            <div class="card-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <h3>Family Petitions</h3>
+            <p>Reuniting families through spousal visas, parent and child petitions, and adjustment of status. We guide you through every step of the process.</p>
+          </div>
+          <div class="card card-tall reveal">
+            <div class="card-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <h3>Removal Defense</h3>
+            <p>Experienced representation in immigration court. We fight to protect your right to remain in the United States through asylum, cancellation of removal, and other forms of relief.</p>
+          </div>
+          <div class="card card-short reveal">
+            <div class="card-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                <line x1="4" y1="22" x2="4" y2="15"/>
+              </svg>
+            </div>
+            <h3>Citizenship</h3>
+            <p>From naturalization applications to citizenship interviews, we help you reach the final milestone on your immigration journey.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Staff Gallery (populated by main.js) ── -->
+      <section id="staffSection" class="staff-section" style="display:none">
+        <h2 class="reveal">Our Team</h2>
+        <p class="section-sub reveal">Experienced attorneys dedicated to protecting your immigration rights.</p>
+        <div class="staff-gallery" id="staffGallery"></div>
+      </section>
+
+      <!-- ── Posts / Newsroom (populated by main.js) ── -->
+      <section id="postsSection" class="posts-section" style="display:none">
+        <h2 class="reveal">Immigration News</h2>
+        <p class="section-sub reveal">Updates, insights, and resources from our legal team.</p>
+        <div class="posts-grid" id="postsGrid"></div>
+      </section>
+    </div>
+
+    <!-- ── Dynamic page view (shown when ?page=slug) ── -->
+    <div id="pageView" class="page-view" style="display:none">
+      <div class="page-view-inner">
+        <h1 id="pageTitle"></h1>
+        <div id="pageBody" class="page-body"></div>
+      </div>
+    </div>
+
+    <!-- ── Individual post view (shown when ?post=slug) ── -->
+    <div id="postView" class="post-view" style="display:none">
+      <div class="post-view-inner">
+        <p class="post-view-category" id="postViewCategory"></p>
+        <h1 id="postViewTitle"></h1>
+        <p class="post-view-date" id="postViewDate"></p>
+        <div id="postViewBody" class="post-view-body"></div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-links" id="footerLinks">
+        <!-- Dynamic footer links injected here by main.js -->
+      </div>
+      <p>&copy; 2026 O'Brien Immigration Law. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
