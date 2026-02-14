@@ -2,6 +2,14 @@
 
 ## 2026-02-14
 
+### Staff Visibility Toggle
+- **"Show on Website" checkbox** — New toggle in the admin Staff form controls whether a team member appears on the public `staff.html` page. Defaults to checked for new entries. Admin list rows now show green "Visible" or gray "Hidden" badges.
+- **Filtered rendering** — `staff.html` filters the staff array by `showOnWebsite !== false` before rendering the grid. Hidden members remain in localStorage and can be toggled back on at any time.
+- **Backdrop blur upgrade** — Staff focus modal overlay increased from `blur(15px)` to `blur(20px)` for a heavier iOS-style frosted effect.
+- **Default staff visibility** — All 8 auto-populated team members now include `showOnWebsite: true` so they appear immediately on first visit.
+
+**Why:** Gives the admin granular control over which team members are publicly visible without deleting their records, and deepens the Apple-style frosted glass feel of the focus modal.
+
 ### Interactive Staff Gallery with Focus Modal
 - **Admin expansion** — Added Email and Phone Number fields to the Staff form in `admin.html`, alongside the existing Name, Title, Office, Image URL, Bio, and Hiring toggle. Both fields are saved to the staff data model and pre-populated on edit.
 - **Staff grid layout** — Replaced the vertical card list on `staff.html` with a responsive 3-column grid (2-column on tablet, 1-column on mobile). Each card shows a square photo (or initial avatar fallback), name, and job title with hover lift and press-down transitions.

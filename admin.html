@@ -982,6 +982,13 @@
 
         <div class="checkbox-row">
           <label>
+            <input type="checkbox" id="staffShowOnWebsite" checked>
+            Show on Website
+          </label>
+        </div>
+
+        <div class="checkbox-row">
+          <label>
             <input type="checkbox" id="staffHiring">
             Actively Hiring
           </label>
@@ -1798,6 +1805,11 @@
 
       container.innerHTML = staff.map((s) => {
         const badges = [];
+        if (s.showOnWebsite !== false) {
+          badges.push('<span class="badge published">Visible</span>');
+        } else {
+          badges.push('<span class="badge draft">Hidden</span>');
+        }
         if (s.hiring) badges.push('<span class="badge published">Hiring</span>');
         badges.push('<span class="badge nav-badge">' + escapeHtml(s.office) + '</span>');
         return '<div class="page-row" data-id="' + s.id + '">' +
@@ -1851,6 +1863,7 @@
       document.getElementById("staffEmailInput").value = "";
       document.getElementById("staffPhoneInput").value = "";
       document.getElementById("staffBioInput").value = "";
+      document.getElementById("staffShowOnWebsite").checked = true;
       document.getElementById("staffHiring").checked = false;
       document.getElementById("staffFormTitle").textContent = "Add Staff Member";
     }
@@ -1870,6 +1883,7 @@
       const email = document.getElementById("staffEmailInput").value.trim();
       const phone = document.getElementById("staffPhoneInput").value.trim();
       const bio = document.getElementById("staffBioInput").value;
+      const showOnWebsite = document.getElementById("staffShowOnWebsite").checked;
       const hiring = document.getElementById("staffHiring").checked;
       const editId = document.getElementById("staffEditId").value;
 
@@ -1888,6 +1902,7 @@
           staff[idx].email = email;
           staff[idx].phone = phone;
           staff[idx].bio = bio;
+          staff[idx].showOnWebsite = showOnWebsite;
           staff[idx].hiring = hiring;
         }
         showToast("Staff member updated");
@@ -1903,6 +1918,7 @@
           email: email,
           phone: phone,
           bio: bio,
+          showOnWebsite: showOnWebsite,
           hiring: hiring,
           createdAt: dateStr
         });
@@ -1928,6 +1944,7 @@
       document.getElementById("staffEmailInput").value = member.email || "";
       document.getElementById("staffPhoneInput").value = member.phone || "";
       document.getElementById("staffBioInput").value = member.bio || "";
+      document.getElementById("staffShowOnWebsite").checked = member.showOnWebsite !== false;
       document.getElementById("staffHiring").checked = member.hiring || false;
       document.getElementById("staffFormTitle").textContent = "Edit Staff Member";
 
