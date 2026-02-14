@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thank You — O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .thankyou {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+      background: var(--off-white);
+    }
+
+    .thankyou-inner {
+      max-width: 520px;
+    }
+
+    .thankyou-check {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 28px;
+      background: #e8f5e2;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: ty-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .thankyou-check svg {
+      width: 32px;
+      height: 32px;
+      stroke: #2a7d2e;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      stroke-dasharray: 30;
+      stroke-dashoffset: 30;
+      animation: ty-draw 0.6s 0.3s ease forwards;
+    }
+
+    @keyframes ty-pop {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes ty-draw {
+      to { stroke-dashoffset: 0; }
+    }
+
+    .thankyou h1 {
+      font-family: var(--heading-font);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--dark);
+      margin-bottom: 12px;
+    }
+
+    .thankyou p {
+      font-size: 1.0625rem;
+      color: var(--mid-gray);
+      line-height: 1.7;
+      margin-bottom: 32px;
+    }
+
+    .thankyou-btn {
+      display: inline-block;
+      padding: 14px 36px;
+      font-size: 1rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--btn-color, var(--white));
+      background: var(--btn-bg, var(--dark));
+      border: var(--btn-border, none);
+      border-radius: var(--btn-radius, 980px);
+      backdrop-filter: var(--btn-backdrop, none);
+      -webkit-backdrop-filter: var(--btn-backdrop, none);
+      text-decoration: none;
+      transition: filter 0.2s, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .thankyou-btn:hover {
+      filter: brightness(0.85);
+      transform: scale(0.97);
+    }
+
+    .thankyou-btn:active {
+      transform: scale(0.94);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-content">
+      <a href="index.html" class="nav-logo">O'Brien Immigration</a>
+      <ul class="nav-links">
+        <li><a href="index.html#services">Services</a></li>
+        <li><a href="staff.html">Staff</a></li>
+        <li><a href="index.html" class="nav-cta">Home</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="thankyou">
+    <div class="thankyou-inner">
+      <div class="thankyou-check">
+        <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <h1>Thank You</h1>
+      <p>Your message has been received. Our team will review your inquiry and get back to you within 24 hours.</p>
+      <a href="index.html" class="thankyou-btn">Back to Home</a>
+    </div>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>

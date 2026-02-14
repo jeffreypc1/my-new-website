@@ -449,26 +449,28 @@ function buildConsultModal() {
   overlay.innerHTML =
     '<div class="consult-modal">' +
       '<button class="consult-close" aria-label="Close">&times;</button>' +
-      '<div id="consultForm">' +
+      '<form id="consultForm" action="https://formspree.io/f/mpqjddon" method="POST">' +
         '<h2>Book a Consultation</h2>' +
         '<p class="consult-sub">Tell us about your situation and we\u2019ll get back to you within 24 hours.</p>' +
+        '<input type="hidden" name="_next" value="' + window.location.origin + '/thank-you.html">' +
+        '<input type="hidden" name="_subject" value="New Consultation Request">' +
         '<div class="consult-form-row">' +
           '<div class="consult-form-group">' +
             '<label for="consultName">Name</label>' +
-            '<input type="text" id="consultName" placeholder="Your full name">' +
+            '<input type="text" id="consultName" name="name" required placeholder="Your full name">' +
           '</div>' +
           '<div class="consult-form-group">' +
             '<label for="consultPhone">Phone</label>' +
-            '<input type="tel" id="consultPhone" placeholder="(555) 123-4567">' +
+            '<input type="tel" id="consultPhone" name="phone" placeholder="(555) 123-4567">' +
           '</div>' +
         '</div>' +
         '<div class="consult-form-group">' +
           '<label for="consultEmail">Email</label>' +
-          '<input type="email" id="consultEmail" placeholder="you@example.com">' +
+          '<input type="email" id="consultEmail" name="email" required placeholder="you@example.com">' +
         '</div>' +
         '<div class="consult-form-group">' +
           '<label for="consultIssue">Legal Issue</label>' +
-          '<select id="consultIssue">' +
+          '<select id="consultIssue" name="issue">' +
             '<option value="">Select an issue\u2026</option>' +
             '<option value="Family">Family</option>' +
             '<option value="Removal">Removal</option>' +
@@ -477,17 +479,10 @@ function buildConsultModal() {
         '</div>' +
         '<div class="consult-form-group">' +
           '<label for="consultMessage">Message</label>' +
-          '<textarea id="consultMessage" placeholder="Briefly describe your situation\u2026"></textarea>' +
+          '<textarea id="consultMessage" name="message" placeholder="Briefly describe your situation\u2026"></textarea>' +
         '</div>' +
-        '<button class="consult-submit" id="consultSubmit">Send Request</button>' +
-      '</div>' +
-      '<div id="consultSuccess" class="consult-success">' +
-        '<div class="consult-checkmark">' +
-          '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>' +
-        '</div>' +
-        '<h3>Thank You</h3>' +
-        '<p>Your consultation request has been received.<br>We\u2019ll be in touch within 24 hours.</p>' +
-      '</div>' +
+        '<button type="submit" class="consult-submit">Send Request</button>' +
+      '</form>' +
     '</div>';
   document.body.appendChild(overlay);
 
@@ -506,30 +501,19 @@ function buildConsultModal() {
     }
   });
 
-  // Submit
-  document.getElementById("consultSubmit").addEventListener("click", function() {
-    var name = document.getElementById("consultName").value.trim();
-    var email = document.getElementById("consultEmail").value.trim();
-    var phone = document.getElementById("consultPhone").value.trim();
-    var issue = document.getElementById("consultIssue").value;
-    var message = document.getElementById("consultMessage").value.trim();
-
-    if (!name || !email) {
-      // Subtle shake (just highlight empty fields)
-      if (!name) document.getElementById("consultName").style.borderColor = "#d63031";
-      if (!email) document.getElementById("consultEmail").style.borderColor = "#d63031";
+  // Client-side validation highlight
+  overlay.querySelector("#consultForm").addEventListener("submit", function(e) {
+    var name = document.getElementById("consultName");
+    var email = document.getElementById("consultEmail");
+    if (!name.value.trim() || !email.value.trim()) {
+      e.preventDefault();
+      if (!name.value.trim()) name.style.borderColor = "#d63031";
+      if (!email.value.trim()) email.style.borderColor = "#d63031";
       setTimeout(function() {
-        document.getElementById("consultName").style.borderColor = "";
-        document.getElementById("consultEmail").style.borderColor = "";
+        name.style.borderColor = "";
+        email.style.borderColor = "";
       }, 1500);
-      return;
     }
-
-    console.log("Consultation Request:", { name: name, email: email, phone: phone, issue: issue, message: message });
-
-    // Show success state
-    document.getElementById("consultForm").style.display = "none";
-    document.getElementById("consultSuccess").classList.add("visible");
   });
 }
 

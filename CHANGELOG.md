@@ -1,6 +1,15 @@
 # Changelog
 
-## 2026-02-14
+## v1.0 — 2026-02-14
+
+### Formspree Integration & Thank-You Page
+- **Live form submissions** — Both the Consultation Concierge modal (on all pages) and the Staff Contact form (on `staff.html`) now submit to Formspree at `https://formspree.io/f/mpqjddon` via real `<form method="POST">` elements. Previously, submissions only logged to the console.
+- **Proper `name` attributes** — All form inputs carry `name` attributes (`name`, `email`, `phone`, `issue`, `message`, `inquiry`) so Formspree captures every field.
+- **Hidden routing fields** — Each form includes a `_subject` hidden field for email subject lines (e.g., "New Consultation Request" or "Inquiry for [Staff Name]") and a `_next` hidden field that redirects the user to `thank-you.html` after submission.
+- **`thank-you.html` created** — Elegant confirmation page with an animated green checkmark (circle scales in via `ty-pop`, check path draws via `ty-draw` with `stroke-dashoffset`), "Thank You" heading, follow-up message, and a "Back to Home" button styled with the button engine CSS variables.
+- **Duplicate mobile CSS fix** — Merged two duplicate `.bento-grid` blocks in the `@media (max-width: 768px)` breakpoint into a single clean rule.
+
+**Why:** Completes the site's lead capture pipeline — visitor inquiries now reach the firm's inbox via Formspree, and every submission lands on a polished confirmation page. This is the final piece needed for a production-ready v1.0 launch.
 
 ### Bento Grid — 12-Column System
 - **12-column grid** — Replaced `repeat(3, 1fr)` with `repeat(12, 1fr)` on `.bento-grid`. This gives precise fractional control: **Small** = `span 3` (1/4 row), **Medium** = `span 6` (1/2 row), **Large** = `span 12` (full row).

@@ -576,25 +576,27 @@
         // Contact form (pre-filled with staff member name)
         var inquiryFor = 'Inquiry for ' + member.name;
         var formHtml =
-          '<div class="staff-modal-form" id="staffContactForm">' +
+          '<form class="staff-modal-form" id="staffContactForm" action="https://formspree.io/f/mpqjddon" method="POST">' +
             '<h3>Send a Message</h3>' +
-            '<input type="hidden" class="smf-inquiry" value="' + escapeHtmlUtil(inquiryFor) + '">' +
+            '<input type="hidden" name="_subject" value="' + escapeHtmlUtil(inquiryFor) + '">' +
+            '<input type="hidden" name="inquiry" value="' + escapeHtmlUtil(inquiryFor) + '">' +
+            '<input type="hidden" name="_next" value="' + window.location.origin + '/thank-you.html">' +
             '<div class="smf-row">' +
               '<div class="smf-group">' +
                 '<label>Your Name</label>' +
-                '<input type="text" class="smf-name" placeholder="Full name">' +
+                '<input type="text" name="name" required placeholder="Full name">' +
               '</div>' +
               '<div class="smf-group">' +
                 '<label>Your Email</label>' +
-                '<input type="email" class="smf-email" placeholder="you@example.com">' +
+                '<input type="email" name="email" required placeholder="you@example.com">' +
               '</div>' +
             '</div>' +
             '<div class="smf-group">' +
               '<label>Message</label>' +
-              '<textarea class="smf-message" placeholder="How can ' + escapeHtmlUtil(member.name.split(' ')[0]) + ' help you?"></textarea>' +
+              '<textarea name="message" placeholder="How can ' + escapeHtmlUtil(member.name.split(' ')[0]) + ' help you?"></textarea>' +
             '</div>' +
-            '<button class="staff-modal-form-btn" type="button">Send Message</button>' +
-          '</div>';
+            '<button type="submit" class="staff-modal-form-btn">Send Message</button>' +
+          '</form>';
 
         modalDetails.innerHTML =
           '<h2 class="staff-modal-name">' + escapeHtmlUtil(member.name) + '</h2>' +
@@ -603,29 +605,6 @@
           contactHtml +
           formHtml +
           '<p class="staff-modal-bio" style="margin-top:20px;padding-top:20px;border-top:1px solid rgba(0,0,0,0.06)">' + escapeHtmlUtil(member.bio || '') + '</p>';
-
-        // Bind form submit
-        var formEl = modalDetails.querySelector('#staffContactForm');
-        var formBtn = formEl.querySelector('.staff-modal-form-btn');
-        formBtn.addEventListener('click', function() {
-          var name = formEl.querySelector('.smf-name').value.trim();
-          var email = formEl.querySelector('.smf-email').value.trim();
-          var message = formEl.querySelector('.smf-message').value.trim();
-          var inquiry = formEl.querySelector('.smf-inquiry').value;
-
-          if (!name || !email) {
-            if (!name) formEl.querySelector('.smf-name').style.borderColor = '#d63031';
-            if (!email) formEl.querySelector('.smf-email').style.borderColor = '#d63031';
-            setTimeout(function() {
-              formEl.querySelector('.smf-name').style.borderColor = '';
-              formEl.querySelector('.smf-email').style.borderColor = '';
-            }, 1500);
-            return;
-          }
-
-          console.log('Staff Contact:', { inquiry: inquiry, name: name, email: email, message: message });
-          formEl.innerHTML = '<div class="smf-success">Message sent. We\u2019ll be in touch shortly.</div>';
-        });
 
         requestAnimationFrame(function() {
           overlay.classList.add("visible");
