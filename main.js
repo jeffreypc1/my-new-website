@@ -65,8 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ── Ambient motion layer ── */
   initAmbientGlow();
-  initBentoTilt();
-
   /* ── Aurora glow on nav & buttons ── */
   initAuroraGlow();
 
@@ -1207,42 +1205,6 @@ function initAmbientGlow() {
 /* ══════════════════════════════════════════════
    Bento Perspective Tilt
    ══════════════════════════════════════════════ */
-
-function initBentoTilt() {
-  var cards = document.querySelectorAll(".bento-grid .card");
-  var maxTilt = 5; // degrees
-
-  cards.forEach(function(card) {
-    // Inject the Aurora glow layer
-    var glow = document.createElement("div");
-    glow.className = "bento-glow";
-    card.insertBefore(glow, card.firstChild);
-
-    card.addEventListener("mousemove", function(e) {
-      var rect = card.getBoundingClientRect();
-      var px = e.clientX - rect.left;
-      var py = e.clientY - rect.top;
-
-      // Update CSS variables for radial-gradient position
-      card.style.setProperty("--mouse-x", px + "px");
-      card.style.setProperty("--mouse-y", py + "px");
-
-      // Normalized -1 to 1 from center
-      var x = (px / rect.width) * 2 - 1;
-      var y = (py / rect.height) * 2 - 1;
-
-      // rotateY follows x, rotateX is inverted y (tilt toward cursor)
-      var rotateY = x * maxTilt;
-      var rotateX = -y * maxTilt;
-
-      card.style.transform = "perspective(800px) rotateX(" + rotateX + "deg) rotateY(" + rotateY + "deg) translateY(-4px) scale(1.01)";
-    });
-
-    card.addEventListener("mouseleave", function() {
-      card.style.transform = "";
-    });
-  });
-}
 
 /* ══════════════════════════════════════════════
    Aurora Glow (cursor tracking on nav & buttons)

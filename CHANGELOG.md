@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.3 — 2026-02-14
+
+### Categorized Accordion Sidebar
+
+- **Accordion navigation** — The admin sidebar has been reorganized from a flat list of 12 links into 4 collapsible categories plus a top-level Dashboard link:
+  - **Content Management** — Homepage Layout, Pages, Posts, Media
+  - **The Team** — Staff, Testimonials
+  - **Firm Operations** — Locations, Business Hours, Education Logic
+  - **System Settings** — Site Settings, Clock Settings
+- **Single-open accordion** — Only one category can be open at a time. Clicking a group header slides open its items (`max-height` transition over `0.35s`) and closes any other open group. A chevron icon rotates `180deg` when the group is expanded.
+- **Glassmorphism active state** — The open category header uses `rgba(59, 130, 246, 0.06)` with `backdrop-filter: blur(8px)`, giving it a subtle frosted-glass highlight.
+- **Aurora Blue active link** — The currently active page link within a category is highlighted with `#3b82f6` (Aurora Blue) text color and `font-weight: 500`, clearly indicating the current section.
+- **Category icons** — Each group header and the Dashboard link now have an 18px SVG icon (document for Content, users for Team, gear for Operations, shield for System, grid for Dashboard).
+- **Auto-open on click** — Clicking a sub-item both activates that section and auto-opens its parent accordion group, so navigating directly always shows the correct group expanded.
+- **Mobile collapse** — On screens `< 768px`, the sidebar narrows to `56px` and shows only the category icons. Group labels, chevrons, and sub-items are hidden. The sidebar becomes a simple icon rail for space efficiency.
+
+**Why:** A flat list of 12+ sidebar links was becoming unwieldy as the admin panel grew. The accordion groups related features into logical categories, reducing visual clutter while keeping everything one click away. The glassmorphism active state and Aurora Blue highlight maintain the site's premium design language inside the admin panel.
+
+## v2.2 — 2026-02-14
+
+### Clean Lift Bento Interaction
+
+- **3D tilt removed** — Deleted the `initBentoTilt()` function from main.js and all supporting CSS (`perspective: 1200px` on `.bento-grid`, `transform-style: preserve-3d` on `.card`, and the `--mouse-x`/`--mouse-y` driven `bento-glow` radial-gradient layers). The perspective-based rotation on mousemove is gone entirely.
+- **Clean Lift hover** — Cards now use a refined hover state: `translateY(-4px) scale(1.02)` with a deep soft shadow (`0 4px 12px rgba(0,0,0,0.06)`, `0 16px 48px rgba(0,0,0,0.10)`). The transition uses `ease-out` over `0.3s` for both lift and return, creating a smooth, tactile feel without any 3D distortion.
+- **Bento Deep-Dive modals active** — Every bento tile on the homepage is clickable. Clicking any card triggers the glassmorphism modal with blurred/dimmed background, aurora bloom, and the tile's high-res Modal Image and Full Description from the admin panel (falling back to the card's short description if no full description is set).
+- **CSS cleanup** — Removed `.bento-glow`, `.card:hover .bento-glow`, dark-mode glow variant, and the `--mouse-x`/`--mouse-y` CSS custom properties from `.card`. The card transition changed from the broad `all 0.4s` to targeted `transform 0.3s ease-out, box-shadow 0.3s ease-out` for better performance.
+
+**Why:** The 3D tilt was visually busy and distracted from the content. The Clean Lift is a subtler, more Apple-like interaction — a gentle rise and shadow deepening that signals interactivity without overwhelming the eye. Paired with the click-to-modal, the bento grid now serves as both a visual summary and a gateway to detailed practice area content.
+
 ## v2.1 — 2026-02-14
 
 ### Dynamic Clock Controller, Nav Refinement & Bento Deep-Dive
