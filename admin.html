@@ -1111,6 +1111,255 @@
       color: var(--dark);
     }
 
+    /* ── Education Picklist Cards ── */
+
+    .edu-cards-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .edu-card {
+      background: rgba(255,255,255,0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .edu-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .edu-card-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--dark);
+    }
+
+    .edu-card-header .edu-card-count {
+      font-size: 0.8rem;
+      color: var(--mid-gray);
+      background: var(--light-gray);
+      padding: 2px 10px;
+      border-radius: 12px;
+    }
+
+    .edu-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--white);
+      margin-bottom: 8px;
+      border: 1px solid var(--light-gray);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .edu-item:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.10);
+    }
+
+    .edu-item-label {
+      flex: 1;
+      font-size: 0.925rem;
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .edu-item-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0.4;
+      transition: opacity 0.15s ease;
+    }
+
+    .edu-item:hover .edu-item-actions {
+      opacity: 1;
+    }
+
+    .edu-icon-btn {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--mid-gray);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .edu-icon-btn:hover {
+      background: var(--light-gray);
+      color: var(--dark);
+    }
+
+    .edu-icon-btn.danger:hover {
+      background: #fef2f2;
+      color: #ef4444;
+    }
+
+    .edu-add-btn {
+      width: 100%;
+      padding: 10px;
+      border: 2px dashed #3b82f6;
+      background: rgba(59,130,246,0.04);
+      color: #3b82f6;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      margin-top: 4px;
+    }
+
+    .edu-add-btn:hover {
+      background: rgba(59,130,246,0.10);
+    }
+
+    .edu-inline-form {
+      background: var(--white);
+      border: 2px solid #3b82f6;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .edu-inline-form input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+
+    .edu-inline-form .btn {
+      flex-shrink: 0;
+    }
+
+    /* ── Logic Map ── */
+
+    .logic-map-section {
+      margin-top: 8px;
+    }
+
+    .logic-map-section h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .logic-map-section .subtitle {
+      margin-bottom: 20px;
+    }
+
+    .logic-map-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .logic-map-group {
+      background: rgba(255,255,255,0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .logic-map-group-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--light-gray);
+    }
+
+    .logic-map-goal {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: var(--white);
+      border: 1px solid var(--light-gray);
+      border-radius: 10px;
+    }
+
+    .logic-map-goal:last-child {
+      margin-bottom: 0;
+    }
+
+    .logic-map-goal-label {
+      font-size: 0.925rem;
+      font-weight: 600;
+      color: #3b82f6;
+      margin-bottom: 12px;
+    }
+
+    .logic-map-field {
+      margin-bottom: 10px;
+    }
+
+    .logic-map-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .logic-map-field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--mid-gray);
+      margin-bottom: 4px;
+    }
+
+    .logic-map-field input,
+    .logic-map-field textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--light-gray);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      transition: border-color 0.15s ease;
+    }
+
+    .logic-map-field input:focus,
+    .logic-map-field textarea:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+
+    .logic-map-field textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .logic-map-field .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .logic-map-save-row {
+      margin-top: 20px;
+      text-align: right;
+    }
+
     /* ── Responsive ── */
 
     @media (max-width: 768px) {
@@ -1162,6 +1411,12 @@
       }
       .media-url {
         max-width: 140px;
+      }
+      .edu-cards-row {
+        grid-template-columns: 1fr;
+      }
+      .logic-map-field .form-row {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -1234,7 +1489,7 @@
         </button>
         <div class="sidebar-group-items">
           <a class="sidebar-link" data-section="settings"><span>Site Settings</span></a>
-          <a class="sidebar-link" data-section="navvisibility"><span>Nav & Visibility</span></a>
+          <a class="sidebar-link" data-section="navfooter"><span>Navigation & Footer</span></a>
           <a class="sidebar-link" data-section="contactconfig"><span>Contact Config</span></a>
           <a class="sidebar-link" data-section="clocksettings"><span>Clock Settings</span></a>
           <a class="sidebar-link" data-section="translation"><span>Translation</span></a>
@@ -1370,7 +1625,7 @@
       </div>
 
       <div style="margin-top:24px">
-        <button class="btn btn-secondary" id="btnClearAnalytics">Clear All Analytics Data</button>
+        <button class="btn btn-secondary" id="btnClearAnalytics">Clear Test Data</button>
       </div>
     </div>
 
@@ -1891,43 +2146,122 @@
     </div>
 
     <!-- ── Navigation & Visibility ── -->
-    <div id="navvisibility" class="section">
-      <h1>Navigation & Visibility</h1>
-      <p class="subtitle">Toggle pages on or off. Disabled pages are hidden from the navigation bar across the entire site.</p>
+    <div id="navfooter" class="section">
+      <h1>Navigation & Footer</h1>
+      <p class="subtitle">Control which links appear in the header navigation and footer, configure the language globe, and set copyright text.</p>
 
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:24px;margin-bottom:12px;letter-spacing:-0.02em">Header Navigation</h2>
       <div class="panel">
-        <div style="display:grid;gap:16px">
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:16px">Toggle links on or off in the top navigation bar.</p>
+        <div style="display:grid;gap:12px">
           <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
-            <span style="font-size:0.875rem;font-weight:500">Education Hub</span>
-            <input type="checkbox" id="toggleEducation" checked>
+            <span style="font-size:0.875rem;font-weight:500">Home</span>
+            <input type="checkbox" id="nfNavHome">
           </label>
           <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
-            <span style="font-size:0.875rem;font-weight:500">Locations</span>
-            <input type="checkbox" id="toggleLocations" checked>
+            <span style="font-size:0.875rem;font-weight:500">Services</span>
+            <input type="checkbox" id="nfNavServices">
           </label>
           <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
-            <span style="font-size:0.875rem;font-weight:500">Staff Page</span>
-            <input type="checkbox" id="toggleStaff" checked>
+            <span style="font-size:0.875rem;font-weight:500">Staff</span>
+            <input type="checkbox" id="nfNavStaff">
           </label>
           <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
             <span style="font-size:0.875rem;font-weight:500">Testimonials</span>
-            <input type="checkbox" id="toggleTestimonials" checked>
+            <input type="checkbox" id="nfNavTestimonials">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Education</span>
+            <input type="checkbox" id="nfNavEducation">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Locations</span>
+            <input type="checkbox" id="nfNavLocations">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Careers</span>
+            <input type="checkbox" id="nfNavCareers">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Book a Consultation (CTA)</span>
+            <input type="checkbox" id="nfNavBookConsultation">
           </label>
         </div>
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Language Globe</h2>
+      <div class="panel">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:normal">
+          <input type="checkbox" id="nfGlobeVisible">
+          Show language globe on the site
+        </label>
+        <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:8px">The globe icon appears as a floating button in the top-right corner of the hero section.</p>
       </div>
 
       <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Navigation Layout</h2>
       <div class="panel">
         <div class="form-group">
-          <label for="maxNavItemsSlider">Max Nav Items: <span id="maxNavItemsValue">5</span></label>
-          <input type="range" id="maxNavItemsSlider" min="2" max="8" value="5" style="width:100%">
+          <label for="nfMaxNavItems">Max Nav Items: <span id="nfMaxNavItemsValue">5</span></label>
+          <input type="range" id="nfMaxNavItems" min="2" max="8" value="5" style="width:100%">
           <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Links beyond this limit collapse into a "More" dropdown.</p>
         </div>
       </div>
 
-      <div style="margin-top:20px">
-          <button class="btn btn-primary" id="btnSaveToggles">Save Visibility Settings</button>
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Footer Links</h2>
+      <div class="panel">
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:16px">Toggle links on or off in the site footer.</p>
+        <div style="display:grid;gap:12px">
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Home</span>
+            <input type="checkbox" id="nfFooterHome">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Services</span>
+            <input type="checkbox" id="nfFooterServices">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Our Team</span>
+            <input type="checkbox" id="nfFooterStaff">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Testimonials</span>
+            <input type="checkbox" id="nfFooterTestimonials">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Education</span>
+            <input type="checkbox" id="nfFooterEducation">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Locations</span>
+            <input type="checkbox" id="nfFooterLocations">
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--off-white);border-radius:var(--radius-sm);cursor:pointer">
+            <span style="font-size:0.875rem;font-weight:500">Careers</span>
+            <input type="checkbox" id="nfFooterCareers">
+          </label>
         </div>
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Copyright Statement</h2>
+      <div class="panel">
+        <div class="form-group">
+          <label for="nfCopyright">Copyright Text</label>
+          <input type="text" id="nfCopyright" placeholder="&copy; 2026 O'Brien Immigration Law. All rights reserved.">
+        </div>
+      </div>
+
+      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Legal Disclaimer</h2>
+      <div class="panel">
+        <div class="form-group">
+          <label for="nfDisclaimer">Disclaimer Text</label>
+          <textarea id="nfDisclaimer" rows="3" placeholder="Optional legal disclaimer that appears below the copyright in the footer"></textarea>
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Leave blank to hide. Appears below the copyright text on all pages.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:24px">
+        <button class="btn btn-primary" id="btnSaveNavFooter">Save Navigation & Footer Settings</button>
+      </div>
     </div>
 
     <!-- ── Contact Config ── -->
@@ -1979,16 +2313,6 @@
           <input type="text" id="clockLabelInput" placeholder="e.g. San Francisco, Berkeley, Oakland">
         </div>
 
-        <div class="form-group">
-          <label for="langPositionSelect">Language Selector Position</label>
-          <select id="langPositionSelect">
-            <option value="nav">Nav Bar</option>
-            <option value="hero-top-left">Hero Top Left</option>
-            <option value="hero-top-right">Hero Top Right</option>
-          </select>
-          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Choose where the globe language button appears on the public site.</p>
-        </div>
-
         <div style="margin-top:20px">
           <button class="btn btn-primary" id="btnSaveClockSettings">Save Clock Settings</button>
         </div>
@@ -2018,69 +2342,41 @@
       <h1>Education Logic</h1>
       <p class="subtitle">Configure the Path Finder tool on the Education page. Edit status categories, goals, and result text without touching code.</p>
 
-      <!-- Path list -->
-      <div class="panel" id="eduPathListPanel">
-        <div class="page-list-header">
-          <h2>Status Categories ("I am...")</h2>
-          <button class="btn btn-primary btn-sm" id="btnAddPath">Add Status</button>
+      <!-- Picklist Cards -->
+      <div class="edu-cards-row">
+        <!-- Status Options Card -->
+        <div class="edu-card">
+          <div class="edu-card-header">
+            <h2>Status Options <span style="font-weight:400;color:var(--mid-gray)">("I am a...")</span></h2>
+            <span class="edu-card-count" id="eduStatusCount">0</span>
+          </div>
+          <div id="eduStatusList"></div>
+          <div id="eduStatusInlineForm" style="display:none"></div>
+          <button class="edu-add-btn" id="btnAddStatus">+ Add New Status</button>
         </div>
-        <div id="eduPathList">
-          <div class="empty-state">Loading...</div>
+
+        <!-- Goal Options Card -->
+        <div class="edu-card">
+          <div class="edu-card-header">
+            <h2>Goal Options <span style="font-weight:400;color:var(--mid-gray)">("I want to...")</span></h2>
+            <span class="edu-card-count" id="eduGoalCount">0</span>
+          </div>
+          <p style="font-size:0.8rem;color:var(--mid-gray);margin-bottom:12px" id="eduGoalHint">Select a status to view its goals.</p>
+          <div id="eduGoalListNew"></div>
+          <div id="eduGoalInlineForm" style="display:none"></div>
+          <button class="edu-add-btn" id="btnAddGoal" style="display:none">+ Add New Goal</button>
         </div>
       </div>
 
-      <!-- Goal form (shown when editing a path's goals) -->
-      <div class="panel page-form-panel" id="eduGoalPanel">
-        <h2 id="eduGoalPanelTitle">Goals for: —</h2>
-        <p style="font-size:0.875rem;color:var(--mid-gray);margin-bottom:16px">These are the "And I want to..." options shown when a visitor selects this status.</p>
-
-        <div id="eduGoalList" style="margin-bottom:20px">
-          <div class="empty-state">No goals yet.</div>
+      <!-- Logic Map -->
+      <div class="logic-map-section panel">
+        <h2>Logic Map</h2>
+        <p class="subtitle">Edit the result text shown for each Status + Goal combination.</p>
+        <div id="logicMapContainer">
+          <div class="empty-state">Loading logic map...</div>
         </div>
-
-        <div style="border-top:1px solid var(--light-gray);padding-top:20px;margin-top:8px">
-          <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px">Add / Edit Goal</h3>
-          <input type="hidden" id="eduGoalEditId" value="">
-          <div class="form-group">
-            <label for="eduGoalLabel">Goal Label</label>
-            <input type="text" id="eduGoalLabel" placeholder='e.g. "Sponsor a spouse"'>
-          </div>
-          <div class="form-group">
-            <label for="eduGoalProcess">Process Description</label>
-            <textarea id="eduGoalProcess" placeholder="Explain the typical process..." style="min-height:100px"></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="eduGoalTimeline">Estimated Timeline</label>
-              <input type="text" id="eduGoalTimeline" placeholder="e.g. 12–18 months">
-            </div>
-            <div class="form-group">
-              <label for="eduGoalCta">CTA Button Text</label>
-              <input type="text" id="eduGoalCta" placeholder="Request Deep Dive" value="Request Deep Dive">
-            </div>
-          </div>
-          <div style="display:flex;gap:12px">
-            <button class="btn btn-primary btn-sm" id="btnSaveGoal">Save Goal</button>
-            <button class="btn btn-secondary btn-sm" id="btnCancelGoal">Cancel</button>
-          </div>
-        </div>
-
-        <div style="margin-top:20px">
-          <button class="btn btn-secondary" id="btnBackToPaths">&larr; Back to Status List</button>
-        </div>
-      </div>
-
-      <!-- Path form (add/edit a status) -->
-      <div class="panel page-form-panel" id="eduPathFormPanel">
-        <h2 id="eduPathFormTitle">Add Status</h2>
-        <input type="hidden" id="eduPathEditId" value="">
-        <div class="form-group">
-          <label for="eduPathLabel">Status Label</label>
-          <input type="text" id="eduPathLabel" placeholder='e.g. "A U.S. Citizen"'>
-        </div>
-        <div style="display:flex;gap:12px">
-          <button class="btn btn-primary" id="btnSavePath">Save Status</button>
-          <button class="btn btn-secondary" id="btnCancelPath">Cancel</button>
+        <div class="logic-map-save-row">
+          <button class="btn btn-primary" id="btnSaveLogicMap">Save All Changes</button>
         </div>
       </div>
     </div>
@@ -4056,35 +4352,124 @@
        Navigation & Visibility Toggles
        ══════════════════════════════════════════════ */
 
-    (function initNavVisibility() {
+    (function initNavFooter() {
+      // Read centralized settings (with migration fallback)
       var stored = null;
-      try { stored = JSON.parse(localStorage.getItem("sitePageToggles") || "null"); } catch (e) {}
-      var toggles = stored || { education: true, locations: true, staff: true, testimonials: true };
+      try { stored = JSON.parse(localStorage.getItem("siteNavFooterSettings") || "null"); } catch (e) {}
 
-      document.getElementById("toggleEducation").checked = toggles.education !== false;
-      document.getElementById("toggleLocations").checked = toggles.locations !== false;
-      document.getElementById("toggleStaff").checked = toggles.staff !== false;
-      document.getElementById("toggleTestimonials").checked = toggles.testimonials !== false;
+      // Migration: construct defaults from existing settings
+      var toggles = null;
+      try { toggles = JSON.parse(localStorage.getItem("sitePageToggles") || "null"); } catch (e) {}
+      toggles = toggles || { education: true, locations: true, staff: true, testimonials: true };
 
-      var slider = document.getElementById("maxNavItemsSlider");
-      var sliderLabel = document.getElementById("maxNavItemsValue");
-      var maxNav = toggles.maxNavItems || 5;
+      var defaults = {
+        nav: {
+          home:             { visible: false, label: "Home",                href: "index.html" },
+          services:         { visible: true,  label: "Services",            href: "index.html#services-grid" },
+          staff:            { visible: toggles.staff !== false,             label: "Staff",               href: "staff.html" },
+          testimonials:     { visible: toggles.testimonials !== false,      label: "Testimonials",        href: "testimonials.html" },
+          education:        { visible: toggles.education !== false,         label: "Education",           href: "education.html" },
+          locations:        { visible: toggles.locations !== false,         label: "Locations",           href: "locations.html" },
+          careers:          { visible: false, label: "Careers",             href: "staff.html" },
+          bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
+        },
+        globe: { visible: true, position: "hero-top-right" },
+        maxNavItems: toggles.maxNavItems || 5,
+        footer: {
+          home:         { visible: true,  label: "Home",         href: "index.html" },
+          services:     { visible: false, label: "Services",     href: "index.html#services-grid" },
+          staff:        { visible: true,  label: "Our Team",     href: "staff.html" },
+          testimonials: { visible: true,  label: "Testimonials", href: "testimonials.html" },
+          education:    { visible: true,  label: "Education",    href: "education.html" },
+          locations:    { visible: true,  label: "Locations",    href: "locations.html" },
+          careers:      { visible: true,  label: "Careers",      href: "staff.html" }
+        },
+        copyright: "\u00a9 2026 O\u2019Brien Immigration Law. All rights reserved.",
+        disclaimer: ""
+      };
+
+      var settings = stored || defaults;
+
+      // Populate nav checkboxes
+      document.getElementById("nfNavHome").checked = settings.nav.home && settings.nav.home.visible;
+      document.getElementById("nfNavServices").checked = settings.nav.services && settings.nav.services.visible;
+      document.getElementById("nfNavStaff").checked = settings.nav.staff && settings.nav.staff.visible;
+      document.getElementById("nfNavTestimonials").checked = settings.nav.testimonials && settings.nav.testimonials.visible;
+      document.getElementById("nfNavEducation").checked = settings.nav.education && settings.nav.education.visible;
+      document.getElementById("nfNavLocations").checked = settings.nav.locations && settings.nav.locations.visible;
+      document.getElementById("nfNavCareers").checked = settings.nav.careers && settings.nav.careers.visible;
+      document.getElementById("nfNavBookConsultation").checked = settings.nav.bookConsultation && settings.nav.bookConsultation.visible;
+
+      // Globe
+      document.getElementById("nfGlobeVisible").checked = settings.globe && settings.globe.visible;
+
+      // Max nav items slider
+      var slider = document.getElementById("nfMaxNavItems");
+      var sliderLabel = document.getElementById("nfMaxNavItemsValue");
+      var maxNav = settings.maxNavItems || 5;
       slider.value = maxNav;
       sliderLabel.textContent = maxNav;
       slider.addEventListener("input", function() {
         sliderLabel.textContent = slider.value;
       });
 
-      document.getElementById("btnSaveToggles").addEventListener("click", function() {
+      // Footer checkboxes
+      document.getElementById("nfFooterHome").checked = settings.footer.home && settings.footer.home.visible;
+      document.getElementById("nfFooterServices").checked = settings.footer.services && settings.footer.services.visible;
+      document.getElementById("nfFooterStaff").checked = settings.footer.staff && settings.footer.staff.visible;
+      document.getElementById("nfFooterTestimonials").checked = settings.footer.testimonials && settings.footer.testimonials.visible;
+      document.getElementById("nfFooterEducation").checked = settings.footer.education && settings.footer.education.visible;
+      document.getElementById("nfFooterLocations").checked = settings.footer.locations && settings.footer.locations.visible;
+      document.getElementById("nfFooterCareers").checked = settings.footer.careers && settings.footer.careers.visible;
+
+      // Copyright & disclaimer
+      document.getElementById("nfCopyright").value = settings.copyright || "";
+      document.getElementById("nfDisclaimer").value = settings.disclaimer || "";
+
+      // Save handler
+      document.getElementById("btnSaveNavFooter").addEventListener("click", function() {
+        var navBase = settings.nav; // preserve hrefs and labels from existing data
+        var footerBase = settings.footer;
+
         var data = {
-          education: document.getElementById("toggleEducation").checked,
-          locations: document.getElementById("toggleLocations").checked,
-          staff: document.getElementById("toggleStaff").checked,
-          testimonials: document.getElementById("toggleTestimonials").checked,
-          maxNavItems: parseInt(slider.value, 10)
+          nav: {
+            home:             { visible: document.getElementById("nfNavHome").checked,             label: navBase.home.label,             href: navBase.home.href },
+            services:         { visible: document.getElementById("nfNavServices").checked,         label: navBase.services.label,         href: navBase.services.href },
+            staff:            { visible: document.getElementById("nfNavStaff").checked,            label: navBase.staff.label,            href: navBase.staff.href },
+            testimonials:     { visible: document.getElementById("nfNavTestimonials").checked,     label: navBase.testimonials.label,     href: navBase.testimonials.href },
+            education:        { visible: document.getElementById("nfNavEducation").checked,        label: navBase.education.label,        href: navBase.education.href },
+            locations:        { visible: document.getElementById("nfNavLocations").checked,        label: navBase.locations.label,        href: navBase.locations.href },
+            careers:          { visible: document.getElementById("nfNavCareers").checked,          label: navBase.careers.label,          href: navBase.careers.href },
+            bookConsultation: { visible: document.getElementById("nfNavBookConsultation").checked, label: navBase.bookConsultation.label, href: navBase.bookConsultation.href, isCta: true }
+          },
+          globe: { visible: document.getElementById("nfGlobeVisible").checked, position: "hero-top-right" },
+          maxNavItems: parseInt(slider.value, 10),
+          footer: {
+            home:         { visible: document.getElementById("nfFooterHome").checked,         label: footerBase.home.label,         href: footerBase.home.href },
+            services:     { visible: document.getElementById("nfFooterServices").checked,     label: footerBase.services.label,     href: footerBase.services.href },
+            staff:        { visible: document.getElementById("nfFooterStaff").checked,        label: footerBase.staff.label,        href: footerBase.staff.href },
+            testimonials: { visible: document.getElementById("nfFooterTestimonials").checked, label: footerBase.testimonials.label, href: footerBase.testimonials.href },
+            education:    { visible: document.getElementById("nfFooterEducation").checked,    label: footerBase.education.label,    href: footerBase.education.href },
+            locations:    { visible: document.getElementById("nfFooterLocations").checked,    label: footerBase.locations.label,    href: footerBase.locations.href },
+            careers:      { visible: document.getElementById("nfFooterCareers").checked,      label: footerBase.careers.label,      href: footerBase.careers.href }
+          },
+          copyright: document.getElementById("nfCopyright").value.trim(),
+          disclaimer: document.getElementById("nfDisclaimer").value.trim()
         };
-        localStorage.setItem("sitePageToggles", JSON.stringify(data));
-        showToast("Visibility settings saved");
+
+        localStorage.setItem("siteNavFooterSettings", JSON.stringify(data));
+
+        // Backward-compatible write to sitePageToggles so enforcePageToggles() keeps working
+        var backcompat = {
+          education: data.nav.education.visible,
+          locations: data.nav.locations.visible,
+          staff: data.nav.staff.visible,
+          testimonials: data.nav.testimonials.visible,
+          maxNavItems: data.maxNavItems
+        };
+        localStorage.setItem("sitePageToggles", JSON.stringify(backcompat));
+
+        showToast("Navigation & Footer settings saved");
       });
     })();
 
@@ -4143,19 +4528,17 @@
     (function initClockSettings() {
       var stored = null;
       try { stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null"); } catch (e) {}
-      var settings = stored || { visible: true, position: "center", label: "San Francisco", langPosition: "hero-top-right" };
+      var settings = stored || { visible: true, position: "center", label: "San Francisco" };
 
       document.getElementById("clockVisibleToggle").checked = settings.visible !== false;
       document.getElementById("clockPositionSelect").value = settings.position || "center";
       document.getElementById("clockLabelInput").value = settings.label || "San Francisco";
-      document.getElementById("langPositionSelect").value = settings.langPosition || "nav";
 
       document.getElementById("btnSaveClockSettings").addEventListener("click", function() {
         var data = {
           visible: document.getElementById("clockVisibleToggle").checked,
           position: document.getElementById("clockPositionSelect").value,
-          label: document.getElementById("clockLabelInput").value.trim() || "San Francisco",
-          langPosition: document.getElementById("langPositionSelect").value
+          label: document.getElementById("clockLabelInput").value.trim() || "San Francisco"
         };
         localStorage.setItem("siteClockSettings", JSON.stringify(data));
         showToast("Clock settings saved");
@@ -4183,7 +4566,7 @@
     })();
 
     /* ══════════════════════════════════════════════
-       Education Logic (Path Finder)
+       Education Logic (Path Finder) — Picklist UI
        ══════════════════════════════════════════════ */
 
     function getPathFinderDataAdmin() {
@@ -4191,7 +4574,6 @@
         var saved = JSON.parse(localStorage.getItem("sitePathFinder") || "null");
         if (saved && saved.paths) return saved;
       } catch (e) {}
-      // Return defaults
       return getDefaultPathsAdmin();
     }
 
@@ -4201,28 +4583,28 @@
           {
             id: "citizen", label: "A U.S. Citizen",
             goals: [
-              { id: "citizen-spouse", label: "Sponsor a spouse", process: "File Form I-130 with USCIS. As an immediate relative, your spouse has no visa queue wait.", timeline: "12\u201318 months", cta: "Request Deep Dive" },
-              { id: "citizen-parent", label: "Sponsor a parent", process: "File Form I-130. Parents of U.S. citizens are immediate relatives.", timeline: "12\u201318 months", cta: "Request Deep Dive" },
-              { id: "citizen-fiance", label: "Apply for a fianc\u00e9(e) visa", process: "File Form I-129F with USCIS for a K-1 visa.", timeline: "8\u201314 months", cta: "Request Deep Dive" }
+              { id: "citizen-spouse", label: "Sponsor a spouse", process: "File Form I-130 with USCIS. As an immediate relative, your spouse has no visa queue wait.", timeline: "12–18 months", cta: "Request Deep Dive" },
+              { id: "citizen-parent", label: "Sponsor a parent", process: "File Form I-130. Parents of U.S. citizens are immediate relatives.", timeline: "12–18 months", cta: "Request Deep Dive" },
+              { id: "citizen-fiance", label: "Apply for a fiancé(e) visa", process: "File Form I-129F with USCIS for a K-1 visa.", timeline: "8–14 months", cta: "Request Deep Dive" }
             ]
           },
           {
             id: "lpr", label: "A Lawful Permanent Resident",
             goals: [
-              { id: "lpr-spouse", label: "Sponsor a spouse", process: "File Form I-130. Spouses of LPRs fall under F2A preference.", timeline: "2\u20133 years", cta: "Request Deep Dive" },
-              { id: "lpr-naturalize", label: "Apply for U.S. citizenship", process: "File Form N-400 after 5 years as an LPR.", timeline: "8\u201314 months", cta: "Request Deep Dive" }
+              { id: "lpr-spouse", label: "Sponsor a spouse", process: "File Form I-130. Spouses of LPRs fall under F2A preference.", timeline: "2–3 years", cta: "Request Deep Dive" },
+              { id: "lpr-naturalize", label: "Apply for U.S. citizenship", process: "File Form N-400 after 5 years as an LPR.", timeline: "8–14 months", cta: "Request Deep Dive" }
             ]
           },
           {
             id: "undocumented", label: "Undocumented / No Status",
             goals: [
-              { id: "undoc-asylum", label: "Apply for asylum", process: "File Form I-589 within one year of arrival.", timeline: "6 months \u2013 4+ years", cta: "Request Deep Dive" }
+              { id: "undoc-asylum", label: "Apply for asylum", process: "File Form I-589 within one year of arrival.", timeline: "6 months – 4+ years", cta: "Request Deep Dive" }
             ]
           },
           {
             id: "visa", label: "A Visa Holder",
             goals: [
-              { id: "visa-greencard", label: "Adjust to permanent residence", process: "Employer files PERM, then I-140, then I-485.", timeline: "1\u20135+ years", cta: "Request Deep Dive" }
+              { id: "visa-greencard", label: "Adjust to permanent residence", process: "Employer files PERM, then I-140, then I-485.", timeline: "1–5+ years", cta: "Request Deep Dive" }
             ]
           }
         ]
@@ -4233,224 +4615,291 @@
       localStorage.setItem("sitePathFinder", JSON.stringify(data));
     }
 
-    var eduEditingPathId = null;
+    var eduSelectedStatusId = null;
 
-    var eduPathListPanel = document.getElementById("eduPathListPanel");
-    var eduGoalPanel = document.getElementById("eduGoalPanel");
-    var eduPathFormPanel = document.getElementById("eduPathFormPanel");
+    /* -- SVG icons -- */
+    var eduIconEdit = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    var eduIconTrash = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
-    function showEduPanel(panel) {
-      eduPathListPanel.style.display = "none";
-      eduGoalPanel.style.display = "none";
-      eduPathFormPanel.style.display = "none";
-      panel.style.display = "";
-    }
-
-    function renderEduPathList() {
-      showEduPanel(eduPathListPanel);
+    /* -- Render Status List -- */
+    function renderEduStatusList() {
       var data = getPathFinderDataAdmin();
-      var container = document.getElementById("eduPathList");
+      var container = document.getElementById("eduStatusList");
+      document.getElementById("eduStatusCount").textContent = data.paths.length;
 
       if (data.paths.length === 0) {
-        container.innerHTML = '<div class="empty-state">No status categories yet. Click "Add Status" to create one.</div>';
+        container.innerHTML = '<div class="empty-state" style="padding:20px">No status options yet.</div>';
         return;
       }
 
       container.innerHTML = data.paths.map(function(p) {
-        return '<div class="page-row" data-id="' + escapeHtml(p.id) + '">' +
-          '<div class="page-row-info">' +
-            '<div class="page-row-title">' + escapeHtml(p.label) + '</div>' +
-            '<div class="page-row-slug">' + p.goals.length + ' goal' + (p.goals.length !== 1 ? 's' : '') + '</div>' +
-          '</div>' +
-          '<div class="page-row-actions">' +
-            '<button class="btn btn-secondary btn-sm btn-edu-goals">Goals</button>' +
-            '<button class="btn btn-secondary btn-sm btn-edu-edit">Edit</button>' +
-            '<button class="btn btn-danger btn-sm btn-edu-delete">Delete</button>' +
+        var isActive = p.id === eduSelectedStatusId;
+        return '<div class="edu-item' + (isActive ? '" style="border-color:#3b82f6;background:rgba(59,130,246,0.04)"' : '"') + ' data-id="' + escapeHtml(p.id) + '">' +
+          '<span class="edu-item-label" style="cursor:pointer">' + escapeHtml(p.label) + '</span>' +
+          '<span style="font-size:0.75rem;color:var(--mid-gray);margin-right:8px">' + p.goals.length + ' goal' + (p.goals.length !== 1 ? 's' : '') + '</span>' +
+          '<div class="edu-item-actions">' +
+            '<button class="edu-icon-btn edu-status-edit" title="Edit">' + eduIconEdit + '</button>' +
+            '<button class="edu-icon-btn danger edu-status-delete" title="Delete">' + eduIconTrash + '</button>' +
           '</div>' +
         '</div>';
       }).join('');
 
-      container.querySelectorAll(".btn-edu-goals").forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          var id = btn.closest(".page-row").dataset.id;
-          openGoalEditor(id);
+      // Click label to select status and show goals
+      container.querySelectorAll(".edu-item-label").forEach(function(lbl) {
+        lbl.addEventListener("click", function() {
+          var id = lbl.closest(".edu-item").dataset.id;
+          eduSelectedStatusId = id;
+          renderEduStatusList();
+          renderEduGoalList();
         });
       });
 
-      container.querySelectorAll(".btn-edu-edit").forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          var id = btn.closest(".page-row").dataset.id;
+      // Edit button
+      container.querySelectorAll(".edu-status-edit").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var id = btn.closest(".edu-item").dataset.id;
           var data = getPathFinderDataAdmin();
           var path = data.paths.find(function(p) { return p.id === id; });
           if (!path) return;
-          document.getElementById("eduPathEditId").value = path.id;
-          document.getElementById("eduPathLabel").value = path.label;
-          document.getElementById("eduPathFormTitle").textContent = "Edit Status";
-          showEduPanel(eduPathFormPanel);
+          showStatusInlineForm(path.label, id);
         });
       });
 
-      container.querySelectorAll(".btn-edu-delete").forEach(function(btn) {
-        btn.addEventListener("click", function() {
+      // Delete button
+      container.querySelectorAll(".edu-status-delete").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
           if (!confirm("Delete this status and all its goals?")) return;
-          var id = btn.closest(".page-row").dataset.id;
+          var id = btn.closest(".edu-item").dataset.id;
           var data = getPathFinderDataAdmin();
           data.paths = data.paths.filter(function(p) { return p.id !== id; });
           savePathFinderDataAdmin(data);
-          renderEduPathList();
+          if (eduSelectedStatusId === id) eduSelectedStatusId = null;
+          renderEduStatusList();
+          renderEduGoalList();
+          renderLogicMap();
           showToast("Status deleted");
         });
       });
     }
 
-    // Add path button
-    document.getElementById("btnAddPath").addEventListener("click", function() {
-      document.getElementById("eduPathEditId").value = "";
-      document.getElementById("eduPathLabel").value = "";
-      document.getElementById("eduPathFormTitle").textContent = "Add Status";
-      showEduPanel(eduPathFormPanel);
-    });
+    /* -- Status Inline Form -- */
+    function showStatusInlineForm(value, editId) {
+      var formEl = document.getElementById("eduStatusInlineForm");
+      formEl.style.display = "";
+      formEl.innerHTML = '<div class="edu-inline-form">' +
+        '<input type="text" id="eduStatusInlineInput" placeholder="Status label..." value="' + escapeHtml(value || '') + '">' +
+        '<button class="btn btn-primary btn-sm" id="eduStatusInlineSave">' + (editId ? 'Update' : 'Add') + '</button>' +
+        '<button class="btn btn-secondary btn-sm" id="eduStatusInlineCancel">Cancel</button>' +
+      '</div>';
 
-    document.getElementById("btnCancelPath").addEventListener("click", function() {
-      renderEduPathList();
-    });
+      document.getElementById("eduStatusInlineInput").focus();
 
-    document.getElementById("btnSavePath").addEventListener("click", function() {
-      var label = document.getElementById("eduPathLabel").value.trim();
-      if (!label) { showToast("Label is required"); return; }
+      document.getElementById("eduStatusInlineSave").addEventListener("click", function() {
+        var label = document.getElementById("eduStatusInlineInput").value.trim();
+        if (!label) { showToast("Label is required"); return; }
+        var data = getPathFinderDataAdmin();
+        if (editId) {
+          var path = data.paths.find(function(p) { return p.id === editId; });
+          if (path) path.label = label;
+        } else {
+          data.paths.push({ id: generateId(), label: label, goals: [] });
+        }
+        savePathFinderDataAdmin(data);
+        hideStatusInlineForm();
+        renderEduStatusList();
+        renderLogicMap();
+        showToast(editId ? "Status updated" : "Status added");
+      });
 
-      var data = getPathFinderDataAdmin();
-      var editId = document.getElementById("eduPathEditId").value;
-
-      if (editId) {
-        var path = data.paths.find(function(p) { return p.id === editId; });
-        if (path) path.label = label;
-      } else {
-        data.paths.push({
-          id: generateId(),
-          label: label,
-          goals: []
-        });
-      }
-      savePathFinderDataAdmin(data);
-      renderEduPathList();
-      showToast(editId ? "Status updated" : "Status added");
-    });
-
-    // Goal editor
-    function openGoalEditor(pathId) {
-      eduEditingPathId = pathId;
-      var data = getPathFinderDataAdmin();
-      var path = data.paths.find(function(p) { return p.id === pathId; });
-      if (!path) return;
-
-      document.getElementById("eduGoalPanelTitle").textContent = "Goals for: " + path.label;
-      clearGoalForm();
-      renderGoalList(path);
-      showEduPanel(eduGoalPanel);
+      document.getElementById("eduStatusInlineCancel").addEventListener("click", hideStatusInlineForm);
     }
 
-    function clearGoalForm() {
-      document.getElementById("eduGoalEditId").value = "";
-      document.getElementById("eduGoalLabel").value = "";
-      document.getElementById("eduGoalProcess").value = "";
-      document.getElementById("eduGoalTimeline").value = "";
-      document.getElementById("eduGoalCta").value = "Request Deep Dive";
+    function hideStatusInlineForm() {
+      var formEl = document.getElementById("eduStatusInlineForm");
+      formEl.style.display = "none";
+      formEl.innerHTML = "";
     }
 
-    function renderGoalList(path) {
-      var container = document.getElementById("eduGoalList");
-      if (path.goals.length === 0) {
-        container.innerHTML = '<div class="empty-state">No goals yet. Add one below.</div>';
+    /* -- Add Status Button -- */
+    document.getElementById("btnAddStatus").addEventListener("click", function() {
+      showStatusInlineForm("", null);
+    });
+
+    /* -- Render Goal List -- */
+    function renderEduGoalList() {
+      var container = document.getElementById("eduGoalListNew");
+      var hint = document.getElementById("eduGoalHint");
+      var addBtn = document.getElementById("btnAddGoal");
+      var countEl = document.getElementById("eduGoalCount");
+
+      if (!eduSelectedStatusId) {
+        container.innerHTML = '';
+        hint.style.display = "";
+        addBtn.style.display = "none";
+        countEl.textContent = "0";
         return;
       }
+
+      hint.style.display = "none";
+      addBtn.style.display = "";
+
+      var data = getPathFinderDataAdmin();
+      var path = data.paths.find(function(p) { return p.id === eduSelectedStatusId; });
+      if (!path) {
+        container.innerHTML = '<div class="empty-state">Status not found.</div>';
+        addBtn.style.display = "none";
+        countEl.textContent = "0";
+        return;
+      }
+
+      countEl.textContent = path.goals.length;
+
+      if (path.goals.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding:20px">No goals yet. Add one below.</div>';
+        return;
+      }
+
       container.innerHTML = path.goals.map(function(g) {
-        return '<div class="page-row" data-id="' + escapeHtml(g.id) + '">' +
-          '<div class="page-row-info">' +
-            '<div class="page-row-title">' + escapeHtml(g.label) + '</div>' +
-            '<div class="page-row-slug">' + escapeHtml(g.timeline || '') + '</div>' +
-          '</div>' +
-          '<div class="page-row-actions">' +
-            '<button class="btn btn-secondary btn-sm btn-goal-edit">Edit</button>' +
-            '<button class="btn btn-danger btn-sm btn-goal-delete">Delete</button>' +
+        return '<div class="edu-item" data-id="' + escapeHtml(g.id) + '">' +
+          '<span class="edu-item-label">' + escapeHtml(g.label) + '</span>' +
+          '<span style="font-size:0.75rem;color:var(--mid-gray);margin-right:8px">' + escapeHtml(g.timeline || '') + '</span>' +
+          '<div class="edu-item-actions">' +
+            '<button class="edu-icon-btn edu-goal-edit" title="Edit">' + eduIconEdit + '</button>' +
+            '<button class="edu-icon-btn danger edu-goal-delete" title="Delete">' + eduIconTrash + '</button>' +
           '</div>' +
         '</div>';
       }).join('');
 
-      container.querySelectorAll(".btn-goal-edit").forEach(function(btn) {
+      container.querySelectorAll(".edu-goal-edit").forEach(function(btn) {
         btn.addEventListener("click", function() {
-          var gId = btn.closest(".page-row").dataset.id;
+          var gId = btn.closest(".edu-item").dataset.id;
           var g = path.goals.find(function(x) { return x.id === gId; });
           if (!g) return;
-          document.getElementById("eduGoalEditId").value = g.id;
-          document.getElementById("eduGoalLabel").value = g.label;
-          document.getElementById("eduGoalProcess").value = g.process;
-          document.getElementById("eduGoalTimeline").value = g.timeline;
-          document.getElementById("eduGoalCta").value = g.cta || "Request Deep Dive";
+          showGoalInlineForm(g.label, gId);
         });
       });
 
-      container.querySelectorAll(".btn-goal-delete").forEach(function(btn) {
+      container.querySelectorAll(".edu-goal-delete").forEach(function(btn) {
         btn.addEventListener("click", function() {
-          var gId = btn.closest(".page-row").dataset.id;
+          if (!confirm("Delete this goal?")) return;
+          var gId = btn.closest(".edu-item").dataset.id;
           var data = getPathFinderDataAdmin();
-          var p = data.paths.find(function(x) { return x.id === eduEditingPathId; });
+          var p = data.paths.find(function(x) { return x.id === eduSelectedStatusId; });
           if (!p) return;
           p.goals = p.goals.filter(function(x) { return x.id !== gId; });
           savePathFinderDataAdmin(data);
-          renderGoalList(p);
+          renderEduGoalList();
+          renderLogicMap();
           showToast("Goal deleted");
         });
       });
     }
 
-    document.getElementById("btnSaveGoal").addEventListener("click", function() {
-      var label = document.getElementById("eduGoalLabel").value.trim();
-      if (!label) { showToast("Goal label is required"); return; }
+    /* -- Goal Inline Form -- */
+    function showGoalInlineForm(value, editId) {
+      var formEl = document.getElementById("eduGoalInlineForm");
+      formEl.style.display = "";
+      formEl.innerHTML = '<div class="edu-inline-form">' +
+        '<input type="text" id="eduGoalInlineInput" placeholder="Goal label..." value="' + escapeHtml(value || '') + '">' +
+        '<button class="btn btn-primary btn-sm" id="eduGoalInlineSave">' + (editId ? 'Update' : 'Add') + '</button>' +
+        '<button class="btn btn-secondary btn-sm" id="eduGoalInlineCancel">Cancel</button>' +
+      '</div>';
 
-      var data = getPathFinderDataAdmin();
-      var path = data.paths.find(function(p) { return p.id === eduEditingPathId; });
-      if (!path) return;
+      document.getElementById("eduGoalInlineInput").focus();
 
-      var editId = document.getElementById("eduGoalEditId").value;
-      var goalData = {
-        label: label,
-        process: document.getElementById("eduGoalProcess").value.trim(),
-        timeline: document.getElementById("eduGoalTimeline").value.trim(),
-        cta: document.getElementById("eduGoalCta").value.trim() || "Request Deep Dive"
-      };
+      document.getElementById("eduGoalInlineSave").addEventListener("click", function() {
+        var label = document.getElementById("eduGoalInlineInput").value.trim();
+        if (!label) { showToast("Goal label is required"); return; }
+        var data = getPathFinderDataAdmin();
+        var path = data.paths.find(function(p) { return p.id === eduSelectedStatusId; });
+        if (!path) return;
 
-      if (editId) {
-        var existing = path.goals.find(function(g) { return g.id === editId; });
-        if (existing) {
-          existing.label = goalData.label;
-          existing.process = goalData.process;
-          existing.timeline = goalData.timeline;
-          existing.cta = goalData.cta;
+        if (editId) {
+          var existing = path.goals.find(function(g) { return g.id === editId; });
+          if (existing) existing.label = label;
+        } else {
+          path.goals.push({ id: generateId(), label: label, process: "", timeline: "", cta: "Request Deep Dive" });
         }
-      } else {
-        goalData.id = generateId();
-        path.goals.push(goalData);
+        savePathFinderDataAdmin(data);
+        hideGoalInlineForm();
+        renderEduGoalList();
+        renderLogicMap();
+        showToast(editId ? "Goal updated" : "Goal added");
+      });
+
+      document.getElementById("eduGoalInlineCancel").addEventListener("click", hideGoalInlineForm);
+    }
+
+    function hideGoalInlineForm() {
+      var formEl = document.getElementById("eduGoalInlineForm");
+      formEl.style.display = "none";
+      formEl.innerHTML = "";
+    }
+
+    /* -- Add Goal Button -- */
+    document.getElementById("btnAddGoal").addEventListener("click", function() {
+      showGoalInlineForm("", null);
+    });
+
+    /* -- Logic Map -- */
+    function renderLogicMap() {
+      var data = getPathFinderDataAdmin();
+      var container = document.getElementById("logicMapContainer");
+
+      if (data.paths.length === 0) {
+        container.innerHTML = '<div class="empty-state">Add statuses and goals above to build the logic map.</div>';
+        return;
       }
 
+      var html = '<div class="logic-map-grid">';
+      data.paths.forEach(function(p) {
+        if (p.goals.length === 0) return;
+        html += '<div class="logic-map-group">';
+        html += '<div class="logic-map-group-title">' + escapeHtml(p.label) + '</div>';
+        p.goals.forEach(function(g) {
+          html += '<div class="logic-map-goal" data-path="' + escapeHtml(p.id) + '" data-goal="' + escapeHtml(g.id) + '">';
+          html += '<div class="logic-map-goal-label">' + escapeHtml(g.label) + '</div>';
+          html += '<div class="logic-map-field">' +
+            '<label>Process Description</label>' +
+            '<textarea class="lm-process">' + escapeHtml(g.process || '') + '</textarea>' +
+          '</div>';
+          html += '<div class="logic-map-field"><div class="form-row">' +
+            '<div><label>Timeline</label><input type="text" class="lm-timeline" value="' + escapeHtml(g.timeline || '') + '"></div>' +
+            '<div><label>CTA Button Text</label><input type="text" class="lm-cta" value="' + escapeHtml(g.cta || 'Request Deep Dive') + '"></div>' +
+          '</div></div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    /* -- Save Logic Map -- */
+    document.getElementById("btnSaveLogicMap").addEventListener("click", function() {
+      var data = getPathFinderDataAdmin();
+      var goals = document.querySelectorAll("#logicMapContainer .logic-map-goal");
+      goals.forEach(function(el) {
+        var pathId = el.dataset.path;
+        var goalId = el.dataset.goal;
+        var path = data.paths.find(function(p) { return p.id === pathId; });
+        if (!path) return;
+        var goal = path.goals.find(function(g) { return g.id === goalId; });
+        if (!goal) return;
+        goal.process = el.querySelector(".lm-process").value.trim();
+        goal.timeline = el.querySelector(".lm-timeline").value.trim();
+        goal.cta = el.querySelector(".lm-cta").value.trim() || "Request Deep Dive";
+      });
       savePathFinderDataAdmin(data);
-      clearGoalForm();
-      renderGoalList(path);
-      showToast(editId ? "Goal updated" : "Goal added");
+      showToast("Logic map saved");
     });
 
-    document.getElementById("btnCancelGoal").addEventListener("click", function() {
-      clearGoalForm();
-    });
-
-    document.getElementById("btnBackToPaths").addEventListener("click", function() {
-      renderEduPathList();
-    });
-
-    // Initial render — hide goal and form panels
-    eduGoalPanel.style.display = "none";
-    eduPathFormPanel.style.display = "none";
-    renderEduPathList();
+    /* -- Initial Render -- */
+    renderEduStatusList();
+    renderEduGoalList();
+    renderLogicMap();
 
     /* ══════════════════════════════════════════════
        Init

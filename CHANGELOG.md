@@ -1,5 +1,34 @@
 # Changelog
 
+## v3.1 — 2026-02-14
+
+### Centralized Navigation & Footer Manager
+
+- **Navigation & Footer admin tab** — Replaced the separate "Nav & Visibility" section with a unified "Navigation & Footer" tab under System Settings. This single screen consolidates all header navigation toggles (Home, Services, Staff, Testimonials, Education, Locations, Careers, Book a Consultation), footer link toggles (Home, Services, Our Team, Testimonials, Education, Locations, Careers), the language globe show/hide, the max nav items slider, editable copyright text, and an optional legal disclaimer field.
+- **Data-driven nav and footer** — `renderGlobalNav()` and `renderToggleAwareFooter()` now read from a centralized `siteNavFooterSettings` localStorage key instead of hardcoded arrays. All link visibility, labels, and hrefs are configurable from the admin panel.
+- **Globe fixed to hero-top-right** — The language selector globe icon is now always positioned as a floating button in the hero top-right corner. The old "Nav Bar" and "Hero Top Left" placement options have been removed. A simple show/hide toggle in the admin controls its visibility.
+- **Configurable footer** — Footer links on both `index.html` and all sub-pages are now fully data-driven. The hardcoded "Careers" link has been removed from `index.html` and replaced with the settings-driven footer system.
+- **Editable copyright & disclaimer** — The copyright text and an optional legal disclaimer are configurable from the admin panel. The disclaimer appears below the copyright on all pages when set.
+- **Migration & backward compatibility** — On first load, if `siteNavFooterSettings` doesn't exist, defaults are constructed from existing `sitePageToggles` and `siteClockSettings`. The save handler continues writing backward-compatible `sitePageToggles` so `enforcePageToggles()` keeps working for page redirect enforcement.
+- **Analytics button renamed** — "Clear All Analytics Data" renamed to "Clear Test Data" for clarity.
+- **Clock settings simplified** — Removed the `langPosition` dropdown from Clock Settings (now managed by the Navigation & Footer tab).
+
+**Why:** Navigation and footer settings were scattered across three admin sections (Nav & Visibility, Clock Settings, Translation), making it confusing to configure the site's header and footer. The new centralized tab puts everything in one place, makes the footer fully configurable, locks the globe to a consistent position, and adds copyright/disclaimer fields that were previously hardcoded.
+
+## v3.0 — 2026-02-14
+
+### Picklist Management UI (Education Logic Redesign)
+
+- **Side-by-Side Glassmorphism Cards** — The Education Logic admin section has been redesigned from a three-panel wizard into two side-by-side glassmorphism cards: "Status Options (I am a...)" and "Goal Options (I want to...)". Each card displays its items as clean rows with edit (pencil) and delete (trash) icon buttons that appear on hover.
+- **Inline Editing** — Clicking "Edit" on any status or goal reveals an inline form with a text input directly inside the card — no panel navigation required. The "+ Add New" buttons at the bottom of each card use Aurora Blue dashed-border styling.
+- **Interactive Selection** — Clicking a status label in the left card selects it (highlighted with blue border) and populates the right card with that status's goals. The goal count badge updates in real time.
+- **Logic Map** — A new section below the picklist cards displays all Status + Goal combinations with editable fields for Process Description, Timeline, and CTA Button Text. Grouped by status with glassmorphism containers. A single "Save All Changes" button persists all edits to localStorage.
+- **Live Sync** — All changes auto-save to `sitePathFinder` in localStorage, which is read by both the Contact Form and Education Hub on the public site — no additional sync code needed.
+- **Aurora Blue Accents** — Add buttons, active selections, goal labels in the Logic Map, and focus states all use the `#3b82f6` Aurora Blue accent color.
+- **Responsive** — The two-card layout stacks to a single column on mobile (`<768px`). Logic Map form rows also stack vertically on small screens.
+
+**Why:** The previous three-panel wizard for editing status categories and goals required clicking through multiple screens. The new side-by-side card layout with inline editing lets the admin see and edit everything on a single screen. The Logic Map provides a complete view of every result combination, making it easy to audit and update process descriptions, timelines, and CTA text without navigating per-goal.
+
 ## v2.9 — 2026-02-14
 
 ### Integrated GitHub Media Suite & Translation Fix

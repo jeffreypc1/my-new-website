@@ -208,6 +208,51 @@ function savePageToggles(data) {
 }
 
 /* ══════════════════════════════════════════════
+   Centralized Nav & Footer Settings (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getNavFooterSettings() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("siteNavFooterSettings") || "null");
+    if (stored) return stored;
+  } catch (e) {}
+
+  // Migration: construct defaults from existing settings
+  var toggles = getPageToggles();
+  var clockSettings = getClockSettings();
+
+  return {
+    nav: {
+      home:             { visible: false, label: "Home",                href: "index.html" },
+      services:         { visible: true,  label: "Services",            href: "index.html#services-grid" },
+      staff:            { visible: toggles.staff !== false,             label: "Staff",               href: "staff.html" },
+      testimonials:     { visible: toggles.testimonials !== false,      label: "Testimonials",        href: "testimonials.html" },
+      education:        { visible: toggles.education !== false,         label: "Education",           href: "education.html" },
+      locations:        { visible: toggles.locations !== false,         label: "Locations",           href: "locations.html" },
+      careers:          { visible: false, label: "Careers",             href: "staff.html" },
+      bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
+    },
+    globe: { visible: true, position: "hero-top-right" },
+    maxNavItems: toggles.maxNavItems || 5,
+    footer: {
+      home:         { visible: true,  label: "Home",         href: "index.html" },
+      services:     { visible: false, label: "Services",     href: "index.html#services-grid" },
+      staff:        { visible: true,  label: "Our Team",     href: "staff.html" },
+      testimonials: { visible: true,  label: "Testimonials", href: "testimonials.html" },
+      education:    { visible: true,  label: "Education",    href: "education.html" },
+      locations:    { visible: true,  label: "Locations",    href: "locations.html" },
+      careers:      { visible: true,  label: "Careers",      href: "staff.html" }
+    },
+    copyright: "\u00a9 2026 O\u2019Brien Immigration Law. All rights reserved.",
+    disclaimer: ""
+  };
+}
+
+function saveNavFooterSettings(data) {
+  localStorage.setItem("siteNavFooterSettings", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
    Contact Config (localStorage)
    ══════════════════════════════════════════════ */
 
@@ -232,7 +277,7 @@ function getClockSettings() {
     var stored = JSON.parse(localStorage.getItem("siteClockSettings") || "null");
     if (stored) return stored;
   } catch (e) {}
-  return { visible: true, position: "center", label: "San Francisco", langPosition: "hero-top-right" };
+  return { visible: true, position: "center", label: "San Francisco" };
 }
 
 function saveClockSettings(data) {
@@ -477,31 +522,30 @@ function renderGlobalNav() {
   var nav = document.getElementById("globalNav");
   if (!nav) return;
 
-  // All nav links (excluding CTA), filtered by page toggles
-  var toggles = getPageToggles();
-  var allNavItems = [
-    { label: "Services", href: "index.html#services-grid", toggle: null },
-    { label: "Staff", href: "staff.html", toggle: "staff" },
-    { label: "Testimonials", href: "testimonials.html", toggle: "testimonials" },
-    { label: "Education", href: "education.html", toggle: "education" },
-    { label: "Locations", href: "locations.html", toggle: "locations" }
-  ];
-  var navItems = allNavItems.filter(function(item) {
-    return item.toggle === null || toggles[item.toggle] !== false;
+  var settings = getNavFooterSettings();
+  var navKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers"];
+
+  // Build nav items from settings, filtering by visible
+  var navItems = [];
+  navKeys.forEach(function(key) {
+    var item = settings.nav[key];
+    if (item && item.visible) {
+      navItems.push({ label: item.label, href: item.href });
+    }
   });
 
-  var maxVisible = toggles.maxNavItems || 5;
+  var maxVisible = settings.maxNavItems || 5;
   var visibleItems = navItems.slice(0, maxVisible);
   var overflowItems = navItems.slice(maxVisible);
 
   var linksHtml = visibleItems.map(function(item) {
-    return '<li><a href="' + item.href + '">' + item.label + '</a></li>';
+    return '<li><a href="' + item.href + '">' + escapeHtmlUtil(item.label) + '</a></li>';
   }).join('');
 
   // Smart Collapse: group overflow into "More" dropdown
   if (overflowItems.length > 0) {
     var moreLinks = overflowItems.map(function(item) {
-      return '<a href="' + item.href + '">' + item.label + '</a>';
+      return '<a href="' + item.href + '">' + escapeHtmlUtil(item.label) + '</a>';
     }).join('');
     linksHtml += '<li class="nav-more" id="navMore">' +
       '<button class="nav-more-trigger" aria-expanded="false">More ' +
@@ -511,15 +555,11 @@ function renderGlobalNav() {
     '</li>';
   }
 
-  var clockSettings = getClockSettings();
-  var langPosition = clockSettings.langPosition || "nav";
-
-  if (langPosition === "nav") {
-    linksHtml += '<li><button class="nav-lang-btn" id="navLangBtn" aria-label="Change language">' +
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
-    '</button></li>';
+  // CTA button
+  var ctaItem = settings.nav.bookConsultation;
+  if (ctaItem && ctaItem.visible) {
+    linksHtml += '<li><a href="#" class="nav-cta">' + escapeHtmlUtil(ctaItem.label) + '</a></li>';
   }
-  linksHtml += '<li><a href="#" class="nav-cta">Book a Consultation</a></li>';
 
   nav.innerHTML =
     '<div class="nav-content">' +
@@ -543,21 +583,12 @@ function renderGlobalNav() {
     });
   }
 
-  // Language button
-  var langBtn = document.getElementById("navLangBtn");
-  if (langBtn) {
-    langBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      openLanguageModal();
-    });
-  }
-
-  // Hero language button (when langPosition is hero-top-left or hero-top-right)
-  if (langPosition === "hero-top-left" || langPosition === "hero-top-right") {
+  // Globe language button — always hero-top-right if visible
+  if (settings.globe && settings.globe.visible) {
     var hero = document.querySelector(".hero");
     if (hero) {
       var heroLangBtn = document.createElement("button");
-      heroLangBtn.className = "hero-lang-btn" + (langPosition === "hero-top-left" ? " hero-lang-left" : " hero-lang-right");
+      heroLangBtn.className = "hero-lang-btn hero-lang-right";
       heroLangBtn.id = "heroLangBtn";
       heroLangBtn.setAttribute("aria-label", "Change language");
       heroLangBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
@@ -651,6 +682,40 @@ function renderDynamicFooter() {
     }
     container.appendChild(a);
   });
+
+  // Populate static footer links from navFooter settings
+  var settings = getNavFooterSettings();
+  var staticContainer = document.getElementById("footerStaticLinks");
+  if (staticContainer) {
+    var footerKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers"];
+    staticContainer.innerHTML = footerKeys.filter(function(key) {
+      return settings.footer[key] && settings.footer[key].visible;
+    }).map(function(key) {
+      var item = settings.footer[key];
+      return '<a href="' + item.href + '">' + escapeHtmlUtil(item.label) + '</a>';
+    }).join('');
+  }
+
+  // Update copyright
+  var copyrightEl = document.getElementById("footerCopyright");
+  if (copyrightEl && settings.copyright) {
+    copyrightEl.textContent = settings.copyright;
+  }
+
+  // Append disclaimer if set
+  if (settings.disclaimer) {
+    var existingDisclaimer = document.getElementById("footerDisclaimer");
+    if (!existingDisclaimer) {
+      var disclaimerP = document.createElement("p");
+      disclaimerP.id = "footerDisclaimer";
+      disclaimerP.style.cssText = "font-size:0.75rem;color:var(--mid-gray);margin-top:8px";
+      disclaimerP.textContent = settings.disclaimer;
+      var copyrightEl2 = document.getElementById("footerCopyright");
+      if (copyrightEl2 && copyrightEl2.parentElement) {
+        copyrightEl2.parentElement.appendChild(disclaimerP);
+      }
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════
@@ -1728,20 +1793,33 @@ function renderToggleAwareFooter() {
   var container = containers[0];
   if (container.id === "footerLinks") return; // index.html uses dynamic footer
 
-  var toggles = getPageToggles();
-  var links = [
-    { label: "Home", href: "index.html", toggle: null },
-    { label: "Our Team", href: "staff.html", toggle: "staff" },
-    { label: "Testimonials", href: "testimonials.html", toggle: "testimonials" },
-    { label: "Education", href: "education.html", toggle: "education" },
-    { label: "Locations", href: "locations.html", toggle: "locations" }
-  ];
+  var settings = getNavFooterSettings();
+  var footerKeys = ["home", "services", "staff", "testimonials", "education", "locations", "careers"];
 
-  container.innerHTML = links.filter(function(link) {
-    return link.toggle === null || toggles[link.toggle] !== false;
-  }).map(function(link) {
-    return '<a href="' + link.href + '">' + link.label + '</a>';
+  container.innerHTML = footerKeys.filter(function(key) {
+    return settings.footer[key] && settings.footer[key].visible;
+  }).map(function(key) {
+    var item = settings.footer[key];
+    return '<a href="' + item.href + '">' + escapeHtmlUtil(item.label) + '</a>';
   }).join('');
+
+  // Update copyright text on sub-pages
+  var copyrightP = container.parentElement ? container.parentElement.querySelector("p") : null;
+  if (copyrightP && settings.copyright) {
+    copyrightP.textContent = settings.copyright;
+  }
+
+  // Append disclaimer if set
+  if (settings.disclaimer && container.parentElement) {
+    var existingDisclaimer = container.parentElement.querySelector("#footerDisclaimer");
+    if (!existingDisclaimer) {
+      var disclaimerP = document.createElement("p");
+      disclaimerP.id = "footerDisclaimer";
+      disclaimerP.style.cssText = "font-size:0.75rem;color:var(--mid-gray);margin-top:8px";
+      disclaimerP.textContent = settings.disclaimer;
+      container.parentElement.appendChild(disclaimerP);
+    }
+  }
 }
 
 function initSmoothScroll() {
