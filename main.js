@@ -418,12 +418,24 @@ function renderPostsSection() {
    CSS Variable Settings
    ══════════════════════════════════════════════ */
 
+var BTN_STYLES = {
+  pill: { "--btn-radius": "980px", "--btn-bg": "var(--accent-color)", "--btn-color": "var(--white)", "--btn-border": "none", "--btn-backdrop": "none" },
+  modern: { "--btn-radius": "8px", "--btn-bg": "var(--accent-color)", "--btn-color": "var(--white)", "--btn-border": "none", "--btn-backdrop": "none" },
+  glass: { "--btn-radius": "980px", "--btn-bg": "rgba(255,255,255,0.15)", "--btn-color": "var(--dark)", "--btn-border": "1px solid rgba(0,0,0,0.12)", "--btn-backdrop": "saturate(180%) blur(12px)" }
+};
+
 function applySiteSettings(settings) {
   var root = document.documentElement;
   for (var key in settings) {
     if (settings[key]) {
       root.style.setProperty(key, settings[key]);
     }
+  }
+  // Apply button style engine
+  var style = settings["--btn-style"] || "pill";
+  var vars = BTN_STYLES[style] || BTN_STYLES.pill;
+  for (var k in vars) {
+    root.style.setProperty(k, vars[k]);
   }
 }
 

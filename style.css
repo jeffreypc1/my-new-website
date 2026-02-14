@@ -23,6 +23,13 @@
   --radius: 16px;
   --radius-sm: 12px;
   --transition: 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* ── Button style engine ── */
+  --btn-radius: 980px;
+  --btn-bg: var(--accent-color);
+  --btn-color: var(--white);
+  --btn-border: none;
+  --btn-backdrop: none;
 }
 
 html {
@@ -99,10 +106,13 @@ body {
 }
 
 .nav-cta {
-  background: var(--accent-color);
-  color: var(--white) !important;
+  background: var(--btn-bg);
+  color: var(--btn-color) !important;
   padding: 8px 20px;
-  border-radius: 980px;
+  border-radius: var(--btn-radius);
+  border: var(--btn-border);
+  backdrop-filter: var(--btn-backdrop);
+  -webkit-backdrop-filter: var(--btn-backdrop);
   transition: background var(--transition), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -175,14 +185,14 @@ body {
 .hero-btn {
   margin-top: 40px;
   display: inline-block;
-  padding: 14px 32px;
+  padding: 14px 36px;
   font-size: 1rem;
   font-weight: 500;
   color: var(--dark);
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-radius: 980px;
+  border-radius: var(--btn-radius);
   text-decoration: none;
   transition: background var(--transition), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -839,10 +849,10 @@ body {
   font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
-  color: var(--white);
-  background: var(--dark);
-  border: none;
-  border-radius: 980px;
+  color: var(--btn-color);
+  background: var(--btn-bg);
+  border: var(--btn-border);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition: background 0.2s, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }

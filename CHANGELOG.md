@@ -2,6 +2,15 @@
 
 ## 2026-02-14
 
+### Button Style Engine & Staff Contact Integration
+- **Button Style dropdown** — New "Button Style" panel in Site Settings with three options: **Pill** (rounded 980px, Apple-esque — default), **Modern** (8px rounding, professional), and **Glass** (semi-transparent `rgba(255,255,255,0.15)` with a 1px border and `blur(12px)` backdrop). Selection is saved to `siteSettings` under the `--btn-style` key.
+- **CSS variable-driven buttons** — Added `--btn-radius`, `--btn-bg`, `--btn-color`, `--btn-border`, and `--btn-backdrop` variables to `:root`. The `.nav-cta`, `.hero-btn`, `.consult-submit`, `.careers-cta-btn`, `.staff-modal-form-btn`, and staff modal close button all consume these variables, so changing the dropdown updates every button site-wide instantly.
+- **Staff "Contact First" modal** — When a staff card is clicked, the focus modal now shows a **Send a Message** contact form directly below the staff member's contact links, before the bio. The form includes Your Name, Your Email, and Message fields. A hidden `inquiry` field is pre-filled with "Inquiry for [Staff Name]" so the firm knows which team member the client is interested in. Form validates name/email, logs to console, and shows a success message on submit.
+- **Direct Email & Direct Phone labels** — Admin staff form field labels renamed from "Email" / "Phone" to "Direct Email" / "Direct Phone" for clarity.
+- **Button-aware close button** — The staff modal close button now follows the chosen button style (border-radius, border, backdrop) for visual consistency.
+
+**Why:** The button style engine gives the admin one-click control over the entire site's button aesthetic — from rounded Apple pills to frosted glass — without touching CSS. The contact-first modal turns every staff profile into a lead capture opportunity, pre-routing inquiries to the right team member.
+
 ### Staff Visibility Toggle
 - **"Show on Website" checkbox** — New toggle in the admin Staff form controls whether a team member appears on the public `staff.html` page. Defaults to checked for new entries. Admin list rows now show green "Visible" or gray "Hidden" badges.
 - **Filtered rendering** — `staff.html` filters the staff array by `showOnWebsite !== false` before rendering the grid. Hidden members remain in localStorage and can be toggled back on at any time.

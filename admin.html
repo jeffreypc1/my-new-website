@@ -744,6 +744,18 @@
       </div>
 
       <div class="panel">
+        <h2>Button Style</h2>
+        <div class="form-group">
+          <label for="btnStyleSelect">Style</label>
+          <select id="btnStyleSelect">
+            <option value="pill">Pill (Rounded, Apple-esque)</option>
+            <option value="modern">Modern (8px rounding)</option>
+            <option value="glass">Glass (Semi-transparent + border)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
         <h2>Consultation Pop-up</h2>
         <div class="checkbox-row">
           <label>
@@ -966,11 +978,11 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="staffEmailInput">Email</label>
+            <label for="staffEmailInput">Direct Email</label>
             <input type="email" id="staffEmailInput" placeholder="name@obrienimmigration.com">
           </div>
           <div class="form-group">
-            <label for="staffPhoneInput">Phone</label>
+            <label for="staffPhoneInput">Direct Phone</label>
             <input type="tel" id="staffPhoneInput" placeholder="(510) 555-0100">
           </div>
         </div>
@@ -1371,6 +1383,7 @@
     const heroImageInput = document.getElementById("heroImage");
 
     const consultToggle = document.getElementById("consultPopupEnabled");
+    const btnStyleSelect = document.getElementById("btnStyleSelect");
 
     if (saved["--primary-font"]) primaryFontSelect.value = saved["--primary-font"];
     if (saved["--heading-font"]) headingFontSelect.value = saved["--heading-font"];
@@ -1379,6 +1392,7 @@
       const url = saved["--hero-bg-image"].replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
       if (url !== "none") heroImageInput.value = url;
     }
+    if (saved["--btn-style"]) btnStyleSelect.value = saved["--btn-style"];
     if (saved["--consult-popup"] === "disabled") {
       consultToggle.checked = false;
     }
@@ -1391,6 +1405,7 @@
         "--heading-font": headingFontSelect.value,
         "--accent-color": accentColorInput.value,
         "--hero-bg-image": heroUrl ? "url('" + heroUrl + "')" : "none",
+        "--btn-style": btnStyleSelect.value,
         "--consult-popup": consultToggle.checked ? "enabled" : "disabled",
       };
 

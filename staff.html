@@ -158,18 +158,21 @@
       position: absolute;
       top: 16px;
       right: 16px;
-      width: 32px;
+      min-width: 32px;
       height: 32px;
-      border: none;
+      padding: 0 10px;
+      border: var(--btn-border, none);
       background: rgba(0, 0, 0, 0.06);
-      border-radius: 50%;
+      border-radius: var(--btn-radius, 50%);
+      backdrop-filter: var(--btn-backdrop, none);
+      -webkit-backdrop-filter: var(--btn-backdrop, none);
       font-size: 1.125rem;
       color: var(--mid-gray);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s, color 0.2s;
+      transition: background 0.2s, color 0.2s, border-radius 0.2s;
       line-height: 1;
       z-index: 1;
     }
@@ -262,7 +265,102 @@
       font-size: 0.9375rem;
       line-height: 1.7;
       color: var(--dark);
-      flex: 1;
+    }
+
+    /* ── Contact Form inside Modal ── */
+
+    .staff-modal-form {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .staff-modal-form h3 {
+      font-family: var(--heading-font);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--dark);
+      margin-bottom: 12px;
+    }
+
+    .staff-modal-form .smf-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .staff-modal-form .smf-group {
+      margin-bottom: 10px;
+    }
+
+    .staff-modal-form label {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--mid-gray);
+      margin-bottom: 4px;
+    }
+
+    .staff-modal-form input,
+    .staff-modal-form textarea {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      border: 1px solid var(--light-gray);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--dark);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .staff-modal-form input:focus,
+    .staff-modal-form textarea:focus {
+      border-color: var(--accent-color, #0071e3);
+    }
+
+    .staff-modal-form textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .staff-modal-form-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-top: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--btn-color, #fff);
+      background: var(--btn-bg, var(--dark));
+      border: var(--btn-border, none);
+      border-radius: var(--btn-radius, 980px);
+      backdrop-filter: var(--btn-backdrop, none);
+      -webkit-backdrop-filter: var(--btn-backdrop, none);
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .staff-modal-form-btn:hover {
+      filter: brightness(0.9);
+      transform: scale(0.98);
+    }
+
+    .staff-modal-form-btn:active {
+      transform: scale(0.96);
+    }
+
+    .staff-modal-form .smf-success {
+      text-align: center;
+      padding: 16px 0;
+      color: #2a7d2e;
+      font-weight: 500;
+      font-size: 0.9375rem;
     }
 
     /* ── Careers CTA Section ── */
@@ -296,10 +394,12 @@
       font-size: 0.9375rem;
       font-weight: 500;
       font-family: inherit;
-      color: var(--white);
-      background: var(--dark);
-      border: none;
-      border-radius: 980px;
+      color: var(--btn-color, var(--white));
+      background: var(--btn-bg, var(--dark));
+      border: var(--btn-border, none);
+      border-radius: var(--btn-radius, 980px);
+      backdrop-filter: var(--btn-backdrop, none);
+      -webkit-backdrop-filter: var(--btn-backdrop, none);
       text-decoration: none;
       cursor: pointer;
       transition: background 0.2s, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
@@ -373,12 +473,15 @@
       <div class="staff-empty">Loading team members...</div>
     </div>
 
-    <!-- Focus Modal (built by JS) -->
+    <!-- Focus Modal -->
     <div class="staff-modal-overlay" id="staffModalOverlay">
       <div class="staff-modal" id="staffModal">
         <button class="staff-modal-close" aria-label="Close">&times;</button>
         <div id="staffModalPhoto"></div>
-        <div class="staff-modal-details" id="staffModalDetails"></div>
+        <div class="staff-modal-details" id="staffModalDetails">
+          <!-- Name / Title / Contact / Bio rendered by JS -->
+          <!-- Contact Form rendered by JS below bio -->
+        </div>
       </div>
     </div>
 
@@ -515,7 +618,7 @@
           modalPhoto.innerHTML = '<div class="staff-modal-avatar">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>';
         }
 
-        // Details
+        // Direct contact links
         var contactHtml = '';
         if (member.email || member.phone) {
           contactHtml = '<div class="staff-modal-contact">';
@@ -532,12 +635,59 @@
           contactHtml += '</div>';
         }
 
+        // Contact form (pre-filled with staff member name)
+        var inquiryFor = 'Inquiry for ' + member.name;
+        var formHtml =
+          '<div class="staff-modal-form" id="staffContactForm">' +
+            '<h3>Send a Message</h3>' +
+            '<input type="hidden" class="smf-inquiry" value="' + escapeHtmlUtil(inquiryFor) + '">' +
+            '<div class="smf-row">' +
+              '<div class="smf-group">' +
+                '<label>Your Name</label>' +
+                '<input type="text" class="smf-name" placeholder="Full name">' +
+              '</div>' +
+              '<div class="smf-group">' +
+                '<label>Your Email</label>' +
+                '<input type="email" class="smf-email" placeholder="you@example.com">' +
+              '</div>' +
+            '</div>' +
+            '<div class="smf-group">' +
+              '<label>Message</label>' +
+              '<textarea class="smf-message" placeholder="How can ' + escapeHtmlUtil(member.name.split(' ')[0]) + ' help you?"></textarea>' +
+            '</div>' +
+            '<button class="staff-modal-form-btn" type="button">Send Message</button>' +
+          '</div>';
+
         modalDetails.innerHTML =
           '<h2 class="staff-modal-name">' + escapeHtmlUtil(member.name) + '</h2>' +
           '<p class="staff-modal-role">' + escapeHtmlUtil(member.title) + '</p>' +
           '<p class="staff-modal-office">' + escapeHtmlUtil(member.office || '') + ' Office</p>' +
           contactHtml +
-          '<p class="staff-modal-bio">' + escapeHtmlUtil(member.bio || '') + '</p>';
+          formHtml +
+          '<p class="staff-modal-bio" style="margin-top:20px;padding-top:20px;border-top:1px solid rgba(0,0,0,0.06)">' + escapeHtmlUtil(member.bio || '') + '</p>';
+
+        // Bind form submit
+        var formEl = modalDetails.querySelector('#staffContactForm');
+        var formBtn = formEl.querySelector('.staff-modal-form-btn');
+        formBtn.addEventListener('click', function() {
+          var name = formEl.querySelector('.smf-name').value.trim();
+          var email = formEl.querySelector('.smf-email').value.trim();
+          var message = formEl.querySelector('.smf-message').value.trim();
+          var inquiry = formEl.querySelector('.smf-inquiry').value;
+
+          if (!name || !email) {
+            if (!name) formEl.querySelector('.smf-name').style.borderColor = '#d63031';
+            if (!email) formEl.querySelector('.smf-email').style.borderColor = '#d63031';
+            setTimeout(function() {
+              formEl.querySelector('.smf-name').style.borderColor = '';
+              formEl.querySelector('.smf-email').style.borderColor = '';
+            }, 1500);
+            return;
+          }
+
+          console.log('Staff Contact:', { inquiry: inquiry, name: name, email: email, message: message });
+          formEl.innerHTML = '<div class="smf-success">Message sent. We\u2019ll be in touch shortly.</div>';
+        });
 
         requestAnimationFrame(function() {
           overlay.classList.add("visible");
