@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Immigration Path Finder — O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="globalNav">
+    <!-- Rendered by renderGlobalNav() in main.js -->
+  </nav>
+
+  <main>
+    <section class="pathfinder-section">
+      <h1 class="reveal">Immigration Path Finder</h1>
+      <p class="reveal">Answer two simple questions to understand your options, estimated timelines, and next steps.</p>
+
+      <div class="pathfinder-container" id="pathfinderApp">
+        <!-- Step 1 -->
+        <div class="pf-select-wrap pf-visible" id="pfStep1Wrap">
+          <div class="pf-label">I am&hellip;</div>
+          <div class="pf-select" id="pfStep1">
+            <div class="pf-select-trigger" id="pfTrigger1">
+              <span class="pf-placeholder">Choose your status</span>
+              <svg class="pf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="pf-options" id="pfOptions1">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 (hidden until Step 1 is answered) -->
+        <div class="pf-select-wrap" id="pfStep2Wrap">
+          <div class="pf-label">And I want to&hellip;</div>
+          <div class="pf-select" id="pfStep2">
+            <div class="pf-select-trigger" id="pfTrigger2">
+              <span class="pf-placeholder">Choose your goal</span>
+              <svg class="pf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="pf-options" id="pfOptions2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Result card (hidden until Step 2 is answered) -->
+        <div class="pf-result" id="pfResult">
+          <div class="pf-result-card">
+            <h3 id="pfResultTitle"></h3>
+            <span class="pf-result-timeline" id="pfResultTimeline"></span>
+            <p class="pf-result-process" id="pfResultProcess"></p>
+            <a href="#" class="pf-result-cta" id="pfResultCta">Request Deep Dive</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="staff.html">Our Team</a>
+        <a href="testimonials.html">Testimonials</a>
+        <a href="education.html">Education</a>
+        <a href="locations.html">Locations</a>
+      </div>
+      <p>&copy; 2026 O'Brien Immigration Law. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <script src="main.js"></script>
+  <script>
+    (function() {
+      var data = getPathFinderData();
+      var paths = data.paths;
+      var selectedPath = null;
+      var selectedGoal = null;
+
+      // ── Custom select helper ──
+      function setupSelect(selectEl, triggerEl, optionsEl, items, onSelect) {
+        // Render options
+        optionsEl.innerHTML = items.map(function(item) {
+          return '<div class="pf-option" data-id="' + escapeHtmlUtil(item.id) + '">' + escapeHtmlUtil(item.label) + '</div>';
+        }).join('');
+
+        // Toggle open
+        triggerEl.addEventListener("click", function(e) {
+          e.stopPropagation();
+          var isOpen = selectEl.classList.contains("open");
+          // Close all other selects first
+          document.querySelectorAll(".pf-select.open").forEach(function(s) { s.classList.remove("open"); });
+          if (!isOpen) selectEl.classList.add("open");
+        });
+
+        // Select an option
+        optionsEl.querySelectorAll(".pf-option").forEach(function(opt) {
+          opt.addEventListener("click", function(e) {
+            e.stopPropagation();
+            var id = opt.dataset.id;
+            var item = items.find(function(i) { return i.id === id; });
+            if (!item) return;
+
+            // Update trigger text
+            triggerEl.innerHTML = '<span>' + escapeHtmlUtil(item.label) + '</span>' +
+              '<svg class="pf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+            // Mark selected
+            optionsEl.querySelectorAll(".pf-option").forEach(function(o) { o.classList.remove("selected"); });
+            opt.classList.add("selected");
+
+            selectEl.classList.remove("open");
+            onSelect(item);
+          });
+        });
+      }
+
+      // Close selects on outside click
+      document.addEventListener("click", function() {
+        document.querySelectorAll(".pf-select.open").forEach(function(s) { s.classList.remove("open"); });
+      });
+
+      // ── Step 1: Status ──
+      setupSelect(
+        document.getElementById("pfStep1"),
+        document.getElementById("pfTrigger1"),
+        document.getElementById("pfOptions1"),
+        paths,
+        function(path) {
+          selectedPath = path;
+          selectedGoal = null;
+
+          // Reset step 2
+          var step2Wrap = document.getElementById("pfStep2Wrap");
+          var trigger2 = document.getElementById("pfTrigger2");
+          trigger2.innerHTML = '<span class="pf-placeholder">Choose your goal</span>' +
+            '<svg class="pf-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+          // Populate step 2 with dependent options
+          setupSelect(
+            document.getElementById("pfStep2"),
+            trigger2,
+            document.getElementById("pfOptions2"),
+            path.goals,
+            function(goal) {
+              selectedGoal = goal;
+              showResult(goal);
+            }
+          );
+
+          // Show step 2
+          step2Wrap.classList.add("pf-visible");
+
+          // Hide result
+          document.getElementById("pfResult").classList.remove("pf-visible");
+        }
+      );
+
+      // ── Show result card ──
+      function showResult(goal) {
+        document.getElementById("pfResultTitle").textContent = goal.label;
+        document.getElementById("pfResultTimeline").textContent = "Estimated Timeline: " + goal.timeline;
+        document.getElementById("pfResultProcess").textContent = goal.process;
+
+        var ctaBtn = document.getElementById("pfResultCta");
+        ctaBtn.textContent = goal.cta || "Request Deep Dive";
+        ctaBtn.onclick = function(e) {
+          e.preventDefault();
+          openConsultModal();
+        };
+
+        var resultEl = document.getElementById("pfResult");
+        resultEl.classList.add("pf-visible");
+      }
+    })();
+  </script>
+</body>
+</html>

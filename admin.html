@@ -634,6 +634,8 @@
       <li><a data-section="staff"><span>Staff</span></a></li>
       <li><a data-section="testimonials"><span>Testimonials</span></a></li>
       <li><a data-section="locations"><span>Locations</span></a></li>
+      <li><a data-section="businesshours"><span>Business Hours</span></a></li>
+      <li><a data-section="education"><span>Education Logic</span></a></li>
       <li><a data-section="media"><span>Media</span></a></li>
     </ul>
     <div class="sidebar-footer">
@@ -1172,6 +1174,121 @@
         <div style="display:flex;gap:12px">
           <button class="btn btn-primary" id="btnSaveLocation">Save Location</button>
           <button class="btn btn-secondary" id="btnCancelLocation">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Business Hours ── -->
+    <div id="businesshours" class="section">
+      <h1>Business Hours</h1>
+      <p class="subtitle">Set your office hours and special closures. Powers the living clock and status indicator on the public site.</p>
+
+      <div class="panel">
+        <h2>Standard Hours</h2>
+        <p style="font-size:0.875rem;color:var(--mid-gray);margin-bottom:20px">Set daily open/close times. Leave blank or check "Closed" for days the office is closed.</p>
+        <div id="hoursGrid" style="display:grid;gap:12px">
+          <!-- Rendered by JS -->
+        </div>
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveHours">Save Hours</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:24px">
+        <div class="page-list-header">
+          <h2>Special Closures</h2>
+          <button class="btn btn-primary btn-sm" id="btnAddClosure">Add Closure</button>
+        </div>
+        <div id="closureForm" style="display:none;margin-bottom:20px">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="closureDateInput">Date</label>
+              <input type="date" id="closureDateInput">
+            </div>
+            <div class="form-group">
+              <label for="closureLabelInput">Label</label>
+              <input type="text" id="closureLabelInput" placeholder="e.g. Independence Day">
+            </div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-primary btn-sm" id="btnSaveClosure">Add</button>
+            <button class="btn btn-secondary btn-sm" id="btnCancelClosure">Cancel</button>
+          </div>
+        </div>
+        <div id="closureList">
+          <div class="empty-state">No special closures set.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Education Logic ── -->
+    <div id="education" class="section">
+      <h1>Education Logic</h1>
+      <p class="subtitle">Configure the Path Finder tool on the Education page. Edit status categories, goals, and result text without touching code.</p>
+
+      <!-- Path list -->
+      <div class="panel" id="eduPathListPanel">
+        <div class="page-list-header">
+          <h2>Status Categories ("I am...")</h2>
+          <button class="btn btn-primary btn-sm" id="btnAddPath">Add Status</button>
+        </div>
+        <div id="eduPathList">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Goal form (shown when editing a path's goals) -->
+      <div class="panel page-form-panel" id="eduGoalPanel">
+        <h2 id="eduGoalPanelTitle">Goals for: —</h2>
+        <p style="font-size:0.875rem;color:var(--mid-gray);margin-bottom:16px">These are the "And I want to..." options shown when a visitor selects this status.</p>
+
+        <div id="eduGoalList" style="margin-bottom:20px">
+          <div class="empty-state">No goals yet.</div>
+        </div>
+
+        <div style="border-top:1px solid var(--light-gray);padding-top:20px;margin-top:8px">
+          <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px">Add / Edit Goal</h3>
+          <input type="hidden" id="eduGoalEditId" value="">
+          <div class="form-group">
+            <label for="eduGoalLabel">Goal Label</label>
+            <input type="text" id="eduGoalLabel" placeholder='e.g. "Sponsor a spouse"'>
+          </div>
+          <div class="form-group">
+            <label for="eduGoalProcess">Process Description</label>
+            <textarea id="eduGoalProcess" placeholder="Explain the typical process..." style="min-height:100px"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="eduGoalTimeline">Estimated Timeline</label>
+              <input type="text" id="eduGoalTimeline" placeholder="e.g. 12–18 months">
+            </div>
+            <div class="form-group">
+              <label for="eduGoalCta">CTA Button Text</label>
+              <input type="text" id="eduGoalCta" placeholder="Request Deep Dive" value="Request Deep Dive">
+            </div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-primary btn-sm" id="btnSaveGoal">Save Goal</button>
+            <button class="btn btn-secondary btn-sm" id="btnCancelGoal">Cancel</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px">
+          <button class="btn btn-secondary" id="btnBackToPaths">&larr; Back to Status List</button>
+        </div>
+      </div>
+
+      <!-- Path form (add/edit a status) -->
+      <div class="panel page-form-panel" id="eduPathFormPanel">
+        <h2 id="eduPathFormTitle">Add Status</h2>
+        <input type="hidden" id="eduPathEditId" value="">
+        <div class="form-group">
+          <label for="eduPathLabel">Status Label</label>
+          <input type="text" id="eduPathLabel" placeholder='e.g. "A U.S. Citizen"'>
+        </div>
+        <div style="display:flex;gap:12px">
+          <button class="btn btn-primary" id="btnSavePath">Save Status</button>
+          <button class="btn btn-secondary" id="btnCancelPath">Cancel</button>
         </div>
       </div>
     </div>
@@ -2597,6 +2714,404 @@
     });
 
     renderMediaList();
+
+    /* ══════════════════════════════════════════════
+       Business Hours
+       ══════════════════════════════════════════════ */
+
+    var BH_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+    function getBusinessHoursAdmin() {
+      try { return JSON.parse(localStorage.getItem("siteBusinessHours") || "null"); }
+      catch (e) { return null; }
+    }
+
+    function getDefaultBusinessHoursAdmin() {
+      var schedule = {};
+      BH_DAYS.forEach(function(day) {
+        if (day === "Saturday" || day === "Sunday") {
+          schedule[day] = { open: "", close: "", closed: true };
+        } else {
+          schedule[day] = { open: "09:00", close: "17:00", closed: false };
+        }
+      });
+      return { schedule: schedule, closures: [] };
+    }
+
+    function renderHoursGrid() {
+      var data = getBusinessHoursAdmin() || getDefaultBusinessHoursAdmin();
+      var grid = document.getElementById("hoursGrid");
+      grid.innerHTML = BH_DAYS.map(function(day) {
+        var s = data.schedule[day] || { open: "09:00", close: "17:00", closed: false };
+        var isChecked = s.closed ? " checked" : "";
+        return '<div style="display:grid;grid-template-columns:120px 1fr 1fr auto;gap:12px;align-items:center">' +
+          '<strong style="font-size:0.875rem">' + day + '</strong>' +
+          '<input type="time" class="bh-open" data-day="' + day + '" value="' + (s.open || '') + '" style="padding:8px 12px;border:1px solid var(--light-gray);border-radius:var(--radius-sm);font-family:inherit;font-size:0.875rem"' + (s.closed ? ' disabled' : '') + '>' +
+          '<input type="time" class="bh-close" data-day="' + day + '" value="' + (s.close || '') + '" style="padding:8px 12px;border:1px solid var(--light-gray);border-radius:var(--radius-sm);font-family:inherit;font-size:0.875rem"' + (s.closed ? ' disabled' : '') + '>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:0.8125rem;color:var(--mid-gray);cursor:pointer;white-space:nowrap"><input type="checkbox" class="bh-closed" data-day="' + day + '"' + isChecked + '> Closed</label>' +
+        '</div>';
+      }).join('');
+
+      // Toggle disable on time inputs when closed is checked
+      grid.querySelectorAll(".bh-closed").forEach(function(cb) {
+        cb.addEventListener("change", function() {
+          var day = cb.dataset.day;
+          var row = cb.closest("div");
+          row.querySelector(".bh-open").disabled = cb.checked;
+          row.querySelector(".bh-close").disabled = cb.checked;
+        });
+      });
+    }
+
+    document.getElementById("btnSaveHours").addEventListener("click", function() {
+      var data = getBusinessHoursAdmin() || getDefaultBusinessHoursAdmin();
+      BH_DAYS.forEach(function(day) {
+        var openEl = document.querySelector('.bh-open[data-day="' + day + '"]');
+        var closeEl = document.querySelector('.bh-close[data-day="' + day + '"]');
+        var closedEl = document.querySelector('.bh-closed[data-day="' + day + '"]');
+        data.schedule[day] = {
+          open: openEl.value,
+          close: closeEl.value,
+          closed: closedEl.checked
+        };
+      });
+      localStorage.setItem("siteBusinessHours", JSON.stringify(data));
+      showToast("Business hours saved");
+    });
+
+    function renderClosureList() {
+      var data = getBusinessHoursAdmin() || getDefaultBusinessHoursAdmin();
+      var container = document.getElementById("closureList");
+      var closures = data.closures || [];
+
+      if (closures.length === 0) {
+        container.innerHTML = '<div class="empty-state">No special closures set.</div>';
+        return;
+      }
+
+      closures.sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+      container.innerHTML = closures.map(function(c, i) {
+        return '<div class="page-row" data-index="' + i + '">' +
+          '<div class="page-row-info">' +
+            '<div class="page-row-title">' + escapeHtml(c.label || 'Closure') + '</div>' +
+            '<div class="page-row-slug">' + escapeHtml(c.date) + '</div>' +
+          '</div>' +
+          '<div class="page-row-actions">' +
+            '<button class="btn btn-danger btn-sm btn-delete-closure">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      container.querySelectorAll(".btn-delete-closure").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var idx = parseInt(btn.closest(".page-row").dataset.index);
+          var d = getBusinessHoursAdmin() || getDefaultBusinessHoursAdmin();
+          d.closures.splice(idx, 1);
+          localStorage.setItem("siteBusinessHours", JSON.stringify(d));
+          renderClosureList();
+          showToast("Closure removed");
+        });
+      });
+    }
+
+    document.getElementById("btnAddClosure").addEventListener("click", function() {
+      document.getElementById("closureForm").style.display = "block";
+      document.getElementById("closureDateInput").value = "";
+      document.getElementById("closureLabelInput").value = "";
+    });
+
+    document.getElementById("btnCancelClosure").addEventListener("click", function() {
+      document.getElementById("closureForm").style.display = "none";
+    });
+
+    document.getElementById("btnSaveClosure").addEventListener("click", function() {
+      var dateVal = document.getElementById("closureDateInput").value;
+      var label = document.getElementById("closureLabelInput").value.trim();
+      if (!dateVal) { showToast("Please select a date"); return; }
+
+      var data = getBusinessHoursAdmin() || getDefaultBusinessHoursAdmin();
+      if (!data.closures) data.closures = [];
+      data.closures.push({ date: dateVal, label: label || "Closure" });
+      localStorage.setItem("siteBusinessHours", JSON.stringify(data));
+
+      document.getElementById("closureForm").style.display = "none";
+      renderClosureList();
+      showToast("Closure added");
+    });
+
+    renderHoursGrid();
+    renderClosureList();
+
+    /* ══════════════════════════════════════════════
+       Education Logic (Path Finder)
+       ══════════════════════════════════════════════ */
+
+    function getPathFinderDataAdmin() {
+      try {
+        var saved = JSON.parse(localStorage.getItem("sitePathFinder") || "null");
+        if (saved && saved.paths) return saved;
+      } catch (e) {}
+      // Return defaults
+      return getDefaultPathsAdmin();
+    }
+
+    function getDefaultPathsAdmin() {
+      return {
+        paths: [
+          {
+            id: "citizen", label: "A U.S. Citizen",
+            goals: [
+              { id: "citizen-spouse", label: "Sponsor a spouse", process: "File Form I-130 with USCIS. As an immediate relative, your spouse has no visa queue wait.", timeline: "12\u201318 months", cta: "Request Deep Dive" },
+              { id: "citizen-parent", label: "Sponsor a parent", process: "File Form I-130. Parents of U.S. citizens are immediate relatives.", timeline: "12\u201318 months", cta: "Request Deep Dive" },
+              { id: "citizen-fiance", label: "Apply for a fianc\u00e9(e) visa", process: "File Form I-129F with USCIS for a K-1 visa.", timeline: "8\u201314 months", cta: "Request Deep Dive" }
+            ]
+          },
+          {
+            id: "lpr", label: "A Lawful Permanent Resident",
+            goals: [
+              { id: "lpr-spouse", label: "Sponsor a spouse", process: "File Form I-130. Spouses of LPRs fall under F2A preference.", timeline: "2\u20133 years", cta: "Request Deep Dive" },
+              { id: "lpr-naturalize", label: "Apply for U.S. citizenship", process: "File Form N-400 after 5 years as an LPR.", timeline: "8\u201314 months", cta: "Request Deep Dive" }
+            ]
+          },
+          {
+            id: "undocumented", label: "Undocumented / No Status",
+            goals: [
+              { id: "undoc-asylum", label: "Apply for asylum", process: "File Form I-589 within one year of arrival.", timeline: "6 months \u2013 4+ years", cta: "Request Deep Dive" }
+            ]
+          },
+          {
+            id: "visa", label: "A Visa Holder",
+            goals: [
+              { id: "visa-greencard", label: "Adjust to permanent residence", process: "Employer files PERM, then I-140, then I-485.", timeline: "1\u20135+ years", cta: "Request Deep Dive" }
+            ]
+          }
+        ]
+      };
+    }
+
+    function savePathFinderDataAdmin(data) {
+      localStorage.setItem("sitePathFinder", JSON.stringify(data));
+    }
+
+    var eduEditingPathId = null;
+
+    var eduPathListPanel = document.getElementById("eduPathListPanel");
+    var eduGoalPanel = document.getElementById("eduGoalPanel");
+    var eduPathFormPanel = document.getElementById("eduPathFormPanel");
+
+    function showEduPanel(panel) {
+      eduPathListPanel.style.display = "none";
+      eduGoalPanel.style.display = "none";
+      eduPathFormPanel.style.display = "none";
+      panel.style.display = "";
+    }
+
+    function renderEduPathList() {
+      showEduPanel(eduPathListPanel);
+      var data = getPathFinderDataAdmin();
+      var container = document.getElementById("eduPathList");
+
+      if (data.paths.length === 0) {
+        container.innerHTML = '<div class="empty-state">No status categories yet. Click "Add Status" to create one.</div>';
+        return;
+      }
+
+      container.innerHTML = data.paths.map(function(p) {
+        return '<div class="page-row" data-id="' + escapeHtml(p.id) + '">' +
+          '<div class="page-row-info">' +
+            '<div class="page-row-title">' + escapeHtml(p.label) + '</div>' +
+            '<div class="page-row-slug">' + p.goals.length + ' goal' + (p.goals.length !== 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<div class="page-row-actions">' +
+            '<button class="btn btn-secondary btn-sm btn-edu-goals">Goals</button>' +
+            '<button class="btn btn-secondary btn-sm btn-edu-edit">Edit</button>' +
+            '<button class="btn btn-danger btn-sm btn-edu-delete">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      container.querySelectorAll(".btn-edu-goals").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var id = btn.closest(".page-row").dataset.id;
+          openGoalEditor(id);
+        });
+      });
+
+      container.querySelectorAll(".btn-edu-edit").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var id = btn.closest(".page-row").dataset.id;
+          var data = getPathFinderDataAdmin();
+          var path = data.paths.find(function(p) { return p.id === id; });
+          if (!path) return;
+          document.getElementById("eduPathEditId").value = path.id;
+          document.getElementById("eduPathLabel").value = path.label;
+          document.getElementById("eduPathFormTitle").textContent = "Edit Status";
+          showEduPanel(eduPathFormPanel);
+        });
+      });
+
+      container.querySelectorAll(".btn-edu-delete").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!confirm("Delete this status and all its goals?")) return;
+          var id = btn.closest(".page-row").dataset.id;
+          var data = getPathFinderDataAdmin();
+          data.paths = data.paths.filter(function(p) { return p.id !== id; });
+          savePathFinderDataAdmin(data);
+          renderEduPathList();
+          showToast("Status deleted");
+        });
+      });
+    }
+
+    // Add path button
+    document.getElementById("btnAddPath").addEventListener("click", function() {
+      document.getElementById("eduPathEditId").value = "";
+      document.getElementById("eduPathLabel").value = "";
+      document.getElementById("eduPathFormTitle").textContent = "Add Status";
+      showEduPanel(eduPathFormPanel);
+    });
+
+    document.getElementById("btnCancelPath").addEventListener("click", function() {
+      renderEduPathList();
+    });
+
+    document.getElementById("btnSavePath").addEventListener("click", function() {
+      var label = document.getElementById("eduPathLabel").value.trim();
+      if (!label) { showToast("Label is required"); return; }
+
+      var data = getPathFinderDataAdmin();
+      var editId = document.getElementById("eduPathEditId").value;
+
+      if (editId) {
+        var path = data.paths.find(function(p) { return p.id === editId; });
+        if (path) path.label = label;
+      } else {
+        data.paths.push({
+          id: generateId(),
+          label: label,
+          goals: []
+        });
+      }
+      savePathFinderDataAdmin(data);
+      renderEduPathList();
+      showToast(editId ? "Status updated" : "Status added");
+    });
+
+    // Goal editor
+    function openGoalEditor(pathId) {
+      eduEditingPathId = pathId;
+      var data = getPathFinderDataAdmin();
+      var path = data.paths.find(function(p) { return p.id === pathId; });
+      if (!path) return;
+
+      document.getElementById("eduGoalPanelTitle").textContent = "Goals for: " + path.label;
+      clearGoalForm();
+      renderGoalList(path);
+      showEduPanel(eduGoalPanel);
+    }
+
+    function clearGoalForm() {
+      document.getElementById("eduGoalEditId").value = "";
+      document.getElementById("eduGoalLabel").value = "";
+      document.getElementById("eduGoalProcess").value = "";
+      document.getElementById("eduGoalTimeline").value = "";
+      document.getElementById("eduGoalCta").value = "Request Deep Dive";
+    }
+
+    function renderGoalList(path) {
+      var container = document.getElementById("eduGoalList");
+      if (path.goals.length === 0) {
+        container.innerHTML = '<div class="empty-state">No goals yet. Add one below.</div>';
+        return;
+      }
+      container.innerHTML = path.goals.map(function(g) {
+        return '<div class="page-row" data-id="' + escapeHtml(g.id) + '">' +
+          '<div class="page-row-info">' +
+            '<div class="page-row-title">' + escapeHtml(g.label) + '</div>' +
+            '<div class="page-row-slug">' + escapeHtml(g.timeline || '') + '</div>' +
+          '</div>' +
+          '<div class="page-row-actions">' +
+            '<button class="btn btn-secondary btn-sm btn-goal-edit">Edit</button>' +
+            '<button class="btn btn-danger btn-sm btn-goal-delete">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      container.querySelectorAll(".btn-goal-edit").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var gId = btn.closest(".page-row").dataset.id;
+          var g = path.goals.find(function(x) { return x.id === gId; });
+          if (!g) return;
+          document.getElementById("eduGoalEditId").value = g.id;
+          document.getElementById("eduGoalLabel").value = g.label;
+          document.getElementById("eduGoalProcess").value = g.process;
+          document.getElementById("eduGoalTimeline").value = g.timeline;
+          document.getElementById("eduGoalCta").value = g.cta || "Request Deep Dive";
+        });
+      });
+
+      container.querySelectorAll(".btn-goal-delete").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var gId = btn.closest(".page-row").dataset.id;
+          var data = getPathFinderDataAdmin();
+          var p = data.paths.find(function(x) { return x.id === eduEditingPathId; });
+          if (!p) return;
+          p.goals = p.goals.filter(function(x) { return x.id !== gId; });
+          savePathFinderDataAdmin(data);
+          renderGoalList(p);
+          showToast("Goal deleted");
+        });
+      });
+    }
+
+    document.getElementById("btnSaveGoal").addEventListener("click", function() {
+      var label = document.getElementById("eduGoalLabel").value.trim();
+      if (!label) { showToast("Goal label is required"); return; }
+
+      var data = getPathFinderDataAdmin();
+      var path = data.paths.find(function(p) { return p.id === eduEditingPathId; });
+      if (!path) return;
+
+      var editId = document.getElementById("eduGoalEditId").value;
+      var goalData = {
+        label: label,
+        process: document.getElementById("eduGoalProcess").value.trim(),
+        timeline: document.getElementById("eduGoalTimeline").value.trim(),
+        cta: document.getElementById("eduGoalCta").value.trim() || "Request Deep Dive"
+      };
+
+      if (editId) {
+        var existing = path.goals.find(function(g) { return g.id === editId; });
+        if (existing) {
+          existing.label = goalData.label;
+          existing.process = goalData.process;
+          existing.timeline = goalData.timeline;
+          existing.cta = goalData.cta;
+        }
+      } else {
+        goalData.id = generateId();
+        path.goals.push(goalData);
+      }
+
+      savePathFinderDataAdmin(data);
+      clearGoalForm();
+      renderGoalList(path);
+      showToast(editId ? "Goal updated" : "Goal added");
+    });
+
+    document.getElementById("btnCancelGoal").addEventListener("click", function() {
+      clearGoalForm();
+    });
+
+    document.getElementById("btnBackToPaths").addEventListener("click", function() {
+      renderEduPathList();
+    });
+
+    // Initial render — hide goal and form panels
+    eduGoalPanel.style.display = "none";
+    eduPathFormPanel.style.display = "none";
+    renderEduPathList();
 
     /* ══════════════════════════════════════════════
        Init

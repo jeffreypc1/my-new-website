@@ -146,6 +146,32 @@ function saveTestimonials(data) {
 }
 
 /* ══════════════════════════════════════════════
+   Business Hours Data (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getBusinessHours() {
+  try { return JSON.parse(localStorage.getItem("siteBusinessHours") || "null"); }
+  catch (e) { return null; }
+}
+
+function saveBusinessHours(data) {
+  localStorage.setItem("siteBusinessHours", JSON.stringify(data));
+}
+
+function getDefaultBusinessHours() {
+  var days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  var schedule = {};
+  days.forEach(function(day) {
+    if (day === "Saturday" || day === "Sunday") {
+      schedule[day] = { open: "", close: "", closed: true };
+    } else {
+      schedule[day] = { open: "09:00", close: "17:00", closed: false };
+    }
+  });
+  return { schedule: schedule, closures: [] };
+}
+
+/* ══════════════════════════════════════════════
    Locations Data (localStorage)
    ══════════════════════════════════════════════ */
 
@@ -156,6 +182,63 @@ function getLocations() {
 
 function saveLocations(data) {
   localStorage.setItem("siteLocations", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
+   Path Finder Data (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getPathFinderData() {
+  try {
+    var saved = JSON.parse(localStorage.getItem("sitePathFinder") || "null");
+    if (saved && saved.paths && saved.paths.length > 0) return saved;
+  } catch (e) {}
+  return getDefaultPathFinderData();
+}
+
+function savePathFinderData(data) {
+  localStorage.setItem("sitePathFinder", JSON.stringify(data));
+}
+
+function getDefaultPathFinderData() {
+  return {
+    paths: [
+      {
+        id: "citizen", label: "A U.S. Citizen",
+        goals: [
+          { id: "citizen-spouse", label: "Sponsor a spouse", process: "File Form I-130 (Petition for Alien Relative) with USCIS. As an immediate relative, your spouse has no visa queue wait. After approval, your spouse adjusts status (if in the U.S.) or goes through consular processing abroad.", timeline: "12\u201318 months", cta: "Request Deep Dive" },
+          { id: "citizen-parent", label: "Sponsor a parent", process: "File Form I-130 for your parent. Parents of U.S. citizens are immediate relatives\u2014no visa backlog. If your parent is in the U.S., they may file Form I-485 concurrently to adjust status.", timeline: "12\u201318 months", cta: "Request Deep Dive" },
+          { id: "citizen-fiance", label: "Apply for a fianc\u00e9(e) visa", process: "File Form I-129F (Petition for Alien Fianc\u00e9(e)) with USCIS. After approval, your fianc\u00e9(e) applies for a K-1 visa at a U.S. consulate. They must enter the U.S. and marry within 90 days, then apply to adjust status.", timeline: "8\u201314 months", cta: "Request Deep Dive" },
+          { id: "citizen-sibling", label: "Sponsor a sibling", process: "File Form I-130 for your brother or sister. Siblings of U.S. citizens fall under the Family Fourth Preference (F4) category. Due to high demand, wait times can be significant depending on country of origin.", timeline: "7\u201324 years (varies by country)", cta: "Request Deep Dive" }
+        ]
+      },
+      {
+        id: "lpr", label: "A Lawful Permanent Resident",
+        goals: [
+          { id: "lpr-spouse", label: "Sponsor a spouse", process: "File Form I-130 for your spouse. Spouses of LPRs fall under the Family Second Preference (F2A) category. Wait times are shorter than other family preference categories but longer than immediate relative petitions.", timeline: "2\u20133 years", cta: "Request Deep Dive" },
+          { id: "lpr-child", label: "Sponsor an unmarried child", process: "File Form I-130. Unmarried children under 21 qualify for F2A (shorter wait), while unmarried children over 21 fall into F2B (longer wait).", timeline: "2\u20137 years", cta: "Request Deep Dive" },
+          { id: "lpr-naturalize", label: "Apply for U.S. citizenship", process: "If you\u2019ve been a permanent resident for 5 years (or 3 years if married to a U.S. citizen), you may file Form N-400 for naturalization. You\u2019ll need to pass an English and civics test and attend an interview.", timeline: "8\u201314 months after filing", cta: "Request Deep Dive" }
+        ]
+      },
+      {
+        id: "undocumented", label: "Undocumented / No Status",
+        goals: [
+          { id: "undoc-asylum", label: "Apply for asylum", process: "If you fear persecution in your home country based on race, religion, nationality, political opinion, or membership in a social group, you may file Form I-589 within one year of your last arrival. Asylum grants work authorization and a path to permanent residency.", timeline: "6 months \u2013 4+ years (depending on court backlog)", cta: "Request Deep Dive" },
+          { id: "undoc-sij", label: "Special Immigrant Juvenile Status", process: "If you are under 21, unmarried, and have been abused, neglected, or abandoned by a parent, a state court may declare you a dependent. You can then file Form I-360 with USCIS to seek Special Immigrant Juvenile Status.", timeline: "1\u20133 years", cta: "Request Deep Dive" },
+          { id: "undoc-u", label: "U-Visa (crime victim)", process: "If you were a victim of a qualifying crime in the U.S. and helped law enforcement, you may petition for a U nonimmigrant visa using Form I-918. U-Visas lead to work authorization and, after 3 years, eligibility for a green card.", timeline: "4\u20136+ years (significant backlog)", cta: "Request Deep Dive" },
+          { id: "undoc-tps", label: "Temporary Protected Status", process: "If your home country is designated for TPS due to armed conflict, environmental disaster, or other extraordinary conditions, you may apply for temporary protection from deportation and work authorization.", timeline: "Depends on country designation", cta: "Request Deep Dive" }
+        ]
+      },
+      {
+        id: "visa", label: "A Visa Holder",
+        goals: [
+          { id: "visa-greencard", label: "Adjust to permanent residence", process: "Depending on your visa type, you may be eligible to adjust status to permanent residence through employment (EB categories) or family sponsorship. An employer typically files a PERM labor certification, then Form I-140, followed by Form I-485.", timeline: "1\u20135+ years (varies by category and country)", cta: "Request Deep Dive" },
+          { id: "visa-extend", label: "Extend or change my visa", process: "File Form I-539 (for nonimmigrant status changes) or have your employer file Form I-129 (for work visa extensions). Apply before your current status expires.", timeline: "2\u20136 months", cta: "Request Deep Dive" },
+          { id: "visa-h1b", label: "Transition to H-1B", process: "Your employer files Form I-129 with a Labor Condition Application. H-1B visas are subject to an annual cap (with exceptions for certain employers). If selected in the lottery, you can begin working October 1.", timeline: "3\u20138 months (if selected in lottery)", cta: "Request Deep Dive" }
+        ]
+      }
+    ]
+  };
 }
 
 /* ══════════════════════════════════════════════
@@ -261,10 +344,14 @@ function renderGlobalNav() {
         '<li><a href="index.html#services-grid">Services</a></li>' +
         '<li><a href="staff.html">Staff</a></li>' +
         '<li><a href="testimonials.html">Testimonials</a></li>' +
+        '<li><a href="education.html">Education</a></li>' +
         '<li><a href="locations.html">Locations</a></li>' +
         '<li><a href="#" class="nav-cta">Book a Consultation</a></li>' +
       '</ul>' +
     '</div>';
+
+  // Inject hero clock if hero exists on this page
+  initHeroClock();
 
   // Mobile FAB
   var fab = document.createElement("button");
@@ -784,7 +871,7 @@ function crossFadeHero(hero, imageUrl, useSmartFilter) {
     fadeLayer.classList.remove("active");
     fadeLayer.style.backgroundImage = "";
     fadeLayer.style.filter = "";
-  }, 2000);
+  }, 3000);
 }
 
 function crossFadeLocationHero(locHero, imageUrl, useSmartFilter) {
@@ -821,7 +908,100 @@ function crossFadeLocationHero(locHero, imageUrl, useSmartFilter) {
     fadeLayer.classList.remove("active");
     fadeLayer.style.backgroundImage = "";
     fadeLayer.style.filter = "";
-  }, 2000);
+  }, 3000);
+}
+
+/* ══════════════════════════════════════════════
+   Living Clock & Status Engine
+   ══════════════════════════════════════════════ */
+
+function getOfficeStatus() {
+  var hours = getBusinessHours() || getDefaultBusinessHours();
+  var now = new Date();
+  var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var dayName = days[now.getDay()];
+  var schedule = hours.schedule[dayName];
+
+  // Check special closures
+  var month = String(now.getMonth() + 1).padStart(2, "0");
+  var date = String(now.getDate()).padStart(2, "0");
+  var todayStr = now.getFullYear() + "-" + month + "-" + date;
+
+  var closures = hours.closures || [];
+  for (var i = 0; i < closures.length; i++) {
+    if (closures[i].date === todayStr) {
+      return { status: "holiday", label: closures[i].label || "Holiday", color: "red" };
+    }
+  }
+
+  if (!schedule || schedule.closed || !schedule.open || !schedule.close) {
+    return { status: "closed", label: "Closed", color: "amber" };
+  }
+
+  var nowMinutes = now.getHours() * 60 + now.getMinutes();
+  var openParts = schedule.open.split(":");
+  var closeParts = schedule.close.split(":");
+  var openMinutes = parseInt(openParts[0]) * 60 + parseInt(openParts[1]);
+  var closeMinutes = parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
+
+  if (nowMinutes >= openMinutes && nowMinutes < closeMinutes) {
+    return { status: "open", label: "Open", color: "green" };
+  }
+  return { status: "closed", label: "Closed", color: "amber" };
+}
+
+function formatClockTime(date) {
+  var h = date.getHours();
+  var m = String(date.getMinutes()).padStart(2, "0");
+  var ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return h + ":" + m + " " + ampm;
+}
+
+var _lastSunAwareTheme = null;
+
+function initHeroClock() {
+  var heroInner = document.querySelector(".hero-inner");
+  if (!heroInner) return;
+
+  // Create the clock whisper element and insert as first child of hero-inner
+  var clockLine = document.createElement("div");
+  clockLine.className = "hero-clock-line reveal";
+  clockLine.innerHTML = '<span class="status-dot" id="statusDot"></span><span id="clockText" class="hero-clock-text"></span>';
+  heroInner.insertBefore(clockLine, heroInner.firstChild);
+
+  var clockEl = document.getElementById("clockText");
+  var dotEl = document.getElementById("statusDot");
+
+  function update() {
+    var now = new Date();
+    var timeStr = formatClockTime(now);
+    var info = getOfficeStatus();
+
+    clockEl.textContent = "San Francisco, CA \u2014 " + timeStr + " \u00b7 Office is " + info.label;
+    dotEl.className = "status-dot status-" + info.color;
+
+    // Sun-aware auto-transition at 6 PM / 6 AM
+    var hour = now.getHours();
+    var shouldBeNight = hour >= 18 || hour < 6;
+    var currentTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+
+    if (_lastSunAwareTheme !== null && _lastSunAwareTheme !== shouldBeNight) {
+      if (shouldBeNight && currentTheme !== "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        localStorage.setItem("theme", "dark");
+        applyAdaptiveImages();
+      } else if (!shouldBeNight && currentTheme === "dark") {
+        document.documentElement.removeAttribute("data-theme");
+        localStorage.setItem("theme", "light");
+        applyAdaptiveImages();
+      }
+    }
+    _lastSunAwareTheme = shouldBeNight;
+  }
+
+  update();
+  setInterval(update, 30000);
 }
 
 /* ══════════════════════════════════════════════

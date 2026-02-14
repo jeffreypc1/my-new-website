@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.9 — 2026-02-14
+
+### Hero Clock Relocation & Education Path Finder
+
+- **Hero clock whisper line** — The living clock and office status have been relocated from the navigation bar to the top of the hero section, sitting just above the main headline as a delicate whisper of text. Format: `San Francisco, CA — 10:42 AM · Office is Open`. Styled with `font-weight: 300`, `letter-spacing: 0.12em`, `text-transform: uppercase`, and `color: rgba(255,255,255,0.55)` — ambient information that blends into the hero without competing for attention. The 6px status dot with its breathing glow animation sits inline to the left.
+- **Navigation decluttered** — The top-bar strip has been removed entirely from the navbar. The nav now contains only the logo, five links (Services, Staff, Testimonials, Education, Locations), and the CTA button, with `40px` gaps for breathing room. The nav is clean and focused.
+- **Education page (`education.html`)** — A new "Immigration Path Finder" interactive tool that guides visitors through their options in two steps:
+  - **Step 1** — "I am..." with four status categories: U.S. Citizen, Lawful Permanent Resident, Undocumented/No Status, Visa Holder.
+  - **Step 2** — "And I want to..." with dependent options that change based on Step 1 (e.g., Citizen → Sponsor a spouse, Sponsor a parent, Apply for a fiance visa, Sponsor a sibling).
+  - **Result card** — A glassmorphism card appears with: the goal title, an estimated timeline badge, a detailed process description, and a "Request Deep Dive" CTA that opens the consultation modal.
+- **Premium custom selects** — No native browser `<select>` elements. Both picklists use custom-built dropdown menus with: glassmorphism backgrounds (`backdrop-filter: blur(30px)`), fade-in animation (`translateY(-8px) → 0`, `scale(0.97) → 1`), hover highlights, selected state indicators, and a rotating chevron icon. They close on outside click and feel native to the site's design language.
+- **Step animations** — Step 2 fades in (`opacity 0→1`, `translateY(16px)→0` over `0.5s`) only after Step 1 is answered. The result card uses a similar entrance at `0.6s`. Each transition uses the site's premium cubic-bezier curve.
+- **Admin "Education Logic" tab** — Full CRUD for the Path Finder in admin.html:
+  - **Status list** — View, edit, and delete status categories.
+  - **Goal editor** — For each status, add/edit/delete goals with fields: Goal Label, Process Description (textarea), Estimated Timeline, CTA Button Text.
+  - Data stored in `sitePathFinder` localStorage key with seed defaults matching the hardcoded data.
+- **Education nav link** — Added "Education" to the global navigation between Testimonials and Locations.
+
+**Why:** Prospective clients visiting an immigration lawyer's website often don't know what legal path applies to them. The Path Finder turns a confusing landscape into a two-click guided experience — select who you are, then what you want, and get a clear explanation with timeline and next steps. The admin panel ensures the firm can update legal pathways as immigration law evolves, without touching code.
+
+## v1.8.1 — 2026-02-14
+
+### Header Declutter & Clock Refinement
+- **Apple-style top bar** — The living clock and status dot have been relocated from the main navigation row into a dedicated slim strip above it (`.top-bar`). This mirrors Apple.com's global promo bar pattern — a single centered line of whisper-light text that stays out of the way. The top bar auto-hides when the user scrolls (`.navbar.scrolled .top-bar { display: none }`), keeping the compact scrolled nav clean.
+- **Refined clock typography** — Replaced the monospaced font stack (`SF Mono`, `Fira Code`, `Consolas`) with the site's primary `Inter` font at `10px` with `letter-spacing: 0.06em` and `opacity: 0.7`. The result is a subtle, barely-there timestamp that reads as ambient information rather than a UI element.
+- **6px breathing status glow** — The status dot has been shrunk from 8px to 6px. The green "open" state now uses a soft `box-shadow` glow animation (`status-glow`) that pulses between `2px` and `6px` spread over 2.5 seconds, replacing the previous expanding ring. The amber "closed" dot uses a static `3px` warm glow. Both feel like gentle indicator lights rather than bold UI dots.
+- **Increased nav link spacing** — The gap between navigation links (Services, Staff, Testimonials, Locations) has been increased from `32px` to `40px`, giving each link room to breathe and improving the overall sense of openness in the header.
+- **Top bar visual treatment** — The top bar has a `1px` bottom border at `4%` opacity (adjusts for dark mode) — no background color, no visual weight. The clock text uses `var(--mid-gray)` at reduced opacity, making it feel like metadata rather than content.
+
+**Why:** The original clock placement competed with navigation links for horizontal space, creating a crowded header that undermined the site's premium feel. Apple's own site solves this exact problem with a thin promo strip above the nav — information is visible but never in the way. The refined 6px glow dots and whisper-weight typography ensure the clock reads as ambient environmental data, not a UI widget.
+
+## v1.8 — 2026-02-14
+
+### Intelligent Office Environment & Adaptive Calendar
+
+- **Business Hours admin tab** — A new "Business Hours" tab in admin.html lets you set daily open/close times for each day of the week (default Mon–Fri 9 AM–5 PM, Sat–Sun closed). A "Special Closures" section allows adding specific dates (e.g., July 4th, Dec 25th) with custom labels. Data persists in `siteBusinessHours` localStorage key.
+- **Living Clock & Status Engine** — The navigation bar now displays a real-time digital clock ("Berkeley, CA — 2:42 PM") using a monospaced font (`SF Mono` / `Fira Code` / `Consolas`). A status dot adjacent to the clock indicates office status: **green** (Open, with a subtle pulse animation), **amber** (Closed — outside business hours or weekend), or **red** (Holiday/Special Closure). The status is computed by checking the current time against the stored business hours schedule and special closures list. The clock updates every 30 seconds.
+- **Sun-Aware Adaptive Image Engine** — The system now automatically detects when local time crosses the 6 PM or 6 AM boundary and triggers a theme switch (light → dark at 6 PM, dark → light at 6 AM), invoking the adaptive image cross-fade. Manual overrides via the dark mode toggle still work and use the same transition.
+- **3-second cross-fade** — The adaptive image cross-fade duration has been upgraded from 2 seconds to 3 seconds for an even more cinematic transition. Both CSS transitions (`.hero-crossfade`, `.location-hero-crossfade`, filter transitions) and JS `setTimeout` callbacks have been updated to 3s / 3000ms.
+- **Status dot pulse animation** — When the office is open, the green status dot has a `status-pulse` keyframe animation: a soft expanding ring (`box-shadow`) that fades out over 2 seconds, creating a "breathing" effect that signals live status.
+
+**Why:** Visitors checking the firm's website should immediately know if the office is currently open. The living clock and status dot provide at-a-glance awareness, while the sun-aware image engine ensures the site's visuals match the time of day — a blazing daytime skyline at 10 PM feels wrong, and now it automatically corrects itself. The 3-second cross-fade makes the day/night transition feel unhurried and premium.
+
 ## v1.7 — 2026-02-14
 
 ### Adaptive Image Engine (Day/Night Cross-Fade)
