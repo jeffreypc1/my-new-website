@@ -769,6 +769,7 @@
         <div class="sidebar-group-items">
           <a class="sidebar-link" data-section="settings"><span>Site Settings</span></a>
           <a class="sidebar-link" data-section="clocksettings"><span>Clock Settings</span></a>
+          <a class="sidebar-link" data-section="translation"><span>Translation</span></a>
         </div>
       </div>
     </nav>
@@ -1386,6 +1387,24 @@
 
         <div style="margin-top:20px">
           <button class="btn btn-primary" id="btnSaveClockSettings">Save Clock Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Translation ── -->
+    <div id="translation" class="section">
+      <h1>Translation</h1>
+      <p class="subtitle">Configure the automated translation system. A legal disclaimer appears on the public site when a non-English language is active.</p>
+
+      <div class="panel">
+        <div class="form-group">
+          <label for="translationDisclaimer">Legal Disclaimer</label>
+          <textarea id="translationDisclaimerInput" rows="3" placeholder="This translation is automated for your convenience..."></textarea>
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">This text appears in a bar at the bottom of the page when a visitor is viewing the site in a non-English language.</p>
+        </div>
+
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveTranslation">Save Translation Settings</button>
         </div>
       </div>
     </div>
@@ -3067,6 +3086,26 @@
         };
         localStorage.setItem("siteClockSettings", JSON.stringify(data));
         showToast("Clock settings saved");
+      });
+    })();
+
+    /* ══════════════════════════════════════════════
+       Translation Settings
+       ══════════════════════════════════════════════ */
+
+    (function initTranslationSettings() {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem("siteTranslation") || "null"); } catch (e) {}
+      var settings = stored || { disclaimer: "This translation is automated for your convenience. For legal precision, please refer to the English original." };
+
+      document.getElementById("translationDisclaimerInput").value = settings.disclaimer || "";
+
+      document.getElementById("btnSaveTranslation").addEventListener("click", function() {
+        var data = {
+          disclaimer: document.getElementById("translationDisclaimerInput").value
+        };
+        localStorage.setItem("siteTranslation", JSON.stringify(data));
+        showToast("Translation settings saved");
       });
     })();
 

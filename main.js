@@ -451,6 +451,9 @@ function renderGlobalNav() {
     '</li>';
   }
 
+  linksHtml += '<li><button class="nav-lang-btn" id="navLangBtn" aria-label="Change language">' +
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
+  '</button></li>';
   linksHtml += '<li><a href="#" class="nav-cta">Book a Consultation</a></li>';
 
   nav.innerHTML =
@@ -475,8 +478,20 @@ function renderGlobalNav() {
     });
   }
 
+  // Language button
+  var langBtn = document.getElementById("navLangBtn");
+  if (langBtn) {
+    langBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      openLanguageModal();
+    });
+  }
+
   // Inject hero clock if hero exists on this page
   initHeroClock();
+
+  // Translation engine
+  initTranslationEngine();
 
   // Mobile FAB
   var fab = document.createElement("button");
@@ -1267,6 +1282,216 @@ function initPageTransitions() {
 /* ══════════════════════════════════════════════
    Smooth Scroll for Internal Links
    ══════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════
+   Smart Translation System
+   ══════════════════════════════════════════════ */
+
+var TRANSLATE_LANGUAGES = [
+  { code: "es", label: "Espa\u00f1ol", flag: "\ud83c\uddea\ud83c\uddf8" },
+  { code: "zh-CN", label: "\u4e2d\u6587", flag: "\ud83c\udde8\ud83c\uddf3" },
+  { code: "vi", label: "Ti\u1ebfng Vi\u1ec7t", flag: "\ud83c\uddfb\ud83c\uddf3" },
+  { code: "ko", label: "\ud55c\uad6d\uc5b4", flag: "\ud83c\uddf0\ud83c\uddf7" },
+  { code: "tl", label: "Tagalog", flag: "\ud83c\uddf5\ud83c\udded" },
+  { code: "ar", label: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", flag: "\ud83c\uddf8\ud83c\udde6" },
+  { code: "fr", label: "Fran\u00e7ais", flag: "\ud83c\uddeb\ud83c\uddf7" },
+  { code: "pt", label: "Portugu\u00eas", flag: "\ud83c\udde7\ud83c\uddf7" },
+  { code: "ru", label: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", flag: "\ud83c\uddf7\ud83c\uddfa" },
+  { code: "hi", label: "\u0939\u093f\u0928\u094d\u0926\u0940", flag: "\ud83c\uddee\ud83c\uddf3" }
+];
+
+function getTranslationSettings() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("siteTranslation") || "null");
+    if (stored) return stored;
+  } catch (e) {}
+  return { disclaimer: "This translation is automated for your convenience. For legal precision, please refer to the English original." };
+}
+
+function getSelectedLanguage() {
+  return localStorage.getItem("siteLanguage") || "";
+}
+
+function setSelectedLanguage(langCode) {
+  localStorage.setItem("siteLanguage", langCode);
+}
+
+function initTranslationEngine() {
+  // Inject hidden Google Translate element
+  var gtDiv = document.createElement("div");
+  gtDiv.id = "google_translate_element";
+  gtDiv.style.cssText = "position:absolute;top:-9999px;left:-9999px;opacity:0;pointer-events:none";
+  document.body.appendChild(gtDiv);
+
+  // Load Google Translate script
+  window.googleTranslateElementInit = function() {
+    new google.translate.TranslateElement({
+      pageLanguage: "en",
+      autoDisplay: false,
+      layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+    }, "google_translate_element");
+
+    // After Google Translate initializes, apply saved or auto-detected language
+    setTimeout(function() {
+      var saved = getSelectedLanguage();
+      if (saved && saved !== "en") {
+        triggerGoogleTranslate(saved);
+        showTranslationDisclaimer();
+      } else if (!saved) {
+        autoDetectLanguage();
+      }
+    }, 1000);
+  };
+
+  var script = document.createElement("script");
+  script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+  script.async = true;
+  document.head.appendChild(script);
+}
+
+function autoDetectLanguage() {
+  var browserLang = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+  // Check if browser language matches any of our supported languages
+  for (var i = 0; i < TRANSLATE_LANGUAGES.length; i++) {
+    var lang = TRANSLATE_LANGUAGES[i];
+    if (browserLang === lang.code.toLowerCase() || browserLang.split("-")[0] === lang.code.split("-")[0].toLowerCase()) {
+      setSelectedLanguage(lang.code);
+      triggerGoogleTranslate(lang.code);
+      showTranslationDisclaimer();
+      return;
+    }
+  }
+}
+
+function triggerGoogleTranslate(langCode) {
+  // Google Translate uses a cookie to set language
+  var domain = window.location.hostname;
+  document.cookie = "googtrans=/en/" + langCode + ";path=/;domain=" + domain;
+  document.cookie = "googtrans=/en/" + langCode + ";path=/";
+
+  // Try to use the Google Translate combo box if available
+  var frame = document.querySelector(".goog-te-menu-frame");
+  if (frame) {
+    try {
+      var items = frame.contentDocument.querySelectorAll(".goog-te-menu2-item span.text");
+      items.forEach(function(item) {
+        // Match by triggering the select element
+      });
+    } catch (e) {}
+  }
+
+  // Fallback: set the select element value
+  var select = document.querySelector(".goog-te-combo");
+  if (select) {
+    select.value = langCode;
+    select.dispatchEvent(new Event("change"));
+  }
+}
+
+function showTranslationDisclaimer() {
+  if (document.getElementById("translationDisclaimer")) return;
+
+  var settings = getTranslationSettings();
+  var disclaimer = settings.disclaimer || "";
+  if (!disclaimer) return;
+
+  var bar = document.createElement("div");
+  bar.id = "translationDisclaimer";
+  bar.className = "translation-disclaimer";
+  bar.innerHTML = '<span>' + escapeHtmlUtil(disclaimer) + '</span>' +
+    '<button class="translation-disclaimer-close" aria-label="Dismiss">&times;</button>';
+  document.body.appendChild(bar);
+
+  requestAnimationFrame(function() {
+    bar.classList.add("visible");
+  });
+
+  bar.querySelector(".translation-disclaimer-close").addEventListener("click", function() {
+    bar.classList.remove("visible");
+    setTimeout(function() { bar.remove(); }, 300);
+  });
+}
+
+function removeTranslationDisclaimer() {
+  var bar = document.getElementById("translationDisclaimer");
+  if (bar) {
+    bar.classList.remove("visible");
+    setTimeout(function() { bar.remove(); }, 300);
+  }
+}
+
+function openLanguageModal() {
+  var existing = document.getElementById("langModalOverlay");
+  if (existing) existing.remove();
+
+  var currentLang = getSelectedLanguage();
+
+  var langItems = '<a class="lang-option' + (!currentLang || currentLang === "en" ? " lang-active" : "") + '" data-lang="en">' +
+    '<span class="lang-flag">\ud83c\uddfa\ud83c\uddf8</span><span class="lang-label">English</span></a>';
+
+  langItems += TRANSLATE_LANGUAGES.map(function(lang) {
+    var activeClass = currentLang === lang.code ? " lang-active" : "";
+    return '<a class="lang-option' + activeClass + '" data-lang="' + lang.code + '">' +
+      '<span class="lang-flag">' + lang.flag + '</span><span class="lang-label">' + lang.label + '</span></a>';
+  }).join('');
+
+  var overlay = document.createElement("div");
+  overlay.id = "langModalOverlay";
+  overlay.className = "lang-modal-overlay";
+  overlay.innerHTML =
+    '<div class="lang-modal">' +
+      '<div class="lang-modal-header">' +
+        '<h3>Choose Language</h3>' +
+        '<button class="lang-modal-close" aria-label="Close">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="lang-modal-grid">' + langItems + '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(function() {
+    overlay.classList.add("lang-modal-active");
+  });
+
+  // Close handlers
+  overlay.querySelector(".lang-modal-close").addEventListener("click", closeLanguageModal);
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) closeLanguageModal();
+  });
+
+  // Language selection
+  overlay.querySelectorAll(".lang-option").forEach(function(opt) {
+    opt.addEventListener("click", function() {
+      var lang = opt.dataset.lang;
+      setSelectedLanguage(lang);
+
+      if (lang === "en") {
+        // Reset to English — remove Google Translate cookie and reload
+        document.cookie = "googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "googtrans=;path=/;domain=" + window.location.hostname + ";expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        removeTranslationDisclaimer();
+        closeLanguageModal();
+        window.location.reload();
+      } else {
+        triggerGoogleTranslate(lang);
+        showTranslationDisclaimer();
+        closeLanguageModal();
+        // Reload for Google Translate to take effect with cookie
+        window.location.reload();
+      }
+    });
+  });
+}
+
+function closeLanguageModal() {
+  var overlay = document.getElementById("langModalOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("lang-modal-active");
+  overlay.classList.add("lang-modal-leaving");
+  setTimeout(function() { overlay.remove(); }, 300);
+}
 
 function initSmoothScroll() {
   document.addEventListener("click", function(e) {

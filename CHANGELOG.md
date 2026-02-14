@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.4 — 2026-02-14
+
+### Smart Translation System
+
+- **Auto-detection** — On page load, `navigator.language` is checked against 10 supported languages (Spanish, Chinese, Vietnamese, Korean, Tagalog, Arabic, French, Portuguese, Russian, Hindi). If the browser language is non-English and no preference is saved, the translation engine triggers automatically.
+- **Language selector** — A minimal globe icon button (`.nav-lang-btn`) sits in the navigation bar before the CTA. Clicking it opens a glassmorphism modal with a 2-column grid of language options, each showing a flag emoji and native-script label. The active language is highlighted with Aurora Blue (`#3b82f6`) background.
+- **Google Translate integration** — The Google Translate Element API loads asynchronously. The default Google toolbar, banner frame, and tooltip artifacts are hidden via CSS (`display: none !important` on `.goog-te-banner-frame`, `.skiptranslate`, `#goog-gt-tt`, etc.). The `body { top: 0 !important }` rule prevents Google's banner from pushing page content down. Translation is triggered by setting the `googtrans` cookie and dispatching a change event on the hidden combo box.
+- **Persistence** — The user's language choice is stored in `siteLanguage` localStorage key. On subsequent page loads, the saved language is re-applied automatically without requiring re-selection.
+- **Legal disclaimer bar** — When a non-English translation is active, a fixed bar appears at the bottom of the page with a configurable disclaimer message. Styled with `rgba(30, 30, 30, 0.88)` background, `backdrop-filter: blur(12px)`, and slides up from below over `0.4s`. Dismissible via a close button.
+- **Admin "Translation" tab** — New section in the System Settings accordion group of admin.html with a textarea for the legal disclaimer. Default text: "This translation is automated for your convenience. For legal precision, please refer to the English original." Stored in `siteTranslation` localStorage key.
+- **Modal interactions** — The language modal uses the same animation patterns as the bento modal: `scale(0.94) → 1`, `translateY(16px → 0)`, blurred overlay backdrop. Escape-to-close is inherited from the overlay click handler. Dark mode fully supported.
+- **Reset to English** — Selecting "English" clears the `googtrans` cookie, removes the disclaimer, and reloads the page to restore the original content.
+
+**Why:** An immigration law firm's clientele is inherently multilingual. Auto-detecting the browser language and offering one-click translation removes a major accessibility barrier. The legal disclaimer protects the firm by noting that translations are automated, while the admin field lets the firm customize the wording. Hiding Google's default UI preserves the site's premium aesthetic.
+
 ## v2.3 — 2026-02-14
 
 ### Categorized Accordion Sidebar
