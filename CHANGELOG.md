@@ -1,5 +1,101 @@
 # Changelog
 
+## v1.6 — 2026-02-14
+
+### Staff Location Muting System
+- **iOS-style Segmented Control** — A sleek `[ All ] [ San Francisco ] [ Stockton ]` toggle sits below the staff hero section. Built with `.segmented-control` — a pill-shaped container with `border-radius: 12px`, background `var(--off-white)`, and inner buttons that slide between states using `0.3s cubic-bezier(0.15, 0.83, 0.66, 1)`. The active button gets a white background with a soft box-shadow, mimicking iOS UISegmentedControl. Adapts to dark mode with darker backgrounds and adjusted shadows.
+- **Grayscale muting effect** — When a location is selected (San Francisco or Stockton), staff members at the *other* location receive `filter: grayscale(100%)` and `opacity: 0.4` via a `.muted` CSS class. The transition animates over `0.5s` with the premium cubic-bezier curve, creating a smooth, intentional dimming effect. Muted cards remain fully clickable — clicking a muted card still opens the bio modal normally.
+- **Blue Aurora Glow on active cards** — Staff members at the selected location receive a `.location-active` class that adds a subtle blue aurora ring: `box-shadow: 0 0 0 1px rgba(100, 160, 255, 0.2), 0 0 24px rgba(100, 160, 255, 0.12)`. On hover, the glow intensifies to `0.3` border and `0.18` spread. This draws the eye to the active-location staff.
+- **"All" resets both effects** — Selecting "All" removes both `.muted` and `.location-active` classes, returning all cards to their default state with full color.
+- **Admin "Primary Location" dropdown** — The Staff form's "Office Location" dropdown has been renamed to "Primary Location" with options: San Francisco and Stockton. Each staff card carries a `data-office` attribute used by the switcher logic. Updated seed defaults from "Berkeley" to "San Francisco" to match the new location names.
+
+**Why:** Immigration firms with multiple offices need visitors to quickly identify their local team. The segmented control provides instant visual filtering, while the grayscale muting creates a striking before/after effect that directs attention to the relevant staff members. The blue aurora glow ties the active cards into the site-wide Aurora design language.
+
+## v1.5 — 2026-02-14
+
+### Site-Wide Aurora Glow System
+- **Global cursor-tracking glow** — All primary interactive elements (`.nav-links a`, `.nav-cta`, `.hero-btn`, `.consult-submit`, `.mobile-fab`) now have a cursor-reactive blue radial glow (`rgba(100, 160, 255, 0.15)`) that follows the mouse via `--glow-x` / `--glow-y` CSS variables. The glow is implemented as `::after` pseudo-elements on nav links and `::before` pseudo-elements on buttons, using the same premium cubic-bezier timing (`0.15, 0.83, 0.66, 1`). A new `initAuroraGlow()` function in main.js updates the CSS variables on every `mousemove` event for all matching elements.
+- **Layered with existing effects** — The button glow layers beneath text content via `pointer-events: none`, and works alongside the existing magnetic button effect and bento card glow. Nav link glows extend slightly beyond the link bounds (`inset: -8px -12px`) for a more generous light radius.
+
+### Sophisticated Page Transitions
+- **Fade-in on load** — `body` starts at `opacity: 0` and transitions to `opacity: 1` over `0.6s` using the premium cubic-bezier curve when the `page-loaded` class is added on `DOMContentLoaded`.
+- **Fade-out on navigate** — When clicking any local `.html` link (excluding anchors, CTAs, and external links), `initPageTransitions()` adds a `page-leaving` class that fades the body to `opacity: 0` over `0.4s`, then navigates after the animation completes. This creates a smooth, sophisticated transition between pages.
+- **Smart exclusions** — Anchor links, `mailto:`, `tel:`, `javascript:` URLs, `target="_blank"` links, and CTA buttons (which open modals) are all excluded from the fade transition.
+
+### Locations Engine — Admin CRUD + Public Page
+- **Admin Locations Manager** — New "Locations" tab in the admin sidebar with full CRUD: Office Name, Tagline, Address, Phone, Email, City Photo URL, Parking & Access info, and Specialties. List rows show address and phone badges. Dashboard includes a new "Locations" stat card.
+- **`siteLocations` localStorage** — Data model: `{ id, name, tagline, address, phone, email, cityPhoto, parking, specialties, createdAt }`. Shared `getLocations()` / `saveLocations()` helpers in main.js.
+- **`locations.html` — Split-Hero layout** — Two views in one page:
+  - **Grid view** (default): Responsive card grid showing all locations with city photo thumbnails, office names, and addresses. Cards link to the detail view.
+  - **Detail view** (`?loc=id`): Split-Hero with a full-width city photo background + dark gradient overlay. Left side shows office name and tagline; right side shows a glassmorphism contact card with address, phone, and email (with clickable `tel:` and `mailto:` links). Below the hero, a 3-box bento grid provides Parking & Access info, Specialties, and a local Contact Form (Formspree-integrated).
+- **Navigation link** — "Locations" added to the shared nav in `renderGlobalNav()`, between Testimonials and the CTA button.
+- **Dark mode support** — Location cards, contact card, and bento cards all adapt to dark theme with appropriate background and border overrides.
+- **Responsive** — Location hero stacks vertically on tablet/mobile, bento grid collapses to single column.
+
+**Why:** The site-wide Aurora glow transforms every clickable element into a reactive light surface, creating a cohesive "living interface" feel across all pages. The page transition fade adds cinematic polish to navigation. The Locations Engine gives the firm a professional multi-office presence with rich detail pages — all managed from the admin panel without touching code.
+
+## v1.4 — 2026-02-14
+
+### Aurora Reactive Glow System
+- **Cursor-reactive `.bento-glow`** — Each bento card now contains an absolutely-positioned `.bento-glow` div whose `radial-gradient` follows `--mouse-x` and `--mouse-y` CSS variables. JavaScript updates these on `mousemove`, creating a soft blue spotlight that tracks the cursor across the card surface. The glow fades in on hover (`opacity: 0` → `1`) and out on leave, with separate dark mode gradient values.
+- **Glass + Aurora layering** — Cards retain their glassmorphism base (`rgba(255,255,255,0.6)` + `backdrop-filter: blur(16px)`) while the Aurora glow layer sits on top with `pointer-events: none` and `z-index: 0`. Card content (icon, heading, text) is lifted to `z-index: 1` so it renders above the glow.
+- **Staff modal Aurora bloom** — When a staff card is clicked, a `::before` pseudo-element on `.staff-modal-overlay` captures the click coordinates (`--bloom-x`, `--bloom-y`) and expands a blue radial glow from `scale(0.3)` to `scale(2.5)` over 600ms. This bloom fills the screen before the backdrop blur kicks in (delayed by 150ms), creating a "light expanding outward" reveal effect.
+- **Premium micro-interaction timing** — All card transitions now use `transition: all 0.4s cubic-bezier(0.15, 0.83, 0.66, 1)` — a heavy, decelerating curve that feels like an expensive car door closing. The same curve is applied to the staff modal overlay, bloom, and modal entrance (staggered with delays for sequenced choreography: bloom → blur → modal scale).
+
+**Why:** The Aurora system adds a reactive light layer that responds to the user's cursor, making the interface feel alive and tactile. The bloom transition on the staff modal creates a moment of theatrical elegance — the blue light expands from exactly where you clicked, naturally drawing your eye to the modal as it materializes.
+
+## v1.3 — 2026-02-14
+
+### Sophisticated Ambient Motion System
+- **Cursor Glow** — A hidden `.ambient-glow` div follows the mouse cursor with a soft blue-white radial gradient and `filter: blur(200px)`. Movement uses `requestAnimationFrame` with an ease factor of `0.08`, creating a gentle trailing lag. The glow sits at `z-index: 0` with `pointer-events: none` so it never interferes with clicks. Adapts to dark mode with softer opacity.
+- **Bento Perspective Tilt** — The `.bento-grid` container receives `perspective: 1200px`. Each `.card` inside gets `transform-style: preserve-3d` and a `mousemove` handler that calculates normalized cursor position (-1 to 1 from center) and applies `rotateX`/`rotateY` capped at 5 degrees. On `mouseleave`, the card smoothly resets to flat via the existing CSS transition. Cards tilt toward the cursor for a natural 3D feel.
+- **Reveal Tuning** — The scroll-reveal animation (`IntersectionObserver` + `.reveal` class) now uses `translateY(20px)` instead of `24px` for a tighter, more deliberate entrance. Bento cards fade in and slide up as the user scrolls, making content "arrive" rather than just "be there."
+
+**Why:** The three layers — ambient glow, perspective tilt, and scroll reveal — create a cohesive motion system. The glow adds environmental depth, the tilt gives interactive feedback, and the staggered reveal adds narrative pacing. Together they elevate the homepage from static to alive without being distracting.
+
+## v1.2 — 2026-02-14
+
+### SF Hero Image Restoration
+- **Fixed hero background disappearing** — `applySiteSettings()` was applying `--hero-bg-image: none` from localStorage when the admin had saved an empty Hero URL field. The string `"none"` is truthy, so it passed the `if (settings[key])` guard and overwrote the CSS `:root` default (`url('https://images.unsplash.com/photo-1501594907352-04cda38ebc29...')`). Fixed by skipping `--hero-bg-image` when its value is `"none"`, letting the CSS default persist.
+- **Hero gradient overlay intact** — The `.hero::before` pseudo-element applies a 3-stop `linear-gradient` (`rgba(0,0,0,0.52)` top → `rgba(0,0,0,0.40)` middle → `rgba(0,0,0,0.58)` bottom) so white text remains perfectly readable against the San Francisco skyline.
+
+**Why:** The SF skyline is the site's visual anchor. A stale localStorage value was silently killing it — now the CSS default is resilient against empty admin saves.
+
+### Colorful Initials Circles
+- **Name-hashed color palette** — Each testimonial's initials circle now picks from a palette of 8 distinct colors (blue, purple, green, amber, red, cyan, magenta, indigo) using a character-code hash of the client's name. Same name always maps to the same color for visual consistency.
+- **Inline style override** — Colors are applied via inline `style` attributes, so they work in both light and dark mode without additional CSS overrides.
+
+**Why:** Monochrome circles looked flat. Colorful initials add personality, help visually distinguish clients at a glance, and match the sophistication of modern SaaS review walls.
+
+## v1.1 — 2026-02-14
+
+### Global Navigation — Absolute Paths & Sub-Page Fix
+- **Absolute-style navigation paths** — `renderGlobalNav()` now uses absolute paths on every page: Services → `index.html#services-grid`, Staff → `staff.html`, Testimonials → `testimonials.html`, Logo → `index.html`. Removed the per-page conditional that produced different `#services` vs `index.html#services` hrefs.
+- **Renamed services anchor** — The bento grid section on `index.html` changed from `id="services"` to `id="services-grid"` so the anchor target is explicit and unambiguous across all pages.
+- **Fixed broken navigation on sub-pages** — `renderDynamicNav()` and `renderDynamicFooter()` were calling `e.preventDefault()` + `navigateTo()` (SPA pushState routing) on every page, but the virtual router elements (`#homeView`, `#pageView`) only exist on `index.html`. On sub-pages like `staff.html`, `testimonials.html`, or `thank-you.html`, this silently ate the click and nothing happened. Fixed by checking `isIndexPage` — SPA navigation is only used on the homepage; sub-pages let the browser follow the `index.html?page=slug` href normally.
+- **Testimonials nav link** — Added between "Staff" and the CTA button in the shared nav, visible on all pages.
+
+**Why:** Absolute paths and the sub-page routing fix eliminate the broken navigation on Locations, Test, Staff, and other sub-pages. Every link now works identically regardless of which page the visitor is on.
+
+### Mobile Navigation FAB
+- **Hidden nav links on mobile** — At `≤768px`, `.nav-links` is hidden (`display: none`) to declutter the mobile header. The logo remains visible for branding.
+- **Floating Action Button** — A fixed pill-shaped FAB appears bottom-right on mobile with a calendar icon and "Book" label. Tapping it opens the Consultation Concierge modal via `openConsultModal()`. Styled with the button engine CSS variables so it follows the admin's chosen button style (Pill, Modern, or Glass).
+- **Shared across all pages** — The FAB is appended to `document.body` by `renderGlobalNav()` in `main.js`, so it appears on `index.html`, `staff.html`, `thank-you.html`, and `testimonials.html` automatically.
+- **Positioned to avoid dark mode toggle** — FAB sits at `right: 80px` to avoid overlapping the theme toggle at `right: 24px`.
+
+**Why:** On mobile, the horizontal nav links were squished and the primary CTA ("Book a Consultation") was buried. The FAB provides a persistent, thumb-friendly conversion point.
+
+### Testimonials Engine — Admin CRUD + Wall of Love
+- **Admin Testimonials tab** — New sidebar link in `admin.html` with full CRUD: Add/Edit/Delete testimonials with Client Name, Practice Area (Asylum, Family, Removal, Citizenship, Work Visas), Quote textarea, Star Rating (1–5), and Active toggle. List rows show Active/Inactive badges, practice area badge, and star count.
+- **Dashboard stat** — New "Testimonials" stat card on the admin dashboard showing active testimonial count.
+- **`siteTestimonials` localStorage** — Data model: `{ id, name, area, quote, rating, active, createdAt }`. Shared `getTestimonials()` / `saveTestimonials()` helpers in `main.js`.
+- **`testimonials.html` — Wall of Love** — New public page with a hero section and CSS-columns bento masonry grid (3 columns → 2 on tablet → 1 on mobile). Long and short quotes pack together naturally via `break-inside: avoid` + `column-count`. Each card is a glassmorphism panel with filled/empty star ratings, italic quote text, an initials circle avatar (e.g., "JO" for Jeffrey O'Brien), client name, and practice area badge. Cards use the same lift hover effect as bento cards (`translateY(-6px) scale(1.01)`). Scroll-reveal animations on each card.
+- **Initials circles** — Each testimonial card shows a dark circular avatar with the client's initials (first + last name), providing a clean, sophisticated look without needing photos. Adapts to dark mode with inverted colors.
+- **Glassmorphism consistency** — The navbar on `testimonials.html` uses the same shared `renderGlobalNav()` with `backdrop-filter: saturate(180%) blur(15px)`, matching every other page.
+- **Dark mode support** — Testimonial cards, initials circles, and area badges all adapt to the dark theme.
+
+**Why:** Client testimonials are a high-trust conversion driver for immigration law firms. The bento masonry layout creates visual variety where long and short quotes fit together perfectly, and the initials circles add a sophisticated personal touch without requiring client photos.
+
 ## v1.0 — 2026-02-14
 
 ### Global Navigation & Glassmorphism Refresh

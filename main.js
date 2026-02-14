@@ -63,6 +63,16 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Smooth scroll for internal anchor links ── */
   initSmoothScroll();
 
+  /* ── Ambient motion layer ── */
+  initAmbientGlow();
+  initBentoTilt();
+
+  /* ── Aurora glow on nav & buttons ── */
+  initAuroraGlow();
+
+  /* ── Page transition fade ── */
+  initPageTransitions();
+
   /* ── Admin shortcut: Cmd+Shift+A / Ctrl+Shift+A ── */
   let adminTriggered = false;
 
@@ -117,6 +127,32 @@ function getStaff() {
 function getPosts() {
   try { return JSON.parse(localStorage.getItem("sitePosts") || "[]"); }
   catch (e) { return []; }
+}
+
+/* ══════════════════════════════════════════════
+   Testimonials Data (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getTestimonials() {
+  try { return JSON.parse(localStorage.getItem("siteTestimonials") || "[]"); }
+  catch (e) { return []; }
+}
+
+function saveTestimonials(data) {
+  localStorage.setItem("siteTestimonials", JSON.stringify(data));
+}
+
+/* ══════════════════════════════════════════════
+   Locations Data (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getLocations() {
+  try { return JSON.parse(localStorage.getItem("siteLocations") || "[]"); }
+  catch (e) { return []; }
+}
+
+function saveLocations(data) {
+  localStorage.setItem("siteLocations", JSON.stringify(data));
 }
 
 /* ══════════════════════════════════════════════
@@ -215,20 +251,25 @@ function renderGlobalNav() {
   var nav = document.getElementById("globalNav");
   if (!nav) return;
 
-  // Detect if we're on the homepage (index.html or root)
-  var path = window.location.pathname;
-  var isHome = path.endsWith("/") || path.endsWith("/index.html") || path.endsWith("index.html");
-  var servicesHref = isHome ? "#services" : "index.html#services";
-
   nav.innerHTML =
     '<div class="nav-content">' +
       '<a href="index.html" class="nav-logo">O\u2019Brien Immigration</a>' +
       '<ul class="nav-links" id="navLinks">' +
-        '<li><a href="' + servicesHref + '">Services</a></li>' +
+        '<li><a href="index.html#services-grid">Services</a></li>' +
         '<li><a href="staff.html">Staff</a></li>' +
+        '<li><a href="testimonials.html">Testimonials</a></li>' +
+        '<li><a href="locations.html">Locations</a></li>' +
         '<li><a href="#" class="nav-cta">Book a Consultation</a></li>' +
       '</ul>' +
     '</div>';
+
+  // Mobile FAB
+  var fab = document.createElement("button");
+  fab.className = "mobile-fab";
+  fab.setAttribute("aria-label", "Book a Consultation");
+  fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Book';
+  fab.addEventListener("click", function() { openConsultModal(); });
+  document.body.appendChild(fab);
 }
 
 /* ══════════════════════════════════════════════
@@ -246,16 +287,22 @@ function renderDynamicNav() {
   var cta = navUl.querySelector(".nav-cta");
   var ctaLi = cta ? cta.closest("li") : null;
 
+  var currentPath = window.location.pathname;
+  var isIndexPage = currentPath.endsWith("/") || currentPath.endsWith("/index.html") || currentPath.endsWith("index.html");
+
   pages.forEach(function(page) {
     var li = document.createElement("li");
     li.className = "dynamic-nav-link";
     var a = document.createElement("a");
     a.href = "index.html?page=" + encodeURIComponent(page.slug);
     a.textContent = page.title;
-    a.addEventListener("click", function(e) {
-      e.preventDefault();
-      navigateTo(page.slug);
-    });
+    // Only use SPA navigation on index.html where the virtual router exists
+    if (isIndexPage) {
+      a.addEventListener("click", function(e) {
+        e.preventDefault();
+        navigateTo(page.slug);
+      });
+    }
     li.appendChild(a);
     if (ctaLi) {
       navUl.insertBefore(li, ctaLi);
@@ -273,14 +320,20 @@ function renderDynamicFooter() {
   // Only show published pages with showInFooter
   var pages = getPages().filter(function(p) { return p.showInFooter && p.published !== false; });
 
+  var currentPath = window.location.pathname;
+  var isIndexPage = currentPath.endsWith("/") || currentPath.endsWith("/index.html") || currentPath.endsWith("index.html");
+
   pages.forEach(function(page) {
     var a = document.createElement("a");
     a.href = "index.html?page=" + encodeURIComponent(page.slug);
     a.textContent = page.title;
-    a.addEventListener("click", function(e) {
-      e.preventDefault();
-      navigateTo(page.slug);
-    });
+    // Only use SPA navigation on index.html where the virtual router exists
+    if (isIndexPage) {
+      a.addEventListener("click", function(e) {
+        e.preventDefault();
+        navigateTo(page.slug);
+      });
+    }
     container.appendChild(a);
   });
 }
@@ -362,14 +415,14 @@ function seedDefaultStaff() {
   if (getStaff().length > 0) return;
 
   var defaults = [
-    { id: "s1", name: "Jeffrey O'Brien", title: "Founding Partner", office: "Berkeley", email: "info@obrienimmigration.com", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Founded the firm in 2010 with a mission to provide high-quality, affordable, and respectful legal representation to immigrants and their families. Recognized for pro bono work by the East Bay Sanctuary Covenant.", createdAt: "Feb 14, 2026" },
+    { id: "s1", name: "Jeffrey O'Brien", title: "Founding Partner", office: "San Francisco", email: "info@obrienimmigration.com", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Founded the firm in 2010 with a mission to provide high-quality, affordable, and respectful legal representation to immigrants and their families. Recognized for pro bono work by the East Bay Sanctuary Covenant.", createdAt: "Feb 14, 2026" },
     { id: "s2", name: "Daska Babcock", title: "Senior Attorney", office: "Stockton", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined the firm in 2016 and launched the Central Valley office in 2017. Practices asylum cases and Special Immigrant Juvenile Status petitions. Fourteen years of civil litigation experience and recipient of the Father Cuchulain Moriarty Award.", createdAt: "Feb 14, 2026" },
-    { id: "s3", name: "Elena Applebaum", title: "Senior Attorney", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Focuses on asylum and humanitarian petitions. Prior work with Jesuit Refugee Service in Malta and California immigration clinics. Fluent in multiple languages, including Spanish and Portuguese.", createdAt: "Feb 14, 2026" },
-    { id: "s4", name: "Rosanna Katz", title: "Senior Attorney", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined the firm in 2016. Practices asylum cases and family-based petitions. Prior litigation experience and pro bono work through East Bay Sanctuary Covenant.", createdAt: "Feb 14, 2026" },
-    { id: "s5", name: "Maria Amaya", title: "Senior Paralegal", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Colombian attorney managing case coordination, legal preparation, and team leadership. Handles deadlines, filings, evidence preparation, legal research, and motion drafting.", createdAt: "Feb 14, 2026" },
-    { id: "s6", name: "Roshani Sitaula", title: "Senior Paralegal / Operations Director", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined in 2013 with over a decade of immigration law experience. Fluent in English, Nepali, and Hindi. Holds two Master\u2019s degrees in Environmental Management and Geology.", createdAt: "Feb 14, 2026" },
-    { id: "s7", name: "Esteban Lasso", title: "Paralegal", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Supports case preparation, document review, and client communications. Background in law, international business, and project management. Multilingual.", createdAt: "Feb 14, 2026" },
-    { id: "s8", name: "Guisselle Castellon", title: "Intake Specialist", office: "Berkeley", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Conducts client intake and screening in Spanish; assists with interpretation. Psychology background; helps identify asylum and family-based relief eligibility.", createdAt: "Feb 14, 2026" }
+    { id: "s3", name: "Elena Applebaum", title: "Senior Attorney", office: "San Francisco", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Focuses on asylum and humanitarian petitions. Prior work with Jesuit Refugee Service in Malta and California immigration clinics. Fluent in multiple languages, including Spanish and Portuguese.", createdAt: "Feb 14, 2026" },
+    { id: "s4", name: "Rosanna Katz", title: "Senior Attorney", office: "San Francisco", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined the firm in 2016. Practices asylum cases and family-based petitions. Prior litigation experience and pro bono work through East Bay Sanctuary Covenant.", createdAt: "Feb 14, 2026" },
+    { id: "s5", name: "Maria Amaya", title: "Senior Paralegal", office: "San Francisco", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Colombian attorney managing case coordination, legal preparation, and team leadership. Handles deadlines, filings, evidence preparation, legal research, and motion drafting.", createdAt: "Feb 14, 2026" },
+    { id: "s6", name: "Roshani Sitaula", title: "Senior Paralegal / Operations Director", office: "San Francisco", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Joined in 2013 with over a decade of immigration law experience. Fluent in English, Nepali, and Hindi. Holds two Master\u2019s degrees in Environmental Management and Geology.", createdAt: "Feb 14, 2026" },
+    { id: "s7", name: "Esteban Lasso", title: "Paralegal", office: "San Francisco", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Supports case preparation, document review, and client communications. Background in law, international business, and project management. Multilingual.", createdAt: "Feb 14, 2026" },
+    { id: "s8", name: "Guisselle Castellon", title: "Intake Specialist", office: "San Francisco", email: "", phone: "", imageUrl: "", showOnWebsite: true, hiring: false, bio: "Conducts client intake and screening in Spanish; assists with interpretation. Psychology background; helps identify asylum and family-based relief eligibility.", createdAt: "Feb 14, 2026" }
   ];
   localStorage.setItem("siteStaff", JSON.stringify(defaults));
 }
@@ -442,6 +495,8 @@ function applySiteSettings(settings) {
   var root = document.documentElement;
   for (var key in settings) {
     if (settings[key]) {
+      // Don't override the CSS default hero image with "none"
+      if (key === "--hero-bg-image" && settings[key] === "none") continue;
       root.style.setProperty(key, settings[key]);
     }
   }
@@ -637,6 +692,140 @@ function initMagneticButtons() {
     btn.addEventListener("mouseleave", function() {
       btn.style.transform = "";
     });
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Ambient Glow (cursor-following light)
+   ══════════════════════════════════════════════ */
+
+function initAmbientGlow() {
+  var glow = document.createElement("div");
+  glow.className = "ambient-glow";
+  document.body.appendChild(glow);
+
+  var targetX = 0, targetY = 0;
+  var currentX = 0, currentY = 0;
+  var rafId = null;
+
+  document.addEventListener("mousemove", function(e) {
+    targetX = e.clientX;
+    targetY = e.clientY;
+    if (!rafId) tick();
+  });
+
+  function tick() {
+    // Ease toward target (0.08 = smooth lag)
+    currentX += (targetX - currentX) * 0.08;
+    currentY += (targetY - currentY) * 0.08;
+
+    glow.style.left = currentX + "px";
+    glow.style.top = currentY + "px";
+
+    // Keep animating while there's meaningful distance
+    if (Math.abs(targetX - currentX) > 0.5 || Math.abs(targetY - currentY) > 0.5) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════
+   Bento Perspective Tilt
+   ══════════════════════════════════════════════ */
+
+function initBentoTilt() {
+  var cards = document.querySelectorAll(".bento-grid .card");
+  var maxTilt = 5; // degrees
+
+  cards.forEach(function(card) {
+    // Inject the Aurora glow layer
+    var glow = document.createElement("div");
+    glow.className = "bento-glow";
+    card.insertBefore(glow, card.firstChild);
+
+    card.addEventListener("mousemove", function(e) {
+      var rect = card.getBoundingClientRect();
+      var px = e.clientX - rect.left;
+      var py = e.clientY - rect.top;
+
+      // Update CSS variables for radial-gradient position
+      card.style.setProperty("--mouse-x", px + "px");
+      card.style.setProperty("--mouse-y", py + "px");
+
+      // Normalized -1 to 1 from center
+      var x = (px / rect.width) * 2 - 1;
+      var y = (py / rect.height) * 2 - 1;
+
+      // rotateY follows x, rotateX is inverted y (tilt toward cursor)
+      var rotateY = x * maxTilt;
+      var rotateX = -y * maxTilt;
+
+      card.style.transform = "perspective(800px) rotateX(" + rotateX + "deg) rotateY(" + rotateY + "deg) translateY(-4px) scale(1.01)";
+    });
+
+    card.addEventListener("mouseleave", function() {
+      card.style.transform = "";
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Aurora Glow (cursor tracking on nav & buttons)
+   ══════════════════════════════════════════════ */
+
+function initAuroraGlow() {
+  var selectors = ".nav-links a, .nav-cta, .hero-btn, .consult-submit, .mobile-fab";
+
+  document.addEventListener("mousemove", function(e) {
+    document.querySelectorAll(selectors).forEach(function(el) {
+      var rect = el.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var y = e.clientY - rect.top;
+      el.style.setProperty("--glow-x", x + "px");
+      el.style.setProperty("--glow-y", y + "px");
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Page Transition Fade
+   ══════════════════════════════════════════════ */
+
+function initPageTransitions() {
+  // Fade in on page load
+  document.body.classList.add("page-loaded");
+
+  document.addEventListener("click", function(e) {
+    var link = e.target.closest("a[href]");
+    if (!link) return;
+
+    var href = link.getAttribute("href");
+    if (!href) return;
+
+    // Skip anchors, javascript:, external links, and CTA buttons
+    if (href.charAt(0) === "#" || href.indexOf("javascript:") === 0) return;
+    if (href.indexOf("mailto:") === 0 || href.indexOf("tel:") === 0) return;
+    if (link.target === "_blank") return;
+    if (link.classList.contains("nav-cta") || link.classList.contains("hero-btn")) return;
+
+    // Only intercept local .html links
+    if (href.indexOf(".html") === -1) return;
+
+    // Don't intercept same-page anchor links (e.g., index.html#services-grid)
+    if (href.indexOf("#") !== -1) {
+      var parts = href.split("#");
+      var currentPage = window.location.pathname.split("/").pop() || "index.html";
+      if (parts[0] === currentPage || parts[0] === "") return;
+    }
+
+    e.preventDefault();
+    document.body.classList.add("page-leaving");
+
+    setTimeout(function() {
+      window.location.href = href;
+    }, 400);
   });
 }
 

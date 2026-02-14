@@ -632,6 +632,8 @@
       <li><a data-section="pages"><span>Pages</span></a></li>
       <li><a data-section="posts"><span>Posts</span></a></li>
       <li><a data-section="staff"><span>Staff</span></a></li>
+      <li><a data-section="testimonials"><span>Testimonials</span></a></li>
+      <li><a data-section="locations"><span>Locations</span></a></li>
       <li><a data-section="media"><span>Media</span></a></li>
     </ul>
     <div class="sidebar-footer">
@@ -670,6 +672,14 @@
         <div class="stat-card">
           <div class="label">Published Posts</div>
           <div class="value" id="statPosts">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Testimonials</div>
+          <div class="value" id="statTestimonials">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Locations</div>
+          <div class="value" id="statLocations">0</div>
         </div>
       </div>
 
@@ -964,9 +974,9 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="staffOfficeInput">Office Location</label>
+            <label for="staffOfficeInput">Primary Location</label>
             <select id="staffOfficeInput">
-              <option value="Berkeley">Berkeley</option>
+              <option value="San Francisco">San Francisco</option>
               <option value="Stockton">Stockton</option>
             </select>
           </div>
@@ -1009,6 +1019,147 @@
         <div style="display:flex;gap:12px">
           <button class="btn btn-primary" id="btnSaveStaff">Save Staff Member</button>
           <button class="btn btn-secondary" id="btnCancelStaff">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Testimonials ── -->
+    <div id="testimonials" class="section">
+      <h1>Testimonials</h1>
+      <p class="subtitle">Manage client testimonials displayed on the Wall of Love page.</p>
+
+      <!-- Testimonial list -->
+      <div class="panel" id="testimonialListPanel">
+        <div class="page-list-header">
+          <h2>All Testimonials</h2>
+          <button class="btn btn-primary btn-sm" id="btnAddTestimonial">Add Testimonial</button>
+        </div>
+        <div id="testimonialList">
+          <div class="empty-state">No testimonials yet. Click "Add Testimonial" to get started.</div>
+        </div>
+      </div>
+
+      <!-- Testimonial form (add / edit) -->
+      <div class="panel page-form-panel" id="testimonialFormPanel">
+        <h2 id="testimonialFormTitle">Add Testimonial</h2>
+        <input type="hidden" id="testimonialEditId" value="">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="testimonialNameInput">Client Name</label>
+            <input type="text" id="testimonialNameInput" placeholder="Client name">
+          </div>
+          <div class="form-group">
+            <label for="testimonialAreaInput">Practice Area</label>
+            <select id="testimonialAreaInput">
+              <option value="Asylum">Asylum</option>
+              <option value="Family">Family</option>
+              <option value="Removal">Removal</option>
+              <option value="Citizenship">Citizenship</option>
+              <option value="Work Visas">Work Visas</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="testimonialQuoteInput">Quote</label>
+          <textarea id="testimonialQuoteInput" placeholder="What the client said..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="testimonialRatingInput">Star Rating (1–5)</label>
+            <select id="testimonialRatingInput">
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
+          </div>
+          <div class="form-group"></div>
+        </div>
+
+        <div class="checkbox-row">
+          <label>
+            <input type="checkbox" id="testimonialActive" checked>
+            Active (visible on website)
+          </label>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <button class="btn btn-primary" id="btnSaveTestimonial">Save Testimonial</button>
+          <button class="btn btn-secondary" id="btnCancelTestimonial">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Locations ── -->
+    <div id="locations" class="section">
+      <h1>Locations</h1>
+      <p class="subtitle">Manage your office locations displayed on the Locations page.</p>
+
+      <!-- Location list -->
+      <div class="panel" id="locationListPanel">
+        <div class="page-list-header">
+          <h2>All Locations</h2>
+          <button class="btn btn-primary btn-sm" id="btnAddLocation">Add Location</button>
+        </div>
+        <div id="locationList">
+          <div class="empty-state">No locations yet. Click "Add Location" to get started.</div>
+        </div>
+      </div>
+
+      <!-- Location form (add / edit) -->
+      <div class="panel page-form-panel" id="locationFormPanel">
+        <h2 id="locationFormTitle">Add Location</h2>
+        <input type="hidden" id="locationEditId" value="">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="locationNameInput">Office Name</label>
+            <input type="text" id="locationNameInput" placeholder="Berkeley Office">
+          </div>
+          <div class="form-group">
+            <label for="locationTaglineInput">Tagline</label>
+            <input type="text" id="locationTaglineInput" placeholder="Serving the East Bay since 2010">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="locationAddressInput">Address</label>
+          <input type="text" id="locationAddressInput" placeholder="123 Main St, Berkeley, CA 94704">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="locationPhoneInput">Phone</label>
+            <input type="text" id="locationPhoneInput" placeholder="(510) 555-0100">
+          </div>
+          <div class="form-group">
+            <label for="locationEmailInput">Email</label>
+            <input type="text" id="locationEmailInput" placeholder="berkeley@obrienimmigration.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="locationPhotoInput">City Photo URL</label>
+          <input type="text" id="locationPhotoInput" placeholder="https://images.unsplash.com/...">
+        </div>
+
+        <div class="form-group">
+          <label for="locationParkingInput">Parking & Access Info</label>
+          <textarea id="locationParkingInput" placeholder="Free street parking available..." style="min-height:80px"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="locationSpecialtiesInput">Specialties</label>
+          <textarea id="locationSpecialtiesInput" placeholder="Asylum, Family Petitions, Removal Defense..." style="min-height:80px"></textarea>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <button class="btn btn-primary" id="btnSaveLocation">Save Location</button>
+          <button class="btn btn-secondary" id="btnCancelLocation">Cancel</button>
         </div>
       </div>
     </div>
@@ -1130,12 +1281,15 @@
       const pages = getPages();
       const posts = getPosts();
       const staff = getStaff();
+      const testimonials = getTestimonials();
       document.getElementById("statPages").textContent = pages.length;
       document.getElementById("statPublished").textContent = pages.filter((p) => p.published !== false).length;
       document.getElementById("statNav").textContent = pages.filter((p) => p.showInNav && p.published !== false).length;
       document.getElementById("statFooter").textContent = pages.filter((p) => p.showInFooter && p.published !== false).length;
       document.getElementById("statStaff").textContent = staff.length;
       document.getElementById("statPosts").textContent = posts.filter((p) => p.published).length;
+      document.getElementById("statTestimonials").textContent = testimonials.filter((t) => t.active !== false).length;
+      document.getElementById("statLocations").textContent = getLocations().length;
 
       const tbody = document.getElementById("dashboardRecent");
       // Combine pages and posts for recent content
@@ -1873,7 +2027,7 @@
       document.getElementById("staffEditId").value = "";
       document.getElementById("staffNameInput").value = "";
       document.getElementById("staffTitleInput").value = "";
-      document.getElementById("staffOfficeInput").value = "Berkeley";
+      document.getElementById("staffOfficeInput").value = "San Francisco";
       document.getElementById("staffImageInput").value = "";
       document.getElementById("staffEmailInput").value = "";
       document.getElementById("staffPhoneInput").value = "";
@@ -1954,7 +2108,7 @@
       document.getElementById("staffEditId").value = member.id;
       document.getElementById("staffNameInput").value = member.name;
       document.getElementById("staffTitleInput").value = member.title;
-      document.getElementById("staffOfficeInput").value = member.office || "Berkeley";
+      document.getElementById("staffOfficeInput").value = member.office || "San Francisco";
       document.getElementById("staffImageInput").value = member.imageUrl || "";
       document.getElementById("staffEmailInput").value = member.email || "";
       document.getElementById("staffPhoneInput").value = member.phone || "";
@@ -1979,6 +2133,346 @@
       refreshDashboard();
       showToast("Staff member deleted");
     }
+
+    /* ══════════════════════════════════════════════
+       Testimonials CRUD
+       ══════════════════════════════════════════════ */
+
+    function getTestimonials() {
+      try { return JSON.parse(localStorage.getItem("siteTestimonials") || "[]"); }
+      catch (e) { return []; }
+    }
+
+    function saveTestimonialsData(data) {
+      localStorage.setItem("siteTestimonials", JSON.stringify(data));
+    }
+
+    function renderTestimonialList() {
+      const container = document.getElementById("testimonialList");
+      const items = getTestimonials();
+
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty-state">No testimonials yet. Click "Add Testimonial" to get started.</div>';
+        return;
+      }
+
+      container.innerHTML = items.map((t) => {
+        const badges = [];
+        if (t.active !== false) {
+          badges.push('<span class="badge published">Active</span>');
+        } else {
+          badges.push('<span class="badge draft">Inactive</span>');
+        }
+        badges.push('<span class="badge nav-badge">' + escapeHtml(t.area) + '</span>');
+        badges.push('<span class="badge category-badge">' + t.rating + ' ★</span>');
+        return '<div class="page-row" data-id="' + t.id + '">' +
+          '<div class="page-row-info">' +
+            '<div class="page-row-title">' + escapeHtml(t.name) + '</div>' +
+            '<div class="page-row-slug">' + escapeHtml((t.quote || '').substring(0, 60)) + (t.quote && t.quote.length > 60 ? '…' : '') + '</div>' +
+          '</div>' +
+          '<div class="page-row-badges">' + badges.join('') + '</div>' +
+          '<div class="page-row-actions">' +
+            '<button class="btn btn-secondary btn-sm btn-edit-testimonial">Edit</button>' +
+            '<button class="btn btn-danger btn-sm btn-delete-testimonial">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      container.querySelectorAll(".btn-edit-testimonial").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.closest(".page-row").dataset.id;
+          editTestimonial(id);
+        });
+      });
+
+      container.querySelectorAll(".btn-delete-testimonial").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.closest(".page-row").dataset.id;
+          deleteTestimonial(id);
+        });
+      });
+    }
+
+    const testimonialFormPanel = document.getElementById("testimonialFormPanel");
+    const testimonialListPanel = document.getElementById("testimonialListPanel");
+
+    function showTestimonialForm() {
+      testimonialFormPanel.classList.add("visible");
+      testimonialListPanel.style.display = "none";
+    }
+
+    function hideTestimonialForm() {
+      testimonialFormPanel.classList.remove("visible");
+      testimonialListPanel.style.display = "";
+      clearTestimonialForm();
+    }
+
+    function clearTestimonialForm() {
+      document.getElementById("testimonialEditId").value = "";
+      document.getElementById("testimonialNameInput").value = "";
+      document.getElementById("testimonialAreaInput").value = "Asylum";
+      document.getElementById("testimonialQuoteInput").value = "";
+      document.getElementById("testimonialRatingInput").value = "5";
+      document.getElementById("testimonialActive").checked = true;
+      document.getElementById("testimonialFormTitle").textContent = "Add Testimonial";
+    }
+
+    document.getElementById("btnAddTestimonial").addEventListener("click", () => {
+      clearTestimonialForm();
+      showTestimonialForm();
+    });
+
+    document.getElementById("btnCancelTestimonial").addEventListener("click", hideTestimonialForm);
+
+    document.getElementById("btnSaveTestimonial").addEventListener("click", () => {
+      const name = document.getElementById("testimonialNameInput").value.trim();
+      const area = document.getElementById("testimonialAreaInput").value;
+      const quote = document.getElementById("testimonialQuoteInput").value.trim();
+      const rating = parseInt(document.getElementById("testimonialRatingInput").value, 10);
+      const active = document.getElementById("testimonialActive").checked;
+      const editId = document.getElementById("testimonialEditId").value;
+
+      if (!name) { showToast("Client name is required"); return; }
+      if (!quote) { showToast("Quote is required"); return; }
+
+      const items = getTestimonials();
+
+      if (editId) {
+        const idx = items.findIndex((t) => t.id === editId);
+        if (idx !== -1) {
+          items[idx].name = name;
+          items[idx].area = area;
+          items[idx].quote = quote;
+          items[idx].rating = rating;
+          items[idx].active = active;
+        }
+        showToast("Testimonial updated");
+      } else {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        items.push({
+          id: generateId(),
+          name: name,
+          area: area,
+          quote: quote,
+          rating: rating,
+          active: active,
+          createdAt: dateStr
+        });
+        showToast("Testimonial added");
+      }
+
+      saveTestimonialsData(items);
+      hideTestimonialForm();
+      renderTestimonialList();
+      refreshDashboard();
+    });
+
+    function editTestimonial(id) {
+      const items = getTestimonials();
+      const item = items.find((t) => t.id === id);
+      if (!item) return;
+
+      document.getElementById("testimonialEditId").value = item.id;
+      document.getElementById("testimonialNameInput").value = item.name;
+      document.getElementById("testimonialAreaInput").value = item.area || "Asylum";
+      document.getElementById("testimonialQuoteInput").value = item.quote || "";
+      document.getElementById("testimonialRatingInput").value = (item.rating || 5).toString();
+      document.getElementById("testimonialActive").checked = item.active !== false;
+      document.getElementById("testimonialFormTitle").textContent = "Edit Testimonial";
+
+      showTestimonialForm();
+    }
+
+    function deleteTestimonial(id) {
+      const items = getTestimonials();
+      const item = items.find((t) => t.id === id);
+      if (!item) return;
+
+      if (!confirm('Delete testimonial from "' + item.name + '"? This cannot be undone.')) return;
+
+      const updated = items.filter((t) => t.id !== id);
+      saveTestimonialsData(updated);
+      renderTestimonialList();
+      refreshDashboard();
+      showToast("Testimonial deleted");
+    }
+
+    renderTestimonialList();
+
+    /* ══════════════════════════════════════════════
+       Locations CRUD
+       ══════════════════════════════════════════════ */
+
+    function getLocations() {
+      try { return JSON.parse(localStorage.getItem("siteLocations") || "[]"); }
+      catch (e) { return []; }
+    }
+
+    function saveLocationsData(data) {
+      localStorage.setItem("siteLocations", JSON.stringify(data));
+    }
+
+    function renderLocationList() {
+      const container = document.getElementById("locationList");
+      const items = getLocations();
+
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty-state">No locations yet. Click "Add Location" to get started.</div>';
+        return;
+      }
+
+      container.innerHTML = items.map((loc) => {
+        return '<div class="page-row" data-id="' + loc.id + '">' +
+          '<div class="page-row-info">' +
+            '<div class="page-row-title">' + escapeHtml(loc.name) + '</div>' +
+            '<div class="page-row-slug">' + escapeHtml(loc.address || '') + '</div>' +
+          '</div>' +
+          '<div class="page-row-badges">' +
+            '<span class="badge nav-badge">' + escapeHtml(loc.phone || 'No phone') + '</span>' +
+          '</div>' +
+          '<div class="page-row-actions">' +
+            '<button class="btn btn-secondary btn-sm btn-edit-location">Edit</button>' +
+            '<button class="btn btn-danger btn-sm btn-delete-location">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      container.querySelectorAll(".btn-edit-location").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.closest(".page-row").dataset.id;
+          editLocation(id);
+        });
+      });
+
+      container.querySelectorAll(".btn-delete-location").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.closest(".page-row").dataset.id;
+          deleteLocation(id);
+        });
+      });
+    }
+
+    const locationFormPanel = document.getElementById("locationFormPanel");
+    const locationListPanel = document.getElementById("locationListPanel");
+
+    function showLocationForm() {
+      locationFormPanel.classList.add("visible");
+      locationListPanel.style.display = "none";
+    }
+
+    function hideLocationForm() {
+      locationFormPanel.classList.remove("visible");
+      locationListPanel.style.display = "";
+      clearLocationForm();
+    }
+
+    function clearLocationForm() {
+      document.getElementById("locationEditId").value = "";
+      document.getElementById("locationNameInput").value = "";
+      document.getElementById("locationTaglineInput").value = "";
+      document.getElementById("locationAddressInput").value = "";
+      document.getElementById("locationPhoneInput").value = "";
+      document.getElementById("locationEmailInput").value = "";
+      document.getElementById("locationPhotoInput").value = "";
+      document.getElementById("locationParkingInput").value = "";
+      document.getElementById("locationSpecialtiesInput").value = "";
+      document.getElementById("locationFormTitle").textContent = "Add Location";
+    }
+
+    document.getElementById("btnAddLocation").addEventListener("click", () => {
+      clearLocationForm();
+      showLocationForm();
+    });
+
+    document.getElementById("btnCancelLocation").addEventListener("click", hideLocationForm);
+
+    document.getElementById("btnSaveLocation").addEventListener("click", () => {
+      const name = document.getElementById("locationNameInput").value.trim();
+      const tagline = document.getElementById("locationTaglineInput").value.trim();
+      const address = document.getElementById("locationAddressInput").value.trim();
+      const phone = document.getElementById("locationPhoneInput").value.trim();
+      const email = document.getElementById("locationEmailInput").value.trim();
+      const cityPhoto = document.getElementById("locationPhotoInput").value.trim();
+      const parking = document.getElementById("locationParkingInput").value.trim();
+      const specialties = document.getElementById("locationSpecialtiesInput").value.trim();
+      const editId = document.getElementById("locationEditId").value;
+
+      if (!name) { showToast("Office name is required"); return; }
+
+      const items = getLocations();
+
+      if (editId) {
+        const idx = items.findIndex((l) => l.id === editId);
+        if (idx !== -1) {
+          items[idx].name = name;
+          items[idx].tagline = tagline;
+          items[idx].address = address;
+          items[idx].phone = phone;
+          items[idx].email = email;
+          items[idx].cityPhoto = cityPhoto;
+          items[idx].parking = parking;
+          items[idx].specialties = specialties;
+        }
+        showToast("Location updated");
+      } else {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        items.push({
+          id: generateId(),
+          name: name,
+          tagline: tagline,
+          address: address,
+          phone: phone,
+          email: email,
+          cityPhoto: cityPhoto,
+          parking: parking,
+          specialties: specialties,
+          createdAt: dateStr
+        });
+        showToast("Location added");
+      }
+
+      saveLocationsData(items);
+      hideLocationForm();
+      renderLocationList();
+      refreshDashboard();
+    });
+
+    function editLocation(id) {
+      const items = getLocations();
+      const loc = items.find((l) => l.id === id);
+      if (!loc) return;
+
+      document.getElementById("locationEditId").value = loc.id;
+      document.getElementById("locationNameInput").value = loc.name || "";
+      document.getElementById("locationTaglineInput").value = loc.tagline || "";
+      document.getElementById("locationAddressInput").value = loc.address || "";
+      document.getElementById("locationPhoneInput").value = loc.phone || "";
+      document.getElementById("locationEmailInput").value = loc.email || "";
+      document.getElementById("locationPhotoInput").value = loc.cityPhoto || "";
+      document.getElementById("locationParkingInput").value = loc.parking || "";
+      document.getElementById("locationSpecialtiesInput").value = loc.specialties || "";
+      document.getElementById("locationFormTitle").textContent = "Edit Location";
+
+      showLocationForm();
+    }
+
+    function deleteLocation(id) {
+      const items = getLocations();
+      const loc = items.find((l) => l.id === id);
+      if (!loc) return;
+
+      if (!confirm('Delete "' + loc.name + '"? This cannot be undone.')) return;
+
+      const updated = items.filter((l) => l.id !== id);
+      saveLocationsData(updated);
+      renderLocationList();
+      refreshDashboard();
+      showToast("Location deleted");
+    }
+
+    renderLocationList();
 
     /* ══════════════════════════════════════════════
        Media Library

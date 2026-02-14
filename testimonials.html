@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Our Clients Say — O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar" id="globalNav">
+    <!-- Rendered by renderGlobalNav() in main.js -->
+  </nav>
+
+  <main>
+    <section class="testimonials-hero">
+      <h1 class="reveal">What Our Clients Say</h1>
+      <p class="reveal">Real stories from the families and individuals we've had the privilege to represent.</p>
+    </section>
+
+    <section class="testimonials-wall-section">
+      <div class="testimonial-wall" id="testimonialWall"></div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="staff.html">Our Team</a>
+        <a href="testimonials.html">Testimonials</a>
+      </div>
+      <p>&copy; 2026 O'Brien Immigration Law. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <script src="main.js"></script>
+  <script>
+    (function() {
+      var testimonials = getTestimonials().filter(function(t) { return t.active !== false; });
+      var container = document.getElementById("testimonialWall");
+
+      if (testimonials.length === 0) {
+        container.innerHTML = '<div class="testimonial-empty">No testimonials yet. Check back soon!</div>';
+        return;
+      }
+
+      var starSvg = '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+
+      function getInitials(name) {
+        var parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        return parts[0].charAt(0).toUpperCase();
+      }
+
+      var INITIALS_COLORS = [
+        { bg: '#1a56db', color: '#fff' },
+        { bg: '#7c3aed', color: '#fff' },
+        { bg: '#059669', color: '#fff' },
+        { bg: '#d97706', color: '#fff' },
+        { bg: '#dc2626', color: '#fff' },
+        { bg: '#0891b2', color: '#fff' },
+        { bg: '#c026d3', color: '#fff' },
+        { bg: '#4f46e5', color: '#fff' }
+      ];
+
+      function nameToColor(name) {
+        var hash = 0;
+        for (var i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return INITIALS_COLORS[Math.abs(hash) % INITIALS_COLORS.length];
+      }
+
+      container.innerHTML = testimonials.map(function(t) {
+        var stars = '';
+        for (var i = 1; i <= 5; i++) {
+          if (i <= (t.rating || 5)) {
+            stars += '<span class="star-filled">' + starSvg + '</span>';
+          } else {
+            stars += '<span class="star-empty">' + starSvg + '</span>';
+          }
+        }
+
+        var initials = getInitials(t.name);
+        var ic = nameToColor(t.name);
+
+        return '<div class="testimonial-card reveal">' +
+          '<div class="testimonial-stars">' + stars + '</div>' +
+          '<p class="testimonial-quote">\u201C' + escapeHtmlUtil(t.quote) + '\u201D</p>' +
+          '<div class="testimonial-footer">' +
+            '<div class="testimonial-initials" style="background:' + ic.bg + ';color:' + ic.color + '">' + escapeHtmlUtil(initials) + '</div>' +
+            '<div class="testimonial-footer-text">' +
+              '<div class="testimonial-author">' + escapeHtmlUtil(t.name) + '</div>' +
+              '<span class="testimonial-area">' + escapeHtmlUtil(t.area) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      /* Reveal animations */
+      container.querySelectorAll(".reveal").forEach(function(el) {
+        var obs = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+              obs.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15 });
+        obs.observe(el);
+      });
+    })();
+  </script>
+</body>
+</html>

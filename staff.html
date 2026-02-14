@@ -32,6 +32,88 @@
       line-height: 1.6;
     }
 
+    /* ── Location Segmented Control ── */
+
+    .staff-location-switcher {
+      display: flex;
+      justify-content: center;
+      padding: 0 24px 40px;
+      background: var(--white);
+    }
+
+    .segmented-control {
+      display: inline-flex;
+      background: var(--off-white);
+      border-radius: 12px;
+      padding: 4px;
+      gap: 2px;
+      border: 1px solid var(--light-gray);
+    }
+
+    .segmented-control button {
+      position: relative;
+      padding: 10px 24px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--mid-gray);
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: color 0.3s cubic-bezier(0.15, 0.83, 0.66, 1),
+                  background 0.3s cubic-bezier(0.15, 0.83, 0.66, 1),
+                  box-shadow 0.3s cubic-bezier(0.15, 0.83, 0.66, 1);
+      white-space: nowrap;
+    }
+
+    .segmented-control button:hover {
+      color: var(--dark);
+    }
+
+    .segmented-control button.active {
+      background: var(--white);
+      color: var(--dark);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08),
+                  0 0 1px rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="dark"] .segmented-control {
+      background: rgba(40, 40, 40, 0.6);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .segmented-control button.active {
+      background: rgba(60, 60, 60, 0.8);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ── Staff Card Muting ── */
+
+    .staff-grid-card {
+      transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1),
+                  box-shadow 0.35s cubic-bezier(0.25, 0.1, 0.25, 1),
+                  filter 0.5s cubic-bezier(0.15, 0.83, 0.66, 1),
+                  opacity 0.5s cubic-bezier(0.15, 0.83, 0.66, 1);
+    }
+
+    .staff-grid-card.muted {
+      filter: grayscale(100%);
+      opacity: 0.4;
+    }
+
+    .staff-grid-card.location-active {
+      box-shadow: 0 0 0 1px rgba(100, 160, 255, 0.2),
+                  0 0 24px rgba(100, 160, 255, 0.12),
+                  0 4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .staff-grid-card.location-active:hover {
+      box-shadow: 0 0 0 1px rgba(100, 160, 255, 0.3),
+                  0 0 32px rgba(100, 160, 255, 0.18),
+                  0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
     /* ── Staff Grid ── */
 
     .staff-grid {
@@ -117,7 +199,32 @@
       background: rgba(0, 0, 0, 0.2);
       backdrop-filter: blur(0px);
       -webkit-backdrop-filter: blur(0px);
-      transition: opacity 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
+      transition: opacity 0.4s cubic-bezier(0.15, 0.83, 0.66, 1),
+                  backdrop-filter 0.6s cubic-bezier(0.15, 0.83, 0.66, 1) 0.15s,
+                  -webkit-backdrop-filter 0.6s cubic-bezier(0.15, 0.83, 0.66, 1) 0.15s;
+    }
+
+    /* Aurora bloom: blue glow appears first, then blur follows */
+    .staff-modal-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle at var(--bloom-x, 50%) var(--bloom-y, 50%),
+        rgba(80, 140, 255, 0.25) 0%,
+        rgba(100, 160, 255, 0.08) 40%,
+        transparent 70%
+      );
+      opacity: 0;
+      transform: scale(0.3);
+      transition: opacity 0.3s cubic-bezier(0.15, 0.83, 0.66, 1),
+                  transform 0.6s cubic-bezier(0.15, 0.83, 0.66, 1);
+      pointer-events: none;
+    }
+
+    .staff-modal-overlay.visible::before {
+      opacity: 1;
+      transform: scale(2.5);
     }
 
     .staff-modal-overlay.visible {
@@ -143,10 +250,11 @@
       position: relative;
       transform: scale(0.88);
       opacity: 0;
-      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-                  opacity 0.3s ease;
+      transition: transform 0.5s cubic-bezier(0.15, 0.83, 0.66, 1) 0.1s,
+                  opacity 0.4s cubic-bezier(0.15, 0.83, 0.66, 1) 0.1s;
       box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12),
                   0 2px 8px rgba(0, 0, 0, 0.04);
+      z-index: 1;
     }
 
     .staff-modal-overlay.visible .staff-modal {
@@ -462,6 +570,14 @@
       <p class="reveal">Experienced attorneys and staff dedicated to protecting your immigration rights across Berkeley and Stockton.</p>
     </section>
 
+    <div class="staff-location-switcher">
+      <div class="segmented-control" id="locationSwitcher">
+        <button class="active" data-location="all">All</button>
+        <button data-location="San Francisco">San Francisco</button>
+        <button data-location="Stockton">Stockton</button>
+      </div>
+    </div>
+
     <div class="staff-grid" id="staffGrid">
       <div class="staff-empty">Loading team members...</div>
     </div>
@@ -523,7 +639,7 @@
           photoHtml = '<div class="staff-grid-avatar">' + escapeHtmlUtil(member.name.charAt(0)) + '</div>';
         }
 
-        return '<div class="staff-grid-card reveal" data-staff-idx="' + idx + '">' +
+        return '<div class="staff-grid-card reveal" data-staff-idx="' + idx + '" data-office="' + escapeHtmlUtil(member.office || '') + '">' +
           photoHtml +
           '<div class="staff-grid-info">' +
             '<h2 class="staff-grid-name">' + escapeHtmlUtil(member.name) + '</h2>' +
@@ -608,9 +724,15 @@
         overlay.classList.remove("visible");
       }
 
-      // Card clicks
+      // Card clicks — capture position for Aurora bloom origin
       container.querySelectorAll(".staff-grid-card").forEach(function(card) {
-        card.addEventListener("click", function() {
+        card.addEventListener("click", function(e) {
+          // Set bloom origin to click position (% of viewport)
+          var bx = ((e.clientX / window.innerWidth) * 100).toFixed(1) + "%";
+          var by = ((e.clientY / window.innerHeight) * 100).toFixed(1) + "%";
+          overlay.style.setProperty("--bloom-x", bx);
+          overlay.style.setProperty("--bloom-y", by);
+
           var idx = parseInt(card.dataset.staffIdx, 10);
           if (visibleStaff[idx]) openStaffModal(visibleStaff[idx]);
         });
@@ -629,6 +751,35 @@
         if (e.key === "Escape" && overlay.classList.contains("visible")) {
           closeStaffModal();
         }
+      });
+
+      /* ── Location Switcher ── */
+      var switcher = document.getElementById("locationSwitcher");
+      var switcherBtns = switcher.querySelectorAll("button");
+
+      switcherBtns.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          // Update active button
+          switcherBtns.forEach(function(b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+
+          var selectedLocation = btn.dataset.location;
+          var cards = container.querySelectorAll(".staff-grid-card");
+
+          cards.forEach(function(card) {
+            var office = card.dataset.office;
+
+            if (selectedLocation === "all") {
+              card.classList.remove("muted", "location-active");
+            } else if (office === selectedLocation) {
+              card.classList.remove("muted");
+              card.classList.add("location-active");
+            } else {
+              card.classList.add("muted");
+              card.classList.remove("location-active");
+            }
+          });
+        });
       });
 
       /* ── Reveal animations ── */
