@@ -2,6 +2,9 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Global navigation (must run first) ── */
   renderGlobalNav();
 
+  /* ── Success Ribbon (cross-fading social proof) ── */
+  renderSuccessRibbon();
+
   /* ── Scroll-to-reveal ── */
   const reveals = document.querySelectorAll(".reveal");
 
@@ -301,6 +304,66 @@ function saveClockSettings(data) {
 }
 
 /* ══════════════════════════════════════════════
+   Success Ribbon (localStorage)
+   ══════════════════════════════════════════════ */
+
+function getSuccessRibbon() {
+  try {
+    var stored = JSON.parse(localStorage.getItem("siteSuccessRibbon") || "null");
+    if (stored) return stored;
+  } catch (e) {}
+  return {
+    enabled: true,
+    phrases: [
+      "Over 5,000 families reunited through our legal advocacy",
+      "Recognized by the East Bay Sanctuary Covenant for pro bono excellence",
+      "Serving the Bay Area and Central Valley since 2010",
+      "Multilingual team fluent in Spanish, Portuguese, Nepali, and Hindi"
+    ]
+  };
+}
+
+function saveSuccessRibbon(data) {
+  localStorage.setItem("siteSuccessRibbon", JSON.stringify(data));
+}
+
+function renderSuccessRibbon() {
+  var ribbon = getSuccessRibbon();
+  if (!ribbon.enabled || !ribbon.phrases || ribbon.phrases.length === 0) return;
+
+  var hero = document.querySelector(".hero");
+  if (!hero) return;
+
+  var el = document.createElement("div");
+  el.className = "success-ribbon";
+  el.innerHTML = '<span class="success-ribbon-text" id="successRibbonText"></span>';
+
+  // Insert after hero
+  hero.parentNode.insertBefore(el, hero.nextSibling);
+
+  var textEl = document.getElementById("successRibbonText");
+  var phrases = ribbon.phrases;
+  var idx = 0;
+
+  function showPhrase() {
+    textEl.textContent = phrases[idx];
+    textEl.classList.add("visible");
+
+    // Stay visible for 5 seconds, then fade out over 2 seconds
+    setTimeout(function() {
+      textEl.classList.remove("visible");
+      // After fade-out completes, advance to next phrase
+      setTimeout(function() {
+        idx = (idx + 1) % phrases.length;
+        showPhrase();
+      }, 2000);
+    }, 5000);
+  }
+
+  showPhrase();
+}
+
+/* ══════════════════════════════════════════════
    Path Finder Data (localStorage)
    ══════════════════════════════════════════════ */
 
@@ -577,10 +640,28 @@ function renderGlobalNav() {
     linksHtml += '<li><a href="#" class="nav-cta">' + escapeHtmlUtil(ctaItem.label) + '</a></li>';
   }
 
+  // Build mobile menu links (all visible items, no More dropdown)
+  var allMobileItems = navItems;
+  var mobileLinksHtml = allMobileItems.map(function(item) {
+    return '<a href="' + item.href + '" class="mobile-menu-link">' + escapeHtmlUtil(item.label) + '</a>';
+  }).join('');
+  if (ctaItem && ctaItem.visible) {
+    mobileLinksHtml += '<a href="#" class="mobile-menu-cta">' + escapeHtmlUtil(ctaItem.label) + '</a>';
+  }
+
   nav.innerHTML =
     '<div class="nav-content">' +
       '<a href="index.html" class="nav-logo">O\u2019Brien Immigration</a>' +
       '<ul class="nav-links" id="navLinks">' + linksHtml + '</ul>' +
+      '<button class="nav-hamburger" id="navHamburger" aria-label="Open menu">' +
+        '<span></span><span></span><span></span>' +
+      '</button>' +
+    '</div>' +
+    '<div class="mobile-menu-overlay" id="mobileMenuOverlay">' +
+      '<div class="mobile-menu-panel">' +
+        '<button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">&times;</button>' +
+        '<div class="mobile-menu-links">' + mobileLinksHtml + '</div>' +
+      '</div>' +
     '</div>';
 
   // Bind "More" dropdown toggle
@@ -596,6 +677,51 @@ function renderGlobalNav() {
     document.addEventListener("click", function() {
       moreEl.classList.remove("open");
       moreTrigger.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  // Mobile hamburger menu
+  var hamburger = document.getElementById("navHamburger");
+  var mobileOverlay = document.getElementById("mobileMenuOverlay");
+  var mobileClose = document.getElementById("mobileMenuClose");
+
+  if (hamburger && mobileOverlay) {
+    hamburger.addEventListener("click", function() {
+      mobileOverlay.classList.add("open");
+      document.body.style.overflow = "hidden";
+    });
+
+    function closeMobileMenu() {
+      mobileOverlay.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    mobileClose.addEventListener("click", closeMobileMenu);
+    mobileOverlay.addEventListener("click", function(e) {
+      if (e.target === mobileOverlay) closeMobileMenu();
+    });
+
+    // Close on link click
+    mobileOverlay.querySelectorAll(".mobile-menu-link").forEach(function(link) {
+      link.addEventListener("click", closeMobileMenu);
+    });
+
+    // Mobile CTA opens consultation modal
+    var mobileCta = mobileOverlay.querySelector(".mobile-menu-cta");
+    if (mobileCta) {
+      mobileCta.addEventListener("click", function(e) {
+        e.preventDefault();
+        closeMobileMenu();
+        if (window.siteAnalytics) siteAnalytics.trackBookClick();
+        openConsultModal();
+      });
+    }
+
+    // Escape key
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape" && mobileOverlay.classList.contains("open")) {
+        closeMobileMenu();
+      }
     });
   }
 

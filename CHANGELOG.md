@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.3 — 2026-02-14
+
+### Success Ribbon & Mobile Navigation Overhaul
+
+- **Success Ribbon** — A thin, elegant bar sits just below the hero section, displaying rotating social proof phrases with a smooth 2-second cross-fade and 5-second hold. Uses Aurora Blue (`#3b82f6`) text on a subtle semi-transparent blue background to stay integrated with the theme. Dark mode supported.
+- **Admin "Trust & Social Proof" tab** — New section under Content Management in the admin panel. Features an on/off master switch to show/hide the ribbon globally, and an unlimited phrase list manager with add/remove controls. Default phrases include firm achievements, awards, and capabilities. Stored in `siteSuccessRibbon` localStorage key.
+- **Mobile hamburger menu** — On screens under 768px, the nav links collapse into a clean three-line hamburger icon. Tapping it opens a slide-out glassmorphism panel from the right (`backdrop-filter: blur(20px)`) containing all active navigation links and a full-width "Book a Consultation" CTA button pinned to the bottom. Closes via X button, overlay click, Escape key, or link click. The old floating "Book" FAB is replaced by this integrated approach.
+- **Mobile menu CTA** — The "Book a Consultation" button appears at the bottom of the hamburger menu panel with full button styling, ensuring the primary conversion action is always accessible on mobile without cluttering the screen.
+
+**Why:** Social proof is a high-conversion element for professional services — rotating success phrases below the hero reinforce credibility without taking up permanent space. The mobile navigation was completely broken (nav links hidden with `display: none` and only a floating FAB visible). The new hamburger menu with glassmorphism overlay provides a proper mobile navigation experience that matches the site's premium design language.
+
 ## v3.2 — 2026-02-14
 
 ### Centralized Office Location Picklist

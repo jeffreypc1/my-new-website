@@ -1439,6 +1439,7 @@
         </button>
         <div class="sidebar-group-items">
           <a class="sidebar-link" data-section="homepage"><span>Homepage Layout</span></a>
+          <a class="sidebar-link" data-section="trustproof"><span>Trust & Social Proof</span></a>
           <a class="sidebar-link" data-section="pages"><span>Pages</span></a>
           <a class="sidebar-link" data-section="posts"><span>Posts</span></a>
           <a class="sidebar-link" data-section="media"><span>Media</span></a>
@@ -1733,6 +1734,31 @@
         <h2>Preview</h2>
         <p class="subtitle" style="margin-bottom:16px">Live preview of your bento grid layout.</p>
         <div id="bentoPreview" style="display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:1fr;grid-auto-flow:dense;gap:12px;max-width:100%"></div>
+      </div>
+    </div>
+
+    <!-- ── Trust & Social Proof ── -->
+    <div id="trustproof" class="section">
+      <h1>Trust & Social Proof</h1>
+      <p class="subtitle">Manage the Success Ribbon that displays rotating phrases below the hero section.</p>
+
+      <div class="panel">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:normal;margin-bottom:20px">
+          <input type="checkbox" id="ribbonEnabled">
+          Show Success Ribbon on all pages with a hero section
+        </label>
+
+        <h3 style="font-size:0.9375rem;font-weight:600;margin-bottom:12px">Success Phrases</h3>
+        <p style="font-size:0.8125rem;color:var(--mid-gray);margin-bottom:16px">Phrases fade in and out one at a time. Add as many as you like.</p>
+        <div id="ribbonPhrasesList" style="display:grid;gap:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="newRibbonPhrase" placeholder="e.g. Over 5,000 families reunited" style="flex:1">
+          <button class="btn btn-primary" id="btnAddRibbonPhrase">Add Phrase</button>
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <button class="btn btn-primary" id="btnSaveRibbon">Save Ribbon Settings</button>
       </div>
     </div>
 
@@ -2850,6 +2876,73 @@
 
       showToast("Settings saved");
     });
+
+    /* ══════════════════════════════════════════════
+       Trust & Social Proof — Success Ribbon
+       ══════════════════════════════════════════════ */
+
+    (function initTrustProof() {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem("siteSuccessRibbon") || "null"); } catch (e) {}
+      var ribbon = stored || {
+        enabled: true,
+        phrases: [
+          "Over 5,000 families reunited through our legal advocacy",
+          "Recognized by the East Bay Sanctuary Covenant for pro bono excellence",
+          "Serving the Bay Area and Central Valley since 2010",
+          "Multilingual team fluent in Spanish, Portuguese, Nepali, and Hindi"
+        ]
+      };
+
+      document.getElementById("ribbonEnabled").checked = ribbon.enabled !== false;
+
+      function renderPhrases() {
+        var container = document.getElementById("ribbonPhrasesList");
+        if (!ribbon.phrases || ribbon.phrases.length === 0) {
+          container.innerHTML = '<div class="empty-state">No phrases yet. Add one below.</div>';
+          return;
+        }
+
+        container.innerHTML = ribbon.phrases.map(function(phrase, idx) {
+          return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--off-white);border-radius:var(--radius-sm)">' +
+            '<span style="font-size:0.8125rem;flex:1">' + phrase.replace(/</g, '&lt;') + '</span>' +
+            '<button class="btn btn-secondary" data-idx="' + idx + '" style="padding:4px 10px;font-size:0.75rem;flex-shrink:0">Remove</button>' +
+          '</div>';
+        }).join('');
+
+        container.querySelectorAll("button[data-idx]").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            ribbon.phrases.splice(parseInt(btn.dataset.idx, 10), 1);
+            renderPhrases();
+          });
+        });
+      }
+
+      document.getElementById("btnAddRibbonPhrase").addEventListener("click", function() {
+        var input = document.getElementById("newRibbonPhrase");
+        var val = input.value.trim();
+        if (!val) { showToast("Enter a phrase"); return; }
+        if (!ribbon.phrases) ribbon.phrases = [];
+        ribbon.phrases.push(val);
+        input.value = "";
+        renderPhrases();
+      });
+
+      document.getElementById("newRibbonPhrase").addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          document.getElementById("btnAddRibbonPhrase").click();
+        }
+      });
+
+      document.getElementById("btnSaveRibbon").addEventListener("click", function() {
+        ribbon.enabled = document.getElementById("ribbonEnabled").checked;
+        localStorage.setItem("siteSuccessRibbon", JSON.stringify(ribbon));
+        showToast("Ribbon settings saved");
+      });
+
+      renderPhrases();
+    })();
 
     /* ══════════════════════════════════════════════
        Homepage Layout — Dynamic Bento Tiles
