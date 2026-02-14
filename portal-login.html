@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Portal — O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Portal Login ── */
+
+    .portal-login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: var(--off-white);
+    }
+
+    .portal-login-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: saturate(140%) blur(20px);
+      -webkit-backdrop-filter: saturate(140%) blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 24px;
+      padding: 48px 40px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04),
+                  0 8px 32px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+
+    [data-theme="dark"] .portal-login-card {
+      background: rgba(40, 40, 40, 0.7);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .portal-logo {
+      font-family: var(--heading-font);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .portal-heading {
+      font-family: var(--heading-font);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--dark);
+      margin-bottom: 32px;
+    }
+
+    .portal-google-btn {
+      display: flex;
+      justify-content: center;
+      min-height: 44px;
+      margin-bottom: 24px;
+    }
+
+    .portal-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      color: var(--mid-gray);
+      font-size: 0.8125rem;
+    }
+
+    .portal-divider::before,
+    .portal-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--light-gray);
+    }
+
+    .portal-email-group {
+      margin-bottom: 16px;
+    }
+
+    .portal-email-input {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      border: 1px solid var(--light-gray);
+      border-radius: 12px;
+      background: var(--white);
+      color: var(--dark);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .portal-email-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    .portal-email-input::placeholder {
+      color: var(--mid-gray);
+    }
+
+    .portal-magic-btn {
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      background: #3b82f6;
+      border: none;
+      border-radius: 980px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .portal-magic-btn:hover {
+      background: #2563eb;
+    }
+
+    .portal-magic-btn:active {
+      transform: scale(0.97);
+    }
+
+    .portal-magic-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .portal-disclaimer {
+      margin-top: 32px;
+      font-size: 0.6875rem;
+      line-height: 1.5;
+      color: var(--mid-gray);
+    }
+
+    .portal-email-error {
+      font-size: 0.75rem;
+      color: #d63031;
+      margin-top: 6px;
+      display: none;
+      text-align: left;
+    }
+
+    @media (max-width: 480px) {
+      .portal-login-card {
+        padding: 36px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar" id="globalNav">
+    <!-- Rendered by renderGlobalNav() in main.js -->
+  </nav>
+
+  <main>
+    <div class="portal-login-wrapper">
+      <div class="portal-login-card">
+        <div class="portal-logo">O'Brien Immigration Law</div>
+        <h1 class="portal-heading">Client Portal</h1>
+
+        <!-- Google Sign-In -->
+        <div class="portal-google-btn" id="portalGoogleBtn"></div>
+
+        <div class="portal-divider">or</div>
+
+        <!-- Magic Link -->
+        <div class="portal-email-group">
+          <input type="email" class="portal-email-input" id="portalEmailInput" placeholder="Enter your email address" autocomplete="email">
+          <p class="portal-email-error" id="portalEmailError">Please enter a valid email address.</p>
+        </div>
+        <button class="portal-magic-btn" id="portalMagicBtn">Send Magic Link</button>
+
+        <p class="portal-disclaimer">Your data is encrypted and protected under attorney-client privilege.</p>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="staff.html">Our Team</a>
+      </div>
+      <p>&copy; 2026 O'Brien Immigration Law. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <script src="analytics.js"></script>
+  <script src="main.js"></script>
+  <script src="portal-auth.js"></script>
+  <script>
+    (function() {
+      // If already authenticated, redirect to dashboard
+      var session = portalAuth.getSession();
+      if (session) {
+        window.location.replace("portal-dashboard.html");
+        return;
+      }
+
+      // Check for magic link token in URL
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get("token");
+      if (token) {
+        var result = portalAuth.validateMagicToken(token);
+        if (result) {
+          portalAuth.showToast("Welcome! Signing you in...");
+          setTimeout(function() {
+            window.location.replace("portal-dashboard.html");
+          }, 500);
+          return;
+        } else {
+          portalAuth.showToast("This link has expired or is invalid.", true);
+          // Clean URL
+          window.history.replaceState({}, "", "portal-login.html");
+        }
+      }
+
+      // Initialize Google Sign-In
+      portalAuth.initGoogleSignIn();
+
+      // Magic Link form
+      var emailInput = document.getElementById("portalEmailInput");
+      var magicBtn = document.getElementById("portalMagicBtn");
+      var emailError = document.getElementById("portalEmailError");
+
+      magicBtn.addEventListener("click", function() {
+        var email = emailInput.value.trim();
+        emailError.style.display = "none";
+
+        if (!email || !email.includes("@") || !email.includes(".")) {
+          emailError.style.display = "block";
+          emailInput.style.borderColor = "#d63031";
+          setTimeout(function() {
+            emailInput.style.borderColor = "";
+          }, 1500);
+          return;
+        }
+
+        magicBtn.disabled = true;
+        magicBtn.textContent = "Sending...";
+
+        // Simulate brief delay
+        setTimeout(function() {
+          var tkn = portalAuth.generateMagicToken(email);
+          if (tkn) {
+            portalAuth.showToast("Magic link sent! Check your console for the link.");
+            magicBtn.textContent = "Link Sent — Check Email";
+            setTimeout(function() {
+              magicBtn.disabled = false;
+              magicBtn.textContent = "Send Magic Link";
+            }, 5000);
+          } else {
+            portalAuth.showToast("Failed to generate magic link.", true);
+            magicBtn.disabled = false;
+            magicBtn.textContent = "Send Magic Link";
+          }
+        }, 800);
+      });
+
+      // Enter key on email input
+      emailInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") magicBtn.click();
+      });
+    })();
+  </script>
+</body>
+</html>

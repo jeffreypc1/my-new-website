@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Client Portal — O'Brien Immigration Law</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Portal Dashboard ── */
+
+    .portal-hero {
+      padding: 80px 24px 40px;
+      text-align: center;
+      background: var(--white);
+    }
+
+    .portal-hero h1 {
+      font-family: var(--heading-font);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .portal-hero p {
+      font-size: clamp(0.9375rem, 2.5vw, 1.125rem);
+      color: var(--mid-gray);
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .portal-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 24px 60px;
+    }
+
+    .portal-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: saturate(140%) blur(16px);
+      -webkit-backdrop-filter: saturate(140%) blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04),
+                  0 4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .portal-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06),
+                  0 16px 48px rgba(0, 0, 0, 0.10);
+    }
+
+    [data-theme="dark"] .portal-card {
+      background: rgba(40, 40, 40, 0.6);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .portal-card-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      color: #3b82f6;
+    }
+
+    .portal-card h3 {
+      font-family: var(--heading-font);
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .portal-card p {
+      font-size: 0.875rem;
+      color: var(--mid-gray);
+      line-height: 1.5;
+    }
+
+    .portal-card .coming-soon {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 12px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.08);
+      border-radius: 980px;
+    }
+
+    .portal-signout-row {
+      text-align: center;
+      padding: 0 24px 60px;
+    }
+
+    .portal-signout-btn {
+      padding: 12px 32px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: var(--mid-gray);
+      background: var(--off-white);
+      border: 1px solid var(--light-gray);
+      border-radius: 980px;
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s, border-color 0.2s;
+    }
+
+    .portal-signout-btn:hover {
+      color: #d63031;
+      border-color: rgba(214, 48, 49, 0.3);
+      background: rgba(214, 48, 49, 0.05);
+    }
+
+    @media (max-width: 768px) {
+      .portal-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar" id="globalNav">
+    <!-- Rendered by renderGlobalNav() in main.js -->
+  </nav>
+
+  <main>
+    <section class="portal-hero">
+      <h1 id="portalWelcome">Welcome</h1>
+      <p id="portalSubtext">Your secure client portal for case updates and documents.</p>
+    </section>
+
+    <div class="portal-cards">
+      <div class="portal-card">
+        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <h3>My Cases</h3>
+        <p>View your active cases and track progress through every stage of your immigration journey.</p>
+        <span class="coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="portal-card">
+        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <h3>Documents</h3>
+        <p>Securely access and upload documents related to your case. All files are protected and encrypted.</p>
+        <span class="coming-soon">Coming Soon</span>
+      </div>
+
+      <div class="portal-card">
+        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <h3>Messages</h3>
+        <p>Communicate directly with your legal team through secure, encrypted messaging.</p>
+        <span class="coming-soon">Coming Soon</span>
+      </div>
+    </div>
+
+    <div class="portal-signout-row">
+      <button class="portal-signout-btn" id="portalSignOut">Sign Out</button>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="staff.html">Our Team</a>
+      </div>
+      <p>&copy; 2026 O'Brien Immigration Law. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <script src="analytics.js"></script>
+  <script src="main.js"></script>
+  <script src="portal-auth.js"></script>
+  <script>
+    (function() {
+      // Require authentication
+      var session = portalAuth.requireAuth();
+      if (!session) return; // redirect already triggered
+
+      // Personalize welcome
+      var name = session.displayName || session.email;
+      document.getElementById("portalWelcome").textContent = "Welcome, " + name;
+      document.getElementById("portalSubtext").textContent = "Signed in as " + session.email + " via " + session.method.replace("-", " ");
+
+      // Sign out
+      document.getElementById("portalSignOut").addEventListener("click", function() {
+        portalAuth.clearSession();
+      });
+    })();
+  </script>
+</body>
+</html>

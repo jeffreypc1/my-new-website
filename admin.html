@@ -1495,6 +1495,7 @@
           <a class="sidebar-link" data-section="contactconfig"><span>Contact Config</span></a>
           <a class="sidebar-link" data-section="clocksettings"><span>Clock Settings</span></a>
           <a class="sidebar-link" data-section="translation"><span>Translation</span></a>
+          <a class="sidebar-link" data-section="salesforcebox"><span>Salesforce & Box</span></a>
         </div>
       </div>
     </nav>
@@ -2406,6 +2407,50 @@
         <div style="margin-top:20px">
           <button class="btn btn-primary" id="btnSaveTranslation">Save Translation Settings</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── Salesforce & Box ── -->
+    <div id="salesforcebox" class="section">
+      <h1>Salesforce & Box</h1>
+      <p class="subtitle">Configure Salesforce CRM and Box document storage integrations for the client portal.</p>
+
+      <div class="panel">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:20px">Salesforce Configuration</h2>
+
+        <div class="form-group">
+          <label for="sfConsumerKey">Consumer Key</label>
+          <input type="text" id="sfConsumerKey" placeholder="3MVG9...">
+        </div>
+
+        <div class="form-group">
+          <label for="sfConsumerSecret">Consumer Secret</label>
+          <input type="password" id="sfConsumerSecret" placeholder="••••••••">
+        </div>
+
+        <div class="form-group">
+          <label for="sfInstanceUrl">Instance URL</label>
+          <input type="text" id="sfInstanceUrl" placeholder="https://yourorg.my.salesforce.com">
+        </div>
+
+        <div style="margin-top:16px">
+          <button class="btn btn-secondary" id="btnTestSalesforce">Test Connection</button>
+        </div>
+        <div id="sfTestResult" style="margin-top:12px;font-size:0.875rem;display:none"></div>
+      </div>
+
+      <div class="panel" style="margin-top:24px">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:20px">Box Configuration</h2>
+
+        <div class="form-group">
+          <label for="boxFolderId">Box Folder ID</label>
+          <input type="text" id="boxFolderId" placeholder="e.g. 123456789">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">The root folder in Box where client documents are stored.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:24px">
+        <button class="btn btn-primary" id="btnSaveSalesforceBox">Save</button>
       </div>
     </div>
 
@@ -5452,6 +5497,58 @@
           renderInsights();
           showToast("Analytics data cleared");
         }
+      });
+    })();
+
+    (function initSalesforceBox() {
+      var STORAGE_KEY = "siteSalesforceBox";
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (e) {}
+      var config = stored || {};
+
+      document.getElementById("sfConsumerKey").value = config.consumerKey || "";
+      document.getElementById("sfConsumerSecret").value = config.consumerSecret || "";
+      document.getElementById("sfInstanceUrl").value = config.instanceUrl || "";
+      document.getElementById("boxFolderId").value = config.boxFolderId || "";
+
+      document.getElementById("btnSaveSalesforceBox").addEventListener("click", function() {
+        var data = {
+          consumerKey: document.getElementById("sfConsumerKey").value.trim(),
+          consumerSecret: document.getElementById("sfConsumerSecret").value.trim(),
+          instanceUrl: document.getElementById("sfInstanceUrl").value.trim(),
+          boxFolderId: document.getElementById("boxFolderId").value.trim()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        showToast("Salesforce & Box settings saved");
+      });
+
+      document.getElementById("btnTestSalesforce").addEventListener("click", function() {
+        var btn = document.getElementById("btnTestSalesforce");
+        var result = document.getElementById("sfTestResult");
+        var instanceUrl = document.getElementById("sfInstanceUrl").value.trim();
+        var consumerKey = document.getElementById("sfConsumerKey").value.trim();
+
+        if (!instanceUrl || !consumerKey) {
+          result.style.display = "block";
+          result.style.color = "#d63031";
+          result.textContent = "Please enter at least the Instance URL and Consumer Key before testing.";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Testing...";
+        result.style.display = "block";
+        result.style.color = "var(--mid-gray)";
+        result.textContent = "Connecting to " + instanceUrl + "...";
+
+        setTimeout(function() {
+          btn.disabled = false;
+          btn.textContent = "Test Connection";
+          // Simulate success (no real backend to proxy OAuth)
+          result.style.color = "#00b894";
+          result.textContent = "Connection simulated successfully. In production, this will verify OAuth credentials against your Salesforce org.";
+          showToast("Salesforce connection test complete");
+        }, 1500);
       });
     })();
   </script>

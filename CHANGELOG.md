@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.7 — 2026-02-14
+
+### Client Portal Infrastructure & Identity Layer
+
+- **`portal-auth.js` — Authentication engine** — New standalone auth module providing session management via `sitePortalSession` localStorage key. Supports two sign-in methods: Google Identity Services (new GSI library) and Magic Link (email-based token simulation). Sessions expire after 24 hours with automatic validation on every protected page load. Exposes `portalAuth` global API with `getSession()`, `setSession()`, `clearSession()`, `requireAuth()`, `generateMagicToken()`, `validateMagicToken()`, `handleGoogleSignIn()`, and `initGoogleSignIn()`.
+- **`portal-login.html` — Client Portal login page** — Centered glassmorphism card with firm branding, Google Sign-In button (rendered by GSI SDK), an "or" divider, email input with "Send Magic Link" button, and a legal disclaimer. Magic link tokens are stored in `sitePortalMagicTokens` with 15-minute expiry — the token URL is logged to the browser console (simulating email delivery since there's no backend). If a `?token=xxx` query parameter is present, the page validates it and auto-redirects to the dashboard. Already-authenticated users are redirected to the dashboard immediately.
+- **`portal-dashboard.html` — Protected client dashboard** — Calls `requireAuth()` on load; unauthenticated visitors are redirected to the login page via `window.location.replace()`. Displays a personalized welcome message with the user's name and sign-in method. Three placeholder glassmorphism cards — My Cases, Documents, Messages — each marked "Coming Soon". Sign Out button clears the session and redirects to login. Uses the same navbar/footer/script pattern as all other sub-pages.
+- **Admin "Salesforce & Box" tab** — New sidebar link under System Settings in `admin.html`. Salesforce Configuration panel with Consumer Key, Consumer Secret (password field), and Instance URL inputs plus a "Test Connection" button that simulates an OAuth ping with a 1.5-second delay and success toast. Box Configuration panel with a Box Folder ID input. All settings stored in `siteSalesforceBox` localStorage key. IIFE pattern (`initSalesforceBox()`) loads saved values on init and persists on save.
+
+**Why:** The client portal is the foundation for secure document access and case status tracking. Google Sign-In provides a frictionless auth path for clients who use Gmail, while Magic Link serves clients without Google accounts. The simulated backend (console-logged tokens, localStorage sessions) lets us build and test the full UX flow now, with a clean upgrade path to a real API later. The Salesforce & Box admin tab prepares the integration layer for connecting case data and document storage once backend services are available.
+
 ## v3.6 — 2026-02-14
 
 ### Smart Language Detection & UI Cleanup
