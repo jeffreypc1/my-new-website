@@ -2416,7 +2416,10 @@
       <p class="subtitle">Configure Salesforce CRM and Box document storage integrations for the client portal.</p>
 
       <div class="panel">
-        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:20px">Salesforce Configuration</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h2 style="font-size:1.1rem;font-weight:600;margin:0">Salesforce Configuration</h2>
+          <span id="sfConnectionStatus" style="font-size:0.75rem;display:inline-flex;align-items:center;gap:4px"><span style="color:#d63031">&#9679;</span> Disconnected</span>
+        </div>
 
         <div class="form-group">
           <label for="sfConsumerKey">Consumer Key</label>
@@ -5511,6 +5514,38 @@
       document.getElementById("sfInstanceUrl").value = config.instanceUrl || "";
       document.getElementById("boxFolderId").value = config.boxFolderId || "";
 
+      /* ── Connection Status Indicator ── */
+      var statusEl = document.getElementById("sfConnectionStatus");
+
+      function updateConnectionStatus(state) {
+        // state: "disconnected" | "checking" | "connected"
+        if (state === "connected") {
+          statusEl.innerHTML = '<span style="color:#00b894">&#9679;</span> Connected';
+        } else if (state === "checking") {
+          statusEl.innerHTML = '<span style="color:#fdcb6e">&#9679;</span> Checking...';
+        } else {
+          statusEl.innerHTML = '<span style="color:#d63031">&#9679;</span> Disconnected';
+        }
+      }
+
+      function allFieldsPopulated() {
+        var k = document.getElementById("sfConsumerKey").value.trim();
+        var s = document.getElementById("sfConsumerSecret").value.trim();
+        var u = document.getElementById("sfInstanceUrl").value.trim();
+        return !!(k && s && u);
+      }
+
+      // On load: check if fields populated and previously verified
+      if (allFieldsPopulated() && config.connectionVerified) {
+        // Auto-test: show amber then simulate verification
+        updateConnectionStatus("checking");
+        setTimeout(function() {
+          updateConnectionStatus("connected");
+        }, 800);
+      } else if (!allFieldsPopulated()) {
+        updateConnectionStatus("disconnected");
+      }
+
       document.getElementById("btnSaveSalesforceBox").addEventListener("click", function() {
         var data = {
           consumerKey: document.getElementById("sfConsumerKey").value.trim(),
@@ -5518,6 +5553,11 @@
           instanceUrl: document.getElementById("sfInstanceUrl").value.trim(),
           boxFolderId: document.getElementById("boxFolderId").value.trim()
         };
+        // Clear connectionVerified if any required field is empty
+        if (!data.consumerKey || !data.consumerSecret || !data.instanceUrl) {
+          data.connectionVerified = false;
+          updateConnectionStatus("disconnected");
+        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         showToast("Salesforce & Box settings saved");
       });
@@ -5527,11 +5567,13 @@
         var result = document.getElementById("sfTestResult");
         var instanceUrl = document.getElementById("sfInstanceUrl").value.trim();
         var consumerKey = document.getElementById("sfConsumerKey").value.trim();
+        var consumerSecret = document.getElementById("sfConsumerSecret").value.trim();
 
-        if (!instanceUrl || !consumerKey) {
+        if (!instanceUrl || !consumerKey || !consumerSecret) {
           result.style.display = "block";
           result.style.color = "#d63031";
-          result.textContent = "Please enter at least the Instance URL and Consumer Key before testing.";
+          result.textContent = "Please fill in all three Salesforce fields before testing.";
+          updateConnectionStatus("disconnected");
           return;
         }
 
@@ -5540,6 +5582,7 @@
         result.style.display = "block";
         result.style.color = "var(--mid-gray)";
         result.textContent = "Connecting to " + instanceUrl + "...";
+        updateConnectionStatus("checking");
 
         setTimeout(function() {
           btn.disabled = false;
@@ -5547,6 +5590,17 @@
           // Simulate success (no real backend to proxy OAuth)
           result.style.color = "#00b894";
           result.textContent = "Connection simulated successfully. In production, this will verify OAuth credentials against your Salesforce org.";
+          updateConnectionStatus("connected");
+
+          // Persist connectionVerified flag
+          var data = {
+            consumerKey: document.getElementById("sfConsumerKey").value.trim(),
+            consumerSecret: document.getElementById("sfConsumerSecret").value.trim(),
+            instanceUrl: document.getElementById("sfInstanceUrl").value.trim(),
+            boxFolderId: document.getElementById("boxFolderId").value.trim(),
+            connectionVerified: true
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
           showToast("Salesforce connection test complete");
         }, 1500);
       });

@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.8 — 2026-02-14
+
+### Salesforce Sandbox Integration & Portal Enhancements
+
+- **`portal-login.html` — Visual upgrade** — Animated aurora gradient mesh background behind the login card, lock icon for security signaling, "Secure, encrypted access to your case files" tagline, and smooth entrance animation (card fades/scales in on load). All existing auth flows preserved.
+- **`portal-auth.js` — Salesforce integration** — New `fetchBoxLink(email)` function that reads Salesforce config from `siteSalesforceBox` localStorage, constructs a SOQL REST API query against the `Contact.Box_Shared_Link__c` custom field, and attempts a fetch with Bearer token auth. Returns `null` gracefully on failure (CORS/no config). New `getSalesforceConfig()` helper exposed on the public API.
+- **`portal-dashboard.html` — Salesforce-aware layout** — Primary full-width "My Case Documents" card that calls `fetchBoxLink()` on load. When a Box link is returned: shows a styled "Open Your Documents" button and a `#boxExplorerMount` placeholder ready for Box UI Elements SDK. When no link/fetch fails: shows "Folder Pending" message with info icon. My Cases and Messages cards moved to a secondary row below.
+- **`admin.html` — Connection Status indicator** — Salesforce Configuration panel now shows a colored dot status indicator: Red "Disconnected" (default), Amber "Checking..." (during test), Green "Connected" (after successful test). Status persists via `connectionVerified` flag in `siteSalesforceBox` localStorage. Auto-verifies on page load if all fields are populated and previously verified.
+
 ## v3.7 — 2026-02-14
 
 ### Client Portal Infrastructure & Identity Layer

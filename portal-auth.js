@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════
-   Portal Authentication Engine — v3.7
-   Session management, Google Sign-In, Magic Link
+   Portal Authentication Engine — v3.8
+   Session management, Google Sign-In, Magic Link,
+   Salesforce Box integration
    ══════════════════════════════════════════════ */
 
 (function() {
@@ -208,6 +209,46 @@
     }, 3000);
   }
 
+  /* ── Salesforce / Box Integration ── */
+
+  var SF_CONFIG_KEY = "siteSalesforceBox";
+
+  function getSalesforceConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(SF_CONFIG_KEY)) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function fetchBoxLink(email) {
+    var config = getSalesforceConfig();
+    if (!config || !config.instanceUrl || !email) {
+      return Promise.resolve(null);
+    }
+
+    var soql = "SELECT Box_Shared_Link__c FROM Contact WHERE Email='" + email.replace(/'/g, "\\'") + "' LIMIT 1";
+    var url = config.instanceUrl.replace(/\/+$/, "") + "/services/data/v59.0/query/?q=" + encodeURIComponent(soql);
+
+    return fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": "Bearer " + (config.accessToken || ""),
+        "Content-Type": "application/json"
+      }
+    }).then(function(resp) {
+      if (!resp.ok) return null;
+      return resp.json();
+    }).then(function(data) {
+      if (data && data.records && data.records.length > 0) {
+        return data.records[0].Box_Shared_Link__c || null;
+      }
+      return null;
+    }).catch(function() {
+      return null;
+    });
+  }
+
   /* ── Public API ── */
 
   window.portalAuth = {
@@ -219,7 +260,9 @@
     validateMagicToken: validateMagicToken,
     handleGoogleSignIn: handleGoogleSignIn,
     initGoogleSignIn: initGoogleSignIn,
-    showToast: showPortalToast
+    showToast: showPortalToast,
+    getSalesforceConfig: getSalesforceConfig,
+    fetchBoxLink: fetchBoxLink
   };
 
 })();
