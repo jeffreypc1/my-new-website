@@ -73,6 +73,9 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Page transition fade ── */
   initPageTransitions();
 
+  /* ── Adaptive images (day/night) — runs after dark mode init ── */
+  applyAdaptiveImages();
+
   /* ── Admin shortcut: Cmd+Shift+A / Ctrl+Shift+A ── */
   let adminTriggered = false;
 
@@ -497,6 +500,8 @@ function applySiteSettings(settings) {
     if (settings[key]) {
       // Don't override the CSS default hero image with "none"
       if (key === "--hero-bg-image" && settings[key] === "none") continue;
+      // Night image is handled by the adaptive image engine, not as a CSS var
+      if (key === "--hero-bg-image-night") continue;
       root.style.setProperty(key, settings[key]);
     }
   }
@@ -672,7 +677,151 @@ function initDarkMode() {
       document.documentElement.setAttribute("data-theme", "dark");
       localStorage.setItem("theme", "dark");
     }
+    // Trigger adaptive image swap on theme change
+    applyAdaptiveImages();
   });
+}
+
+/* ══════════════════════════════════════════════
+   Adaptive Image Engine (Day/Night cross-fade)
+   ══════════════════════════════════════════════ */
+
+function isNightMode() {
+  return document.documentElement.getAttribute("data-theme") === "dark";
+}
+
+function applyAdaptiveImages() {
+  var isDark = isNightMode();
+  var settings = {};
+  try { settings = JSON.parse(localStorage.getItem("siteSettings") || "{}"); } catch (e) {}
+
+  // ── Hero cross-fade ──
+  var hero = document.querySelector(".hero");
+  if (hero) {
+    var dayUrl = settings["--hero-bg-image"] || "";
+    var nightUrl = settings["--hero-bg-image-night"] || "";
+
+    // Extract raw URL from css url() wrapper
+    dayUrl = dayUrl.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
+    nightUrl = nightUrl.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
+    if (dayUrl === "none") dayUrl = "";
+    if (nightUrl === "none") nightUrl = "";
+
+    var targetUrl = "";
+    var useSmartFilter = false;
+
+    if (isDark) {
+      if (nightUrl) {
+        targetUrl = nightUrl;
+      } else if (dayUrl) {
+        targetUrl = dayUrl;
+        useSmartFilter = true;
+      }
+    } else {
+      targetUrl = dayUrl;
+    }
+
+    crossFadeHero(hero, targetUrl, useSmartFilter);
+  }
+
+  // ── Location hero cross-fade ──
+  var locHero = document.getElementById("locationHero");
+  if (locHero && locHero.dataset.dayPhoto) {
+    var locDay = locHero.dataset.dayPhoto;
+    var locNight = locHero.dataset.nightPhoto || "";
+    var locTarget = "";
+    var locFilter = false;
+
+    if (isDark) {
+      if (locNight) {
+        locTarget = locNight;
+      } else if (locDay) {
+        locTarget = locDay;
+        locFilter = true;
+      }
+    } else {
+      locTarget = locDay;
+    }
+
+    crossFadeLocationHero(locHero, locTarget, locFilter);
+  }
+}
+
+function crossFadeHero(hero, imageUrl, useSmartFilter) {
+  // Use a ::after layer for cross-fade to avoid blinking
+  var fadeLayer = hero.querySelector(".hero-crossfade");
+  if (!fadeLayer) {
+    fadeLayer = document.createElement("div");
+    fadeLayer.className = "hero-crossfade";
+    hero.insertBefore(fadeLayer, hero.firstChild);
+  }
+
+  if (imageUrl) {
+    fadeLayer.style.backgroundImage = "url('" + imageUrl + "')";
+  } else {
+    fadeLayer.style.backgroundImage = "";
+  }
+
+  if (useSmartFilter) {
+    fadeLayer.style.filter = "brightness(0.5) contrast(1.1)";
+  } else {
+    fadeLayer.style.filter = "";
+  }
+
+  // Trigger cross-fade: fade in the new layer, then swap to base
+  fadeLayer.classList.add("active");
+
+  setTimeout(function() {
+    // After fade completes, update the base hero and remove the layer
+    if (imageUrl) {
+      hero.style.backgroundImage = "url('" + imageUrl + "')";
+    }
+    if (useSmartFilter) {
+      hero.classList.add("hero-night-filter");
+    } else {
+      hero.classList.remove("hero-night-filter");
+    }
+    fadeLayer.classList.remove("active");
+    fadeLayer.style.backgroundImage = "";
+    fadeLayer.style.filter = "";
+  }, 2000);
+}
+
+function crossFadeLocationHero(locHero, imageUrl, useSmartFilter) {
+  var fadeLayer = locHero.querySelector(".location-hero-crossfade");
+  if (!fadeLayer) {
+    fadeLayer = document.createElement("div");
+    fadeLayer.className = "location-hero-crossfade";
+    locHero.insertBefore(fadeLayer, locHero.firstChild);
+  }
+
+  if (imageUrl) {
+    fadeLayer.style.backgroundImage = "url('" + imageUrl + "')";
+  } else {
+    fadeLayer.style.backgroundImage = "";
+  }
+
+  if (useSmartFilter) {
+    fadeLayer.style.filter = "brightness(0.5) contrast(1.1)";
+  } else {
+    fadeLayer.style.filter = "";
+  }
+
+  fadeLayer.classList.add("active");
+
+  setTimeout(function() {
+    if (imageUrl) {
+      locHero.style.backgroundImage = "url('" + imageUrl + "')";
+    }
+    if (useSmartFilter) {
+      locHero.classList.add("location-hero-night-filter");
+    } else {
+      locHero.classList.remove("location-hero-night-filter");
+    }
+    fadeLayer.classList.remove("active");
+    fadeLayer.style.backgroundImage = "";
+    fadeLayer.style.filter = "";
+  }, 2000);
 }
 
 /* ══════════════════════════════════════════════

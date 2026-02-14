@@ -107,11 +107,17 @@
         document.getElementById("locationName").textContent = loc.name;
         document.getElementById("locationTagline").textContent = loc.tagline || "O\u2019Brien Immigration Law";
 
+        var locHeroEl = document.getElementById("locationHero");
         if (loc.cityPhoto) {
-          document.getElementById("locationHero").style.backgroundImage = "url('" + loc.cityPhoto + "')";
+          // Set day image as default, store both for adaptive engine
+          locHeroEl.style.backgroundImage = "url('" + loc.cityPhoto + "')";
+          locHeroEl.dataset.dayPhoto = loc.cityPhoto;
+          locHeroEl.dataset.nightPhoto = loc.cityPhotoNight || "";
         } else {
-          document.getElementById("locationHero").style.background = "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
+          locHeroEl.style.background = "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
         }
+        // Apply adaptive images for current theme (handles night mode on load)
+        applyAdaptiveImages();
 
         var contactHtml = '';
         if (loc.address) {
@@ -160,9 +166,14 @@
           return;
         }
 
+        var isDark = document.documentElement.getAttribute("data-theme") === "dark";
         grid.innerHTML = locations.map(function(loc) {
-          var photoStyle = loc.cityPhoto
-            ? 'background-image:url(\'' + escapeHtmlUtil(loc.cityPhoto) + '\')'
+          var photo = loc.cityPhoto || "";
+          var nightPhoto = loc.cityPhotoNight || "";
+          var showPhoto = isDark && nightPhoto ? nightPhoto : photo;
+          var needsFilter = isDark && !nightPhoto && photo;
+          var photoStyle = showPhoto
+            ? 'background-image:url(\'' + escapeHtmlUtil(showPhoto) + '\')' + (needsFilter ? ';filter:brightness(0.5) contrast(1.1)' : '')
             : 'background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
 
           return '<a href="locations.html?loc=' + encodeURIComponent(loc.id) + '" class="location-listing-card reveal">' +

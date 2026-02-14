@@ -747,9 +747,15 @@
 
       <div class="panel">
         <h2>Hero Background</h2>
-        <div class="form-group">
-          <label for="heroImage">Image URL</label>
-          <input type="text" id="heroImage" placeholder="https://example.com/hero.jpg">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="heroImage">Day Image URL</label>
+            <input type="text" id="heroImage" placeholder="https://example.com/hero-day.jpg">
+          </div>
+          <div class="form-group">
+            <label for="heroImageNight">Night Image URL</label>
+            <input type="text" id="heroImageNight" placeholder="https://example.com/hero-night.jpg (optional)">
+          </div>
         </div>
       </div>
 
@@ -1142,9 +1148,15 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="locationPhotoInput">City Photo URL</label>
-          <input type="text" id="locationPhotoInput" placeholder="https://images.unsplash.com/...">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="locationPhotoInput">Day Photo URL</label>
+            <input type="text" id="locationPhotoInput" placeholder="https://images.unsplash.com/...day">
+          </div>
+          <div class="form-group">
+            <label for="locationPhotoNightInput">Night Photo URL</label>
+            <input type="text" id="locationPhotoNightInput" placeholder="https://...night (optional)">
+          </div>
         </div>
 
         <div class="form-group">
@@ -1535,6 +1547,7 @@
     const headingFontSelect = document.getElementById("headingFont");
     const accentColorInput = document.getElementById("accentColor");
     const heroImageInput = document.getElementById("heroImage");
+    const heroImageNightInput = document.getElementById("heroImageNight");
 
     const consultToggle = document.getElementById("consultPopupEnabled");
     const btnStyleSelect = document.getElementById("btnStyleSelect");
@@ -1546,6 +1559,10 @@
       const url = saved["--hero-bg-image"].replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
       if (url !== "none") heroImageInput.value = url;
     }
+    if (saved["--hero-bg-image-night"]) {
+      const url = saved["--hero-bg-image-night"].replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
+      if (url !== "none") heroImageNightInput.value = url;
+    }
     if (saved["--btn-style"]) btnStyleSelect.value = saved["--btn-style"];
     if (saved["--consult-popup"] === "disabled") {
       consultToggle.checked = false;
@@ -1553,12 +1570,14 @@
 
     document.getElementById("saveSettings").addEventListener("click", () => {
       const heroUrl = heroImageInput.value.trim();
+      const heroNightUrl = heroImageNightInput.value.trim();
 
       const settings = {
         "--primary-font": primaryFontSelect.value,
         "--heading-font": headingFontSelect.value,
         "--accent-color": accentColorInput.value,
         "--hero-bg-image": heroUrl ? "url('" + heroUrl + "')" : "none",
+        "--hero-bg-image-night": heroNightUrl ? "url('" + heroNightUrl + "')" : "none",
         "--btn-style": btnStyleSelect.value,
         "--consult-popup": consultToggle.checked ? "enabled" : "disabled",
       };
@@ -2375,6 +2394,7 @@
       document.getElementById("locationPhoneInput").value = "";
       document.getElementById("locationEmailInput").value = "";
       document.getElementById("locationPhotoInput").value = "";
+      document.getElementById("locationPhotoNightInput").value = "";
       document.getElementById("locationParkingInput").value = "";
       document.getElementById("locationSpecialtiesInput").value = "";
       document.getElementById("locationFormTitle").textContent = "Add Location";
@@ -2394,6 +2414,7 @@
       const phone = document.getElementById("locationPhoneInput").value.trim();
       const email = document.getElementById("locationEmailInput").value.trim();
       const cityPhoto = document.getElementById("locationPhotoInput").value.trim();
+      const cityPhotoNight = document.getElementById("locationPhotoNightInput").value.trim();
       const parking = document.getElementById("locationParkingInput").value.trim();
       const specialties = document.getElementById("locationSpecialtiesInput").value.trim();
       const editId = document.getElementById("locationEditId").value;
@@ -2411,6 +2432,7 @@
           items[idx].phone = phone;
           items[idx].email = email;
           items[idx].cityPhoto = cityPhoto;
+          items[idx].cityPhotoNight = cityPhotoNight;
           items[idx].parking = parking;
           items[idx].specialties = specialties;
         }
@@ -2426,6 +2448,7 @@
           phone: phone,
           email: email,
           cityPhoto: cityPhoto,
+          cityPhotoNight: cityPhotoNight,
           parking: parking,
           specialties: specialties,
           createdAt: dateStr
@@ -2451,6 +2474,7 @@
       document.getElementById("locationPhoneInput").value = loc.phone || "";
       document.getElementById("locationEmailInput").value = loc.email || "";
       document.getElementById("locationPhotoInput").value = loc.cityPhoto || "";
+      document.getElementById("locationPhotoNightInput").value = loc.cityPhotoNight || "";
       document.getElementById("locationParkingInput").value = loc.parking || "";
       document.getElementById("locationSpecialtiesInput").value = loc.specialties || "";
       document.getElementById("locationFormTitle").textContent = "Edit Location";

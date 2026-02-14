@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.7 — 2026-02-14
+
+### Adaptive Image Engine (Day/Night Cross-Fade)
+- **Dual image fields in admin** — The Hero Background panel in Site Settings now has two fields: "Day Image URL" and "Night Image URL." The Locations Manager form similarly replaces the single "City Photo URL" with "Day Photo URL" and "Night Photo URL." Both night fields are optional.
+- **Theme-aware image swapping** — A new `applyAdaptiveImages()` function in main.js detects the current theme (`data-theme="dark"` → night, otherwise → day). When the dark mode toggle is clicked, the function fires and swaps hero and location background images to the appropriate variant.
+- **2-second cross-fade transition** — Image swaps use a `.hero-crossfade` overlay layer (and `.location-hero-crossfade` for locations). The new image fades in via `opacity 0 → 1` over `2s cubic-bezier(0.15, 0.83, 0.66, 1)`, then the base layer is updated and the overlay removed. This eliminates the jarring "blink" of a direct `background-image` swap.
+- **Smart defaults** — When no night image is provided, the day image stays but receives `filter: brightness(0.5) contrast(1.1)` automatically, creating a convincing nighttime feel. The filter also transitions over 2 seconds via CSS. A dedicated `.hero-night-filter` / `.location-hero-night-filter` class is toggled to control this. When switching back to light mode, the filter smoothly fades out.
+- **Location grid thumbnails** — The locations listing page also respects the current theme: grid card thumbnails show the night photo (or the smart-filtered day photo) in dark mode.
+- **Settings persistence** — Night image URLs are stored in `siteSettings` under `--hero-bg-image-night` and in each location object as `cityPhotoNight`. The `applySiteSettings()` function skips `--hero-bg-image-night` (it's not a CSS variable — it's consumed by the adaptive engine directly).
+- **Runs on page load** — `applyAdaptiveImages()` is called during `DOMContentLoaded` after `initDarkMode()`, so if a user has dark mode persisted, the night images display immediately on first paint.
+
+**Why:** A law firm website viewed at 9 PM shouldn't show a blazing daytime skyline. The adaptive image engine lets the admin set beautiful dusk/night city photos that swap seamlessly with the theme toggle. The 2-second cross-fade makes the transition feel cinematic rather than abrupt, and the smart brightness/contrast fallback means the feature works even if no night photo is uploaded.
+
 ## v1.6 — 2026-02-14
 
 ### Staff Location Muting System

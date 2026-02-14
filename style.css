@@ -349,6 +349,33 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
+/* Adaptive image cross-fade layer */
+.hero-crossfade {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2s cubic-bezier(0.15, 0.83, 0.66, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hero-crossfade.active {
+  opacity: 1;
+}
+
+/* Smart default: darken day image when no night image provided */
+.hero.hero-night-filter {
+  filter: brightness(0.5) contrast(1.1);
+  transition: filter 2s cubic-bezier(0.15, 0.83, 0.66, 1);
+}
+
+.hero:not(.hero-night-filter) {
+  filter: none;
+  transition: filter 2s cubic-bezier(0.15, 0.83, 0.66, 1);
+}
+
 .hero::before {
   content: '';
   position: absolute;
@@ -1349,6 +1376,32 @@ body.page-leaving {
   background-size: cover;
   background-position: center;
   overflow: hidden;
+}
+
+/* Location hero adaptive cross-fade layer */
+.location-hero-crossfade {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2s cubic-bezier(0.15, 0.83, 0.66, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.location-hero-crossfade.active {
+  opacity: 1;
+}
+
+.location-hero.location-hero-night-filter {
+  filter: brightness(0.5) contrast(1.1);
+  transition: filter 2s cubic-bezier(0.15, 0.83, 0.66, 1);
+}
+
+.location-hero:not(.location-hero-night-filter) {
+  filter: none;
+  transition: filter 2s cubic-bezier(0.15, 0.83, 0.66, 1);
 }
 
 .location-hero::before {
