@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.6 — 2026-02-14
+
+### Smart Language Detection & UI Cleanup
+
+- **Browser-based auto-language detection** — The site now reads `navigator.language` on load. If the browser language is Spanish (`es`) or Chinese (`zh`), the translation engine automatically triggers for that language. All other languages default strictly to English. This replaces the previous approach which attempted to match against all 10 supported languages.
+- **Globe icon removed** — The manual language globe button has been completely removed from the hero section, the mobile hamburger menu, and the admin Navigation & Footer settings panel. With automatic detection, the manual selector is no longer needed — the design is cleaner without it.
+- **Hero-lang CSS cleaned up** — Removed all `.hero-lang-btn`, `.hero-lang-left`, `.hero-lang-right` styles and their responsive overrides (dead code after globe removal).
+- **Mobile menu overlay hardened** — Increased overlay backdrop from `rgba(0,0,0,0.4)` to `rgba(0,0,0,0.55)` with `blur(8px)` for better contrast. Panel background raised to 0.98 opacity with solid `#ffffff` fallback. Pointer-events managed via base CSS (`none` by default, `auto` on `.open`) instead of inline injection. Box shadow deepened for stronger visual separation.
+- **Success Ribbon confirmed** — Ribbon renders at the absolute bottom of the hero section with admin-configurable font-size, bold/italic, color, and bar opacity. Cross-fade animation cycles through phrases (5s visible, 2s fade).
+
+**Why:** Auto-detection provides a seamless multilingual experience — Spanish and Chinese speakers see their language instantly without hunting for a globe icon. Removing the globe simplifies the hero and nav, reducing visual clutter. The mobile menu fixes ensure the hamburger is reliably visible and the slide-out panel has enough contrast for comfortable reading on any device.
+
 ## v3.5 — 2026-02-14
 
 ### Bento Modal Images & Mobile UI Recovery

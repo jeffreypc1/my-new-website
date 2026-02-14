@@ -251,7 +251,7 @@ function getNavFooterSettings() {
       careers:          { visible: false, label: "Careers",             href: "staff.html" },
       bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
     },
-    globe: { visible: true, position: "hero-top-right" },
+    globe: { visible: false, position: "hero-top-right" },
     maxNavItems: toggles.maxNavItems || 5,
     mobileCollapseBreakpoint: 768,
     footer: {
@@ -667,12 +667,6 @@ function renderGlobalNav() {
   var mobileLinksHtml = allMobileItems.map(function(item) {
     return '<a href="' + item.href + '" class="mobile-menu-link">' + escapeHtmlUtil(item.label) + '</a>';
   }).join('');
-  // Add globe/language link in mobile menu if globe is visible
-  if (settings.globe && settings.globe.visible) {
-    mobileLinksHtml += '<a href="#" class="mobile-menu-link mobile-menu-globe" data-action="language">' +
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' +
-      'Language</a>';
-  }
   if (ctaItem && ctaItem.visible) {
     mobileLinksHtml += '<a href="#" class="mobile-menu-cta">' + escapeHtmlUtil(ctaItem.label) + '</a>';
   }
@@ -741,16 +735,6 @@ function renderGlobalNav() {
       link.addEventListener("click", closeMobileMenu);
     });
 
-    // Mobile globe link
-    var mobileGlobe = mobileOverlay.querySelector(".mobile-menu-globe");
-    if (mobileGlobe) {
-      mobileGlobe.addEventListener("click", function(e) {
-        e.preventDefault();
-        closeMobileMenu();
-        openLanguageModal();
-      });
-    }
-
     // Mobile CTA opens consultation modal
     var mobileCta = mobileOverlay.querySelector(".mobile-menu-cta");
     if (mobileCta) {
@@ -770,23 +754,6 @@ function renderGlobalNav() {
     });
   }
 
-  // Globe language button — always hero-top-right if visible
-  if (settings.globe && settings.globe.visible) {
-    var hero = document.querySelector(".hero");
-    if (hero) {
-      var heroLangBtn = document.createElement("button");
-      heroLangBtn.className = "hero-lang-btn hero-lang-right";
-      heroLangBtn.id = "heroLangBtn";
-      heroLangBtn.setAttribute("aria-label", "Change language");
-      heroLangBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
-      heroLangBtn.addEventListener("click", function(e) {
-        e.preventDefault();
-        openLanguageModal();
-      });
-      hero.appendChild(heroLangBtn);
-    }
-  }
-
   // Inject dynamic mobile collapse breakpoint CSS
   var breakpoint = settings.mobileCollapseBreakpoint || 768;
   var existingStyle = document.getElementById("mobileCollapseStyle");
@@ -796,8 +763,7 @@ function renderGlobalNav() {
   styleEl.textContent = "@media (max-width: " + breakpoint + "px) { " +
     ".nav-links { display: none !important; } " +
     ".nav-hamburger { display: flex !important; } " +
-    ".mobile-menu-overlay { display: block !important; pointer-events: none; } " +
-    ".mobile-menu-overlay.open { pointer-events: auto; } " +
+    ".mobile-menu-overlay { display: block !important; } " +
   "}";
   document.head.appendChild(styleEl);
 
@@ -1824,15 +1790,17 @@ function initTranslationEngine() {
 
 function autoDetectLanguage() {
   var browserLang = (navigator.language || navigator.userLanguage || "en").toLowerCase();
-  // Check if browser language matches any of our supported languages
-  for (var i = 0; i < TRANSLATE_LANGUAGES.length; i++) {
-    var lang = TRANSLATE_LANGUAGES[i];
-    if (browserLang === lang.code.toLowerCase() || browserLang.split("-")[0] === lang.code.split("-")[0].toLowerCase()) {
-      setSelectedLanguage(lang.code);
-      triggerGoogleTranslate(lang.code);
-      showTranslationDisclaimer();
-      return;
-    }
+  var langPrefix = browserLang.split("-")[0];
+
+  // Only auto-translate for Spanish and Chinese; everything else defaults to English
+  var autoLangs = { es: "es", zh: "zh-CN" };
+  var targetCode = autoLangs[langPrefix];
+  if (targetCode) {
+    setSelectedLanguage(targetCode);
+    triggerGoogleTranslate(targetCode);
+    showTranslationDisclaimer();
+  } else {
+    setSelectedLanguage("en");
   }
 }
 

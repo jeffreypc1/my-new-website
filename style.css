@@ -289,15 +289,17 @@ h1, h2, h3, h4, h5, h6 {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .mobile-menu-overlay.open {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .mobile-menu-panel {
@@ -308,10 +310,10 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 85vw;
   height: 100%;
   background: #ffffff;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  box-shadow: -4px 0 32px rgba(0, 0, 0, 0.12);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -325,8 +327,8 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-theme="dark"] .mobile-menu-panel {
   background: #1e1e1e;
-  background: rgba(30, 30, 30, 0.96);
-  box-shadow: -4px 0 32px rgba(0, 0, 0, 0.4);
+  background: rgba(30, 30, 30, 0.98);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.5);
 }
 
 .mobile-menu-close {
@@ -2491,42 +2493,6 @@ body { top: 0 !important; }
 [data-theme="dark"] .nav-lang-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   color: #f5f5f7;
-}
-
-/* Hero language button (floating in hero) */
-.hero-lang-btn {
-  position: absolute;
-  z-index: 3;
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  padding: 0;
-}
-
-.hero-lang-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
-  transform: scale(1.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.hero-lang-left { top: 24px; left: 32px; }
-.hero-lang-right { top: 24px; right: 32px; }
-
-@media (max-width: 768px) {
-  .hero-lang-left { top: 16px; left: 16px; }
-  .hero-lang-right { top: 16px; right: 16px; }
 }
 
 /* Language modal overlay */

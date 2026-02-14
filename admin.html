@@ -2261,15 +2261,6 @@
         </div>
       </div>
 
-      <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Language Globe</h2>
-      <div class="panel">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:normal">
-          <input type="checkbox" id="nfGlobeVisible">
-          Show language globe on the site
-        </label>
-        <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:8px">The globe icon appears as a floating button in the top-right corner of the hero section.</p>
-      </div>
-
       <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Navigation Layout</h2>
       <div class="panel">
         <div class="form-group">
@@ -4642,7 +4633,7 @@
           careers:          { visible: false, label: "Careers",             href: "staff.html" },
           bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
         },
-        globe: { visible: true, position: "hero-top-right" },
+        globe: { visible: false, position: "hero-top-right" },
         maxNavItems: toggles.maxNavItems || 5,
         mobileCollapseBreakpoint: 768,
         footer: {
@@ -4669,9 +4660,6 @@
       document.getElementById("nfNavLocations").checked = settings.nav.locations && settings.nav.locations.visible;
       document.getElementById("nfNavCareers").checked = settings.nav.careers && settings.nav.careers.visible;
       document.getElementById("nfNavBookConsultation").checked = settings.nav.bookConsultation && settings.nav.bookConsultation.visible;
-
-      // Globe
-      document.getElementById("nfGlobeVisible").checked = settings.globe && settings.globe.visible;
 
       // Max nav items slider
       var slider = document.getElementById("nfMaxNavItems");
@@ -4722,7 +4710,7 @@
             careers:          { visible: document.getElementById("nfNavCareers").checked,          label: navBase.careers.label,          href: navBase.careers.href },
             bookConsultation: { visible: document.getElementById("nfNavBookConsultation").checked, label: navBase.bookConsultation.label, href: navBase.bookConsultation.href, isCta: true }
           },
-          globe: { visible: document.getElementById("nfGlobeVisible").checked, position: "hero-top-right" },
+          globe: { visible: false, position: "hero-top-right" },
           maxNavItems: parseInt(slider.value, 10),
           mobileCollapseBreakpoint: parseInt(bpSlider.value, 10),
           footer: {
