@@ -14,6 +14,8 @@
   --heading-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --accent-color: #1d1d1f;
   --primary-color: #0066CC;
+  --nav-font-color: #86868b;
+  --footer-font-color: #86868b;
   --hero-bg-image: url('https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=2400&q=80');
 
   /* ── Base palette ── */
@@ -470,7 +472,7 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
   font-size: 0.8125rem;
   letter-spacing: 0.04em;
-  color: var(--mid-gray);
+  color: var(--nav-font-color, #86868b);
   text-decoration: none;
   transition: color 0.2s ease;
 }
@@ -483,7 +485,7 @@ h1, h2, h3, h4, h5, h6 {
 .nav-more-trigger {
   font-size: 0.8125rem;
   letter-spacing: 0.04em;
-  color: var(--mid-gray);
+  color: var(--nav-font-color, #86868b);
   background: none;
   border: none;
   cursor: pointer;
@@ -1171,7 +1173,7 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   padding: 40px 24px;
   font-size: 0.8125rem;
-  color: var(--mid-gray);
+  color: var(--footer-font-color, #86868b);
   border-top: 1px solid var(--light-gray);
 }
 
@@ -1189,7 +1191,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .footer-links a {
   font-size: 0.8125rem;
-  color: var(--mid-gray);
+  color: var(--footer-font-color, #86868b);
   text-decoration: none;
   transition: color var(--transition);
 }

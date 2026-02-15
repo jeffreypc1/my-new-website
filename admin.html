@@ -2595,6 +2595,23 @@
           </div>
         </div>
 
+        <div class="form-row" style="margin-top:16px">
+          <div class="form-group">
+            <label for="designNavFontColor">Navigation Font Color</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="color" id="designNavFontColor" value="#86868b" style="width:48px;height:36px;border:1px solid var(--light-gray);border-radius:8px;cursor:pointer;padding:2px">
+              <span id="designNavFontColorHex" style="font-size:0.8125rem;color:var(--mid-gray);font-family:monospace">#86868b</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="designFooterFontColor">Footer Font Color</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="color" id="designFooterFontColor" value="#86868b" style="width:48px;height:36px;border:1px solid var(--light-gray);border-radius:8px;cursor:pointer;padding:2px">
+              <span id="designFooterFontColorHex" style="font-size:0.8125rem;color:var(--mid-gray);font-family:monospace">#86868b</span>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group" style="margin-top:16px">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="designBentoGrayscale" checked>
@@ -5910,6 +5927,10 @@
       var colorHex = document.getElementById("designSidebarColorHex");
       var primaryColorInput = document.getElementById("designPrimaryColor");
       var primaryColorHex = document.getElementById("designPrimaryColorHex");
+      var navFontColorInput = document.getElementById("designNavFontColor");
+      var navFontColorHex = document.getElementById("designNavFontColorHex");
+      var footerFontColorInput = document.getElementById("designFooterFontColor");
+      var footerFontColorHex = document.getElementById("designFooterFontColorHex");
       var grayscaleCheck = document.getElementById("designBentoGrayscale");
       var sidebar = document.querySelector(".sidebar");
       if (!colorInput) return;
@@ -5925,6 +5946,14 @@
         primaryColorInput.value = saved.primaryColor;
         primaryColorHex.textContent = saved.primaryColor;
       }
+      if (saved.navFontColor) {
+        navFontColorInput.value = saved.navFontColor;
+        navFontColorHex.textContent = saved.navFontColor;
+      }
+      if (saved.footerFontColor) {
+        footerFontColorInput.value = saved.footerFontColor;
+        footerFontColorHex.textContent = saved.footerFontColor;
+      }
       if (saved.bentoGrayscale === false) {
         grayscaleCheck.checked = false;
       }
@@ -5936,23 +5965,33 @@
         if (sidebar) sidebar.style.background = c;
       });
 
-      // Live preview primary color hex label
+      // Live preview hex labels
       primaryColorInput.addEventListener("input", function() {
         primaryColorHex.textContent = primaryColorInput.value;
+      });
+      navFontColorInput.addEventListener("input", function() {
+        navFontColorHex.textContent = navFontColorInput.value;
+      });
+      footerFontColorInput.addEventListener("input", function() {
+        footerFontColorHex.textContent = footerFontColorInput.value;
       });
 
       document.getElementById("btnSaveDesign").addEventListener("click", function() {
         var ds = {
           adminSidebarColor: colorInput.value,
           primaryColor: primaryColorInput.value,
+          navFontColor: navFontColorInput.value,
+          footerFontColor: footerFontColorInput.value,
           bentoGrayscale: grayscaleCheck.checked
         };
         localStorage.setItem("siteDesignSettings", JSON.stringify(ds));
 
-        // Also save primary color to siteSettings so applySiteSettings picks it up
+        // Save CSS variables to siteSettings so applySiteSettings picks them up on all pages
         var siteSettings = {};
         try { siteSettings = JSON.parse(localStorage.getItem("siteSettings") || "{}"); } catch (e) {}
         siteSettings["--primary-color"] = primaryColorInput.value;
+        siteSettings["--nav-font-color"] = navFontColorInput.value;
+        siteSettings["--footer-font-color"] = footerFontColorInput.value;
         localStorage.setItem("siteSettings", JSON.stringify(siteSettings));
 
         showToast("Design settings saved");
