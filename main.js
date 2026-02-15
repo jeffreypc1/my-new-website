@@ -529,12 +529,19 @@ function renderBentoGrid() {
     '</div>';
   }).join('');
 
-  // Bind click → modal for all tiles
+  // Bind click → modal for all tiles (color reveal then open)
   container.querySelectorAll(".card-clickable").forEach(function(card) {
-    card.addEventListener("click", function() {
+    card.addEventListener("click", function(e) {
+      e.preventDefault();
       var idx = parseInt(card.dataset.tileIdx, 10);
       var tile = tiles[idx];
-      if (tile) openBentoModal(tile);
+      if (!tile) return;
+
+      card.classList.add("active-color");
+      setTimeout(function() {
+        card.classList.remove("active-color");
+        openBentoModal(tile);
+      }, 300);
     });
   });
 

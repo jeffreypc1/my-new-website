@@ -950,14 +950,18 @@ h1, h2, h3, h4, h5, h6 {
   background: inherit;
   background-size: inherit;
   background-position: inherit;
-  filter: grayscale(100%) blur(4px);
-  transition: filter 0.4s ease;
+  filter: grayscale(100%) blur(8px);
+  transition: filter 0.5s ease;
   border-radius: inherit;
   z-index: 0;
 }
 
 .card.card-bg-image:hover::before {
-  filter: grayscale(0%) blur(1px);
+  filter: grayscale(100%) blur(0px);
+}
+
+.card.card-bg-image.active-color::before {
+  filter: grayscale(0%) blur(0px) !important;
 }
 
 .no-bento-grayscale .card.card-bg-image::before {
