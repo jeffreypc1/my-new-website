@@ -2473,6 +2473,47 @@
         </div>
       </div>
 
+      <div class="panel" style="margin-top:24px">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:6px">Email Delivery (SMTP)</h2>
+        <p style="font-size:0.8rem;color:var(--mid-gray);margin-bottom:20px">SMTP credentials for sending magic link emails. Stored locally — never committed to source code. Requires a server-side proxy for delivery.</p>
+
+        <div class="form-group">
+          <label for="smtpHost">SMTP Host</label>
+          <input type="text" id="smtpHost" placeholder="smtp.gmail.com">
+        </div>
+
+        <div class="form-group">
+          <label for="smtpPort">Port</label>
+          <input type="text" id="smtpPort" placeholder="587">
+        </div>
+
+        <div class="form-group">
+          <label for="smtpUser">Username / Email</label>
+          <input type="text" id="smtpUser" placeholder="you@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="smtpPass">App Password</label>
+          <input type="password" id="smtpPass" placeholder="••••••••">
+        </div>
+
+        <div class="form-group">
+          <label for="smtpSender">Sender Name</label>
+          <input type="text" id="smtpSender" placeholder="O'Brien Immigration Portal">
+        </div>
+
+        <div class="form-group">
+          <label for="smtpEndpoint">Delivery Endpoint URL</label>
+          <input type="text" id="smtpEndpoint" placeholder="https://your-worker.example.com/api/send-magic-link">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">The server-side endpoint that receives the email payload and sends via SMTP. Required for actual email delivery.</p>
+        </div>
+
+        <div style="margin-top:16px">
+          <button class="btn btn-secondary" id="btnTestSmtp">Send Test Email</button>
+        </div>
+        <div id="smtpTestResult" style="margin-top:12px;font-size:0.875rem;display:none"></div>
+      </div>
+
       <div style="margin-top:24px">
         <button class="btn btn-primary" id="btnSaveSalesforceBox">Save</button>
       </div>
@@ -5539,6 +5580,14 @@
       document.getElementById("sfUploadField").value = config.uploadLink || "";
       document.getElementById("sfViewField").value = config.viewLink || "";
 
+      // SMTP fields
+      document.getElementById("smtpHost").value = config.smtpHost || "smtp.gmail.com";
+      document.getElementById("smtpPort").value = config.smtpPort || "587";
+      document.getElementById("smtpUser").value = config.smtpUser || "";
+      document.getElementById("smtpPass").value = config.smtpPass || "";
+      document.getElementById("smtpSender").value = config.smtpSender || "O'Brien Immigration Portal";
+      document.getElementById("smtpEndpoint").value = config.smtpEndpoint || "";
+
       /* ── Connection Status Indicator ── */
       var statusEl = document.getElementById("sfConnectionStatus");
 
@@ -5578,7 +5627,13 @@
           instanceUrl: document.getElementById("sfInstanceUrl").value.trim(),
           boxFolderId: document.getElementById("boxFolderId").value.trim(),
           uploadLink: document.getElementById("sfUploadField").value.trim(),
-          viewLink: document.getElementById("sfViewField").value.trim()
+          viewLink: document.getElementById("sfViewField").value.trim(),
+          smtpHost: document.getElementById("smtpHost").value.trim(),
+          smtpPort: document.getElementById("smtpPort").value.trim(),
+          smtpUser: document.getElementById("smtpUser").value.trim(),
+          smtpPass: document.getElementById("smtpPass").value.trim(),
+          smtpSender: document.getElementById("smtpSender").value.trim(),
+          smtpEndpoint: document.getElementById("smtpEndpoint").value.trim()
         };
         // Clear connectionVerified if any required field is empty
         if (!data.consumerKey || !data.consumerSecret || !data.instanceUrl) {
@@ -5627,11 +5682,77 @@
             boxFolderId: document.getElementById("boxFolderId").value.trim(),
             uploadLink: document.getElementById("sfUploadField").value.trim(),
             viewLink: document.getElementById("sfViewField").value.trim(),
+            smtpHost: document.getElementById("smtpHost").value.trim(),
+            smtpPort: document.getElementById("smtpPort").value.trim(),
+            smtpUser: document.getElementById("smtpUser").value.trim(),
+            smtpPass: document.getElementById("smtpPass").value.trim(),
+            smtpSender: document.getElementById("smtpSender").value.trim(),
+            smtpEndpoint: document.getElementById("smtpEndpoint").value.trim(),
             connectionVerified: true
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
           showToast("Salesforce connection test complete");
         }, 1500);
+      });
+
+      // SMTP Test
+      document.getElementById("btnTestSmtp").addEventListener("click", function() {
+        var btn = document.getElementById("btnTestSmtp");
+        var result = document.getElementById("smtpTestResult");
+        var endpoint = document.getElementById("smtpEndpoint").value.trim();
+        var smtpUser = document.getElementById("smtpUser").value.trim();
+
+        if (!endpoint) {
+          result.style.display = "block";
+          result.style.color = "#d63031";
+          result.textContent = "Please enter a Delivery Endpoint URL first. This is the server-side proxy that sends emails via SMTP.";
+          return;
+        }
+        if (!smtpUser) {
+          result.style.display = "block";
+          result.style.color = "#d63031";
+          result.textContent = "Please enter the SMTP username/email.";
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Sending...";
+        result.style.display = "block";
+        result.style.color = "var(--mid-gray)";
+        result.textContent = "Sending test email to " + smtpUser + "...";
+
+        fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: smtpUser,
+            subject: "Test — O'Brien Immigration Portal",
+            html: "<p>This is a test email from your portal SMTP configuration. If you see this, email delivery is working.</p>",
+            smtp: {
+              host: document.getElementById("smtpHost").value.trim(),
+              port: document.getElementById("smtpPort").value.trim(),
+              user: smtpUser,
+              pass: document.getElementById("smtpPass").value.trim(),
+              sender: document.getElementById("smtpSender").value.trim()
+            }
+          })
+        }).then(function(resp) {
+          btn.disabled = false;
+          btn.textContent = "Send Test Email";
+          if (resp.ok) {
+            result.style.color = "#00b894";
+            result.textContent = "Test email sent successfully to " + smtpUser;
+            showToast("Test email sent");
+          } else {
+            result.style.color = "#d63031";
+            result.textContent = "Delivery endpoint returned an error (HTTP " + resp.status + "). Check the endpoint URL and SMTP credentials.";
+          }
+        }).catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = "Send Test Email";
+          result.style.color = "#d63031";
+          result.textContent = "Could not reach the delivery endpoint. Ensure the URL is correct and the server is running.";
+        });
       });
     })();
   </script>

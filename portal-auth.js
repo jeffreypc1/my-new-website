@@ -136,9 +136,43 @@
         + '</div>'
     };
 
-    // Log for development — in production, this sends via server-side email service
-    console.log("[Portal] Magic link for " + email + ":\n" + magicUrl);
-    console.log("[Portal] Email template:", emailTemplate);
+    // Attempt server-side email delivery if endpoint is configured
+    var config = getSalesforceConfig();
+    var sent = false;
+    if (config && config.smtpEndpoint) {
+      sent = true;
+      fetch(config.smtpEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: email,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          smtp: {
+            host: config.smtpHost || "smtp.gmail.com",
+            port: config.smtpPort || "587",
+            user: config.smtpUser || "",
+            pass: config.smtpPass || "",
+            sender: config.smtpSender || "O'Brien Immigration Portal"
+          }
+        })
+      }).then(function(resp) {
+        if (resp.ok) {
+          console.log("[Portal] Magic link email sent to " + email);
+        } else {
+          console.warn("[Portal] Email delivery failed (HTTP " + resp.status + "). Link logged below.");
+          console.log("[Portal] Magic link for " + email + ":\n" + magicUrl);
+        }
+      }).catch(function() {
+        console.warn("[Portal] Email delivery endpoint unreachable. Link logged below.");
+        console.log("[Portal] Magic link for " + email + ":\n" + magicUrl);
+      });
+    }
+
+    // Always log in development
+    if (!sent) {
+      console.log("[Portal] No delivery endpoint configured. Magic link for " + email + ":\n" + magicUrl);
+    }
 
     return { token: token, magicUrl: magicUrl, emailTemplate: emailTemplate };
   }

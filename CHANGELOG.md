@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.12 — 2026-02-14
+
+### SMTP Email Delivery Configuration
+
+- **`admin.html` — Email Delivery (SMTP) panel** — New configuration section in Admin > Salesforce & Box with fields for SMTP Host, Port, Username, App Password, Sender Name, and Delivery Endpoint URL. All credentials stored in `siteSalesforceBox` localStorage — never committed to source code. Includes a "Send Test Email" button that POSTs a test payload to the configured endpoint.
+- **`portal-auth.js` — Server-side email delivery** — `generateMagicToken()` now checks for a configured `smtpEndpoint` and POSTs the magic link email (HTML template + SMTP credentials) to the endpoint for server-side delivery. Falls back to console logging when no endpoint is configured or delivery fails.
+
 ## v3.11 — 2026-02-14
 
 ### Multi-Contact Profile Selection
