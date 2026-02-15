@@ -2456,6 +2456,23 @@
         </div>
       </div>
 
+      <div class="panel" style="margin-top:24px">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:6px">Portal Field Mapping</h2>
+        <p style="font-size:0.8rem;color:var(--mid-gray);margin-bottom:20px">Salesforce Contact custom fields used by the client portal dashboard. These are queried by the logged-in user's email.</p>
+
+        <div class="form-group">
+          <label for="sfUploadField">Upload Link Field (Box_Upload_Link__c)</label>
+          <input type="text" id="sfUploadField" placeholder="e.g. https://app.box.com/f/abc123">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Box File Request URL — embedded as the "Secure Upload Center" iframe on the portal dashboard.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="sfViewField">View-Only Link Field (Box_View_Only_Link__c)</label>
+          <input type="text" id="sfViewField" placeholder="e.g. https://app.box.com/s/xyz789">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Box Shared Link (People with the link / View+Download) — embedded as the "View My Documents" iframe on the portal dashboard.</p>
+        </div>
+      </div>
+
       <div style="margin-top:24px">
         <button class="btn btn-primary" id="btnSaveSalesforceBox">Save</button>
       </div>
@@ -5519,6 +5536,8 @@
       document.getElementById("sfConsumerSecret").value = config.consumerSecret || "";
       document.getElementById("sfInstanceUrl").value = config.instanceUrl || "";
       document.getElementById("boxFolderId").value = config.boxFolderId || "";
+      document.getElementById("sfUploadField").value = config.uploadLink || "";
+      document.getElementById("sfViewField").value = config.viewLink || "";
 
       /* ── Connection Status Indicator ── */
       var statusEl = document.getElementById("sfConnectionStatus");
@@ -5557,7 +5576,9 @@
           consumerKey: document.getElementById("sfConsumerKey").value.trim(),
           consumerSecret: document.getElementById("sfConsumerSecret").value.trim(),
           instanceUrl: document.getElementById("sfInstanceUrl").value.trim(),
-          boxFolderId: document.getElementById("boxFolderId").value.trim()
+          boxFolderId: document.getElementById("boxFolderId").value.trim(),
+          uploadLink: document.getElementById("sfUploadField").value.trim(),
+          viewLink: document.getElementById("sfViewField").value.trim()
         };
         // Clear connectionVerified if any required field is empty
         if (!data.consumerKey || !data.consumerSecret || !data.instanceUrl) {
@@ -5604,6 +5625,8 @@
             consumerSecret: document.getElementById("sfConsumerSecret").value.trim(),
             instanceUrl: document.getElementById("sfInstanceUrl").value.trim(),
             boxFolderId: document.getElementById("boxFolderId").value.trim(),
+            uploadLink: document.getElementById("sfUploadField").value.trim(),
+            viewLink: document.getElementById("sfViewField").value.trim(),
             connectionVerified: true
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
