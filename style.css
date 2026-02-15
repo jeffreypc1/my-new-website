@@ -2384,6 +2384,12 @@ body.page-leaving {
   display: block;
 }
 
+.bento-modal--text-only .bento-modal-title,
+.bento-modal--text-only .bento-modal-desc {
+  mix-blend-mode: difference;
+  color: white;
+}
+
 .bento-modal-image {
   position: relative;
   overflow: hidden;
@@ -2420,7 +2426,7 @@ body.page-leaving {
   font-family: var(--primary-font);
   font-size: 1rem;
   line-height: 1.75;
-  color: var(--mid-gray);
+  color: #1a1a1a;
   flex: 1;
   margin-bottom: 32px;
   white-space: pre-line;

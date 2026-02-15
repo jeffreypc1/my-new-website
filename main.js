@@ -373,8 +373,13 @@ function renderSuccessRibbon() {
   var bgOpacity = ribbon.bgOpacity != null ? ribbon.bgOpacity : 6;
   var bgAlpha = (bgOpacity / 100).toFixed(2);
 
-  el.style.background = "rgba(59, 130, 246, " + bgAlpha + ")";
-  el.style.borderTopColor = "rgba(59, 130, 246, " + Math.min(bgAlpha * 1.6, 1).toFixed(2) + ")";
+  // Parse bgColor hex to RGB for alpha application
+  var bgHex = ribbon.bgColor || "#2d3436";
+  var bgR = parseInt(bgHex.slice(1, 3), 16);
+  var bgG = parseInt(bgHex.slice(3, 5), 16);
+  var bgB = parseInt(bgHex.slice(5, 7), 16);
+  el.style.background = "rgba(" + bgR + ", " + bgG + ", " + bgB + ", " + bgAlpha + ")";
+  el.style.borderTopColor = "rgba(" + bgR + ", " + bgG + ", " + bgB + ", " + Math.min(bgAlpha * 1.6, 1).toFixed(2) + ")";
 
   var textEl = el.querySelector("#successRibbonText");
   textEl.style.fontSize = fontSize;
@@ -1172,20 +1177,18 @@ function buildConsultModal() {
           '<label for="consultEmail">Email</label>' +
           '<input type="email" id="consultEmail" name="email" required placeholder="you@example.com">' +
         '</div>' +
-        '<div class="consult-form-row">' +
-          '<div class="consult-form-group">' +
-            '<label for="consultStatus">I am\u2026</label>' +
-            '<select id="consultStatus" name="status">' +
-              '<option value="">Choose your status</option>' +
-              statusOptions +
-            '</select>' +
-          '</div>' +
-          '<div class="consult-form-group">' +
-            '<label for="consultGoal">And I want to\u2026</label>' +
-            '<select id="consultGoal" name="goal" disabled>' +
-              '<option value="">Choose your goal</option>' +
-            '</select>' +
-          '</div>' +
+        '<div class="consult-form-group">' +
+          '<label for="consultStatus">I am\u2026</label>' +
+          '<select id="consultStatus" name="status">' +
+            '<option value="">Choose your status</option>' +
+            statusOptions +
+          '</select>' +
+        '</div>' +
+        '<div class="consult-form-group">' +
+          '<label for="consultGoal">And I want to\u2026</label>' +
+          '<select id="consultGoal" name="goal" disabled>' +
+            '<option value="">Choose your goal</option>' +
+          '</select>' +
         '</div>' +
         '<div class="consult-form-group">' +
           '<label for="consultOffice">Preferred Office</label>' +

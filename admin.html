@@ -1787,6 +1787,13 @@
 
       <h2 style="font-size:1.125rem;font-weight:600;margin-top:32px;margin-bottom:12px;letter-spacing:-0.02em">Background Style</h2>
       <div class="panel">
+        <div class="form-group" style="margin-bottom:16px">
+          <label for="ribbonBgColor">Background Color</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="color" id="ribbonBgColor" value="#2d3436" style="width:48px;height:36px;border:1px solid var(--light-gray);border-radius:8px;cursor:pointer;padding:2px">
+            <span id="ribbonBgColorHex" style="font-size:0.8125rem;color:var(--mid-gray);font-family:monospace">#2d3436</span>
+          </div>
+        </div>
         <div class="form-group">
           <label for="ribbonBgOpacity">Bar Opacity: <span id="ribbonBgOpacityValue">6</span>%</label>
           <input type="range" id="ribbonBgOpacity" min="0" max="100" value="6" style="width:100%">
@@ -3142,6 +3149,12 @@
       colorHex.textContent = colorInput.value;
       colorInput.addEventListener("input", function() { colorHex.textContent = colorInput.value; });
 
+      var bgColorInput = document.getElementById("ribbonBgColor");
+      var bgColorHex = document.getElementById("ribbonBgColorHex");
+      bgColorInput.value = ribbon.bgColor || "#2d3436";
+      bgColorHex.textContent = bgColorInput.value;
+      bgColorInput.addEventListener("input", function() { bgColorHex.textContent = bgColorInput.value; });
+
       var bgOpacitySlider = document.getElementById("ribbonBgOpacity");
       var bgOpacityLabel = document.getElementById("ribbonBgOpacityValue");
       bgOpacitySlider.value = ribbon.bgOpacity != null ? ribbon.bgOpacity : 6;
@@ -3193,6 +3206,7 @@
         ribbon.bold = document.getElementById("ribbonBold").checked;
         ribbon.italic = document.getElementById("ribbonItalic").checked;
         ribbon.color = colorInput.value;
+        ribbon.bgColor = bgColorInput.value;
         ribbon.bgOpacity = parseInt(bgOpacitySlider.value, 10);
         localStorage.setItem("siteSuccessRibbon", JSON.stringify(ribbon));
         showToast("Ribbon settings saved");
