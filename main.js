@@ -80,6 +80,14 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ── Scroll depth tracking (Services section) ── */
   initScrollDepthTracking();
 
+  /* ── Bento grayscale toggle ── */
+  try {
+    var designSettings = JSON.parse(localStorage.getItem("siteDesignSettings") || "null");
+    if (designSettings && designSettings.bentoGrayscale === false) {
+      document.documentElement.classList.add("no-bento-grayscale");
+    }
+  } catch (e) {}
+
   /* ── Page toggle redirect (hidden pages → home) ── */
   enforcePageToggles();
 
@@ -233,7 +241,18 @@ function savePageToggles(data) {
 function getNavFooterSettings() {
   try {
     var stored = JSON.parse(localStorage.getItem("siteNavFooterSettings") || "null");
-    if (stored) return stored;
+    if (stored) {
+      // One-time migration: careers href staff.html → careers.html
+      var migrated = false;
+      if (stored.nav && stored.nav.careers && stored.nav.careers.href === "staff.html") {
+        stored.nav.careers.href = "careers.html"; migrated = true;
+      }
+      if (stored.footer && stored.footer.careers && stored.footer.careers.href === "staff.html") {
+        stored.footer.careers.href = "careers.html"; migrated = true;
+      }
+      if (migrated) localStorage.setItem("siteNavFooterSettings", JSON.stringify(stored));
+      return stored;
+    }
   } catch (e) {}
 
   // Migration: construct defaults from existing settings
@@ -248,7 +267,7 @@ function getNavFooterSettings() {
       testimonials:     { visible: toggles.testimonials !== false,      label: "Testimonials",        href: "testimonials.html" },
       education:        { visible: toggles.education !== false,         label: "Education",           href: "education.html" },
       locations:        { visible: toggles.locations !== false,         label: "Locations",           href: "locations.html" },
-      careers:          { visible: false, label: "Careers",             href: "staff.html" },
+      careers:          { visible: false, label: "Careers",             href: "careers.html" },
       portal:           { visible: true,  label: "Client Portal",      href: "portal-login.html" },
       bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
     },
@@ -262,7 +281,7 @@ function getNavFooterSettings() {
       testimonials: { visible: true,  label: "Testimonials", href: "testimonials.html" },
       education:    { visible: true,  label: "Education",    href: "education.html" },
       locations:    { visible: true,  label: "Locations",    href: "locations.html" },
-      careers:      { visible: true,  label: "Careers",      href: "staff.html" }
+      careers:      { visible: true,  label: "Careers",      href: "careers.html" }
     },
     copyright: "\u00a9 2026 O\u2019Brien Immigration Law. All rights reserved.",
     disclaimer: ""

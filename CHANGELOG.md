@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.16 — 2026-02-14
+
+### Pages Infrastructure, Careers Page & Design Controls
+
+- **`admin.html` — Built-in Pages Editor** — New "Built-in Pages" panel at the top of the Pages section. Editable Nav Label and Link URL inputs for all 8 built-in nav keys (home, services, staff, testimonials, education, locations, careers, portal) with visible/hidden status badges. Saves label and href changes to both `nav` and `footer` objects in `siteNavFooterSettings` localStorage. Works with the existing `renderGlobalNav()` dynamic nav system — no main.js changes needed.
+- **`careers.html` — New Careers page** — Standalone job board page with styled hero ("Join Our Team"), grid of job cards filtered by `status: "open"` from `siteCareers` localStorage. Each card shows job title, employment type badge, location, and description. Empty state: "No open positions at this time. Check back soon!"
+- **`admin.html` — Careers CRUD section** — New "Careers" sidebar link under Firm Operations. Full Add/Edit/Delete workflow for job listings with fields for Title, Type (Full-time/Part-time/Contract/Internship), Location, Status (Open/Closed), and Description. Saves to `siteCareers` localStorage key.
+- **`main.js` — Careers href migration** — Default `careers.href` changed from `"staff.html"` to `"careers.html"` in `getNavFooterSettings()`. One-time migration auto-updates existing saved settings that still point to `staff.html`.
+- **`admin.html` — Design section** — New "Design" sidebar link under System Settings. Admin sidebar color picker with live preview and hex readout. Bento grayscale filter toggle (default: enabled). Saves to `siteDesignSettings` localStorage key.
+- **`main.js` + `style.css` — Bento grayscale toggle** — On page load, reads `siteDesignSettings`. If `bentoGrayscale` is `false`, adds `.no-bento-grayscale` class to `<html>`. CSS rule `.no-bento-grayscale .card.card-bg-image::before { filter: none; }` disables the grayscale effect on bento image tiles.
+
 ## v3.15 — 2026-02-14
 
 ### Light-Only Color Scheme & Smart Button Contrast

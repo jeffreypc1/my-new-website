@@ -960,6 +960,10 @@ h1, h2, h3, h4, h5, h6 {
   filter: grayscale(0%) blur(1px);
 }
 
+.no-bento-grayscale .card.card-bg-image::before {
+  filter: none;
+}
+
 .card-bg-overlay {
   position: absolute;
   inset: 0;

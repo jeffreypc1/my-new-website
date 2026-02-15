@@ -1471,6 +1471,7 @@
           <a class="sidebar-link" data-section="locations"><span>Locations Pages</span></a>
           <a class="sidebar-link" data-section="businesshours"><span>Business Hours</span></a>
           <a class="sidebar-link" data-section="education"><span>Education Logic</span></a>
+          <a class="sidebar-link" data-section="careers"><span>Careers</span></a>
         </div>
       </div>
 
@@ -1498,6 +1499,7 @@
           <a class="sidebar-link" data-section="clocksettings"><span>Clock Settings</span></a>
           <a class="sidebar-link" data-section="translation"><span>Translation</span></a>
           <a class="sidebar-link" data-section="salesforcebox"><span>Salesforce & Box</span></a>
+          <a class="sidebar-link" data-section="design"><span>Design</span></a>
         </div>
       </div>
     </nav>
@@ -1801,6 +1803,16 @@
     <div id="pages" class="section">
       <h1>Pages</h1>
       <p class="subtitle">Create and manage site pages. Pages can appear in the top navigation, footer, or both.</p>
+
+      <!-- Built-in pages editor -->
+      <div class="panel" id="builtinPagesPanel">
+        <h2>Built-in Pages</h2>
+        <p style="font-size:0.875rem;color:var(--mid-gray);margin-bottom:16px">Edit the navigation label and link URL for each built-in page. Visibility is controlled in Navigation &amp; Footer.</p>
+        <div id="builtinPagesList" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveBuiltinPages">Save Page Settings</button>
+        </div>
+      </div>
 
       <!-- Page list -->
       <div class="panel" id="pageListPanel">
@@ -2542,6 +2554,99 @@
         </div>
         <div class="logic-map-save-row">
           <button class="btn btn-primary" id="btnSaveLogicMap">Save All Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Design ── -->
+    <div id="design" class="section">
+      <h1>Design</h1>
+      <p class="subtitle">Customize the admin sidebar appearance and front-end visual effects.</p>
+
+      <div class="panel">
+        <h2>Appearance</h2>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="designSidebarColor">Admin Sidebar Color</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="color" id="designSidebarColor" value="#1a1a1a" style="width:48px;height:36px;border:1px solid var(--light-gray);border-radius:8px;cursor:pointer;padding:2px">
+              <span id="designSidebarColorHex" style="font-size:0.8125rem;color:var(--mid-gray);font-family:monospace">#1a1a1a</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:16px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="designBentoGrayscale" checked>
+            <span>Bento Grayscale Filter</span>
+          </label>
+          <p style="font-size:0.8125rem;color:var(--mid-gray);margin-top:4px">When enabled, bento image tiles display in grayscale and reveal color on hover.</p>
+        </div>
+
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" id="btnSaveDesign">Save Design Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Careers ── -->
+    <div id="careers" class="section">
+      <h1>Careers</h1>
+      <p class="subtitle">Manage job listings that appear on the Careers page.</p>
+
+      <div class="panel" id="careersListPanel">
+        <div class="page-list-header">
+          <h2>Job Listings</h2>
+          <button class="btn btn-primary btn-sm" id="btnAddJob">Add Position</button>
+        </div>
+        <div id="careersList">
+          <div class="empty-state">No positions yet. Click "Add Position" to create one.</div>
+        </div>
+      </div>
+
+      <div class="panel page-form-panel" id="careersFormPanel">
+        <h2 id="careersFormTitle">Add Position</h2>
+        <input type="hidden" id="jobEditId" value="">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="jobTitleInput">Job Title</label>
+            <input type="text" id="jobTitleInput" placeholder="Associate Attorney">
+          </div>
+          <div class="form-group">
+            <label for="jobTypeInput">Employment Type</label>
+            <select id="jobTypeInput" style="width:100%;padding:8px 12px;font-size:0.875rem;border:1px solid var(--light-gray);border-radius:8px;font-family:inherit;background:var(--white)">
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Contract">Contract</option>
+              <option value="Internship">Internship</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="jobLocationInput">Location</label>
+            <input type="text" id="jobLocationInput" placeholder="Berkeley, CA">
+          </div>
+          <div class="form-group">
+            <label for="jobStatusInput">Status</label>
+            <select id="jobStatusInput" style="width:100%;padding:8px 12px;font-size:0.875rem;border:1px solid var(--light-gray);border-radius:8px;font-family:inherit;background:var(--white)">
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="jobDescInput">Description</label>
+          <textarea id="jobDescInput" placeholder="Describe the role, responsibilities, and qualifications..."></textarea>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <button class="btn btn-primary" id="btnSaveJob">Save Position</button>
+          <button class="btn btn-secondary" id="btnCancelJob">Cancel</button>
         </div>
       </div>
     </div>
@@ -4723,7 +4828,7 @@
           testimonials:     { visible: toggles.testimonials !== false,      label: "Testimonials",        href: "testimonials.html" },
           education:        { visible: toggles.education !== false,         label: "Education",           href: "education.html" },
           locations:        { visible: toggles.locations !== false,         label: "Locations",           href: "locations.html" },
-          careers:          { visible: false, label: "Careers",             href: "staff.html" },
+          careers:          { visible: false, label: "Careers",             href: "careers.html" },
           bookConsultation: { visible: true,  label: "Book a Consultation", href: "#", isCta: true }
         },
         globe: { visible: false, position: "hero-top-right" },
@@ -4736,7 +4841,7 @@
           testimonials: { visible: true,  label: "Testimonials", href: "testimonials.html" },
           education:    { visible: true,  label: "Education",    href: "education.html" },
           locations:    { visible: true,  label: "Locations",    href: "locations.html" },
-          careers:      { visible: true,  label: "Careers",      href: "staff.html" }
+          careers:      { visible: true,  label: "Careers",      href: "careers.html" }
         },
         copyright: "\u00a9 2026 O\u2019Brien Immigration Law. All rights reserved.",
         disclaimer: ""
@@ -4790,8 +4895,11 @@
 
       // Save handler
       document.getElementById("btnSaveNavFooter").addEventListener("click", function() {
-        var navBase = settings.nav; // preserve hrefs and labels from existing data
-        var footerBase = settings.footer;
+        // Re-read from localStorage to pick up any changes from Built-in Pages editor
+        var fresh = null;
+        try { fresh = JSON.parse(localStorage.getItem("siteNavFooterSettings") || "null"); } catch (e) {}
+        var navBase = (fresh || settings).nav; // preserve hrefs and labels from existing data
+        var footerBase = (fresh || settings).footer;
 
         var data = {
           nav: {
@@ -5728,6 +5836,255 @@
           result.style.color = "#d63031";
           result.textContent = "Could not reach the Worker endpoint. Ensure the URL is correct and the Worker is deployed.";
         });
+      });
+    })();
+
+    /* ══════════════════════════════════════════════
+       Design Settings
+       ══════════════════════════════════════════════ */
+
+    (function initDesign() {
+      function getDesign() {
+        try { return JSON.parse(localStorage.getItem("siteDesignSettings") || "null") || {}; }
+        catch (e) { return {}; }
+      }
+
+      var colorInput = document.getElementById("designSidebarColor");
+      var colorHex = document.getElementById("designSidebarColorHex");
+      var grayscaleCheck = document.getElementById("designBentoGrayscale");
+      var sidebar = document.querySelector(".sidebar");
+      if (!colorInput) return;
+
+      // Load saved values
+      var saved = getDesign();
+      if (saved.adminSidebarColor) {
+        colorInput.value = saved.adminSidebarColor;
+        colorHex.textContent = saved.adminSidebarColor;
+        if (sidebar) sidebar.style.background = saved.adminSidebarColor;
+      }
+      if (saved.bentoGrayscale === false) {
+        grayscaleCheck.checked = false;
+      }
+
+      // Live preview sidebar color
+      colorInput.addEventListener("input", function() {
+        var c = colorInput.value;
+        colorHex.textContent = c;
+        if (sidebar) sidebar.style.background = c;
+      });
+
+      document.getElementById("btnSaveDesign").addEventListener("click", function() {
+        var ds = {
+          adminSidebarColor: colorInput.value,
+          bentoGrayscale: grayscaleCheck.checked
+        };
+        localStorage.setItem("siteDesignSettings", JSON.stringify(ds));
+        showToast("Design settings saved");
+      });
+    })();
+
+    /* ══════════════════════════════════════════════
+       Careers CRUD
+       ══════════════════════════════════════════════ */
+
+    (function initCareers() {
+      function getCareers() {
+        try { return JSON.parse(localStorage.getItem("siteCareers") || "[]"); }
+        catch (e) { return []; }
+      }
+      function saveCareers(data) {
+        localStorage.setItem("siteCareers", JSON.stringify(data));
+      }
+
+      var listPanel = document.getElementById("careersListPanel");
+      var formPanel = document.getElementById("careersFormPanel");
+      var listEl = document.getElementById("careersList");
+      if (!listPanel) return;
+
+      function showForm() { formPanel.classList.add("visible"); listPanel.style.display = "none"; }
+      function hideForm() { formPanel.classList.remove("visible"); listPanel.style.display = ""; clearForm(); }
+
+      function clearForm() {
+        document.getElementById("jobEditId").value = "";
+        document.getElementById("jobTitleInput").value = "";
+        document.getElementById("jobTypeInput").value = "Full-time";
+        document.getElementById("jobLocationInput").value = "";
+        document.getElementById("jobStatusInput").value = "open";
+        document.getElementById("jobDescInput").value = "";
+        document.getElementById("careersFormTitle").textContent = "Add Position";
+      }
+
+      function renderList() {
+        var jobs = getCareers();
+        if (jobs.length === 0) {
+          listEl.innerHTML = '<div class="empty-state">No positions yet. Click "Add Position" to create one.</div>';
+          return;
+        }
+        listEl.innerHTML = jobs.map(function(j) {
+          var statusBadge = j.status === "open"
+            ? '<span class="badge published">Open</span>'
+            : '<span class="badge draft">Closed</span>';
+          var typeBadge = '<span class="badge nav-badge">' + escapeHtml(j.type || "Full-time") + '</span>';
+          return '<div class="page-row" data-id="' + j.id + '">' +
+            '<div class="page-row-info">' +
+              '<div class="page-row-title">' + escapeHtml(j.title) + '</div>' +
+              '<div class="page-row-slug">' + escapeHtml(j.location || '') + '</div>' +
+            '</div>' +
+            '<div class="page-row-badges">' + statusBadge + typeBadge + '</div>' +
+            '<div class="page-row-actions">' +
+              '<button class="btn btn-secondary btn-sm btn-edit-job">Edit</button>' +
+              '<button class="btn btn-danger btn-sm btn-delete-job">Delete</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+        listEl.querySelectorAll(".btn-edit-job").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var id = btn.closest(".page-row").dataset.id;
+            editJob(id);
+          });
+        });
+        listEl.querySelectorAll(".btn-delete-job").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var id = btn.closest(".page-row").dataset.id;
+            deleteJob(id);
+          });
+        });
+      }
+
+      function editJob(id) {
+        var jobs = getCareers();
+        var job = jobs.find(function(j) { return j.id === id; });
+        if (!job) return;
+        document.getElementById("jobEditId").value = job.id;
+        document.getElementById("jobTitleInput").value = job.title;
+        document.getElementById("jobTypeInput").value = job.type || "Full-time";
+        document.getElementById("jobLocationInput").value = job.location || "";
+        document.getElementById("jobStatusInput").value = job.status || "open";
+        document.getElementById("jobDescInput").value = job.description || "";
+        document.getElementById("careersFormTitle").textContent = "Edit Position";
+        showForm();
+      }
+
+      function deleteJob(id) {
+        var jobs = getCareers();
+        var job = jobs.find(function(j) { return j.id === id; });
+        if (!job) return;
+        if (!confirm('Delete "' + job.title + '"? This cannot be undone.')) return;
+        saveCareers(jobs.filter(function(j) { return j.id !== id; }));
+        renderList();
+        showToast("Position deleted");
+      }
+
+      document.getElementById("btnAddJob").addEventListener("click", function() {
+        clearForm();
+        showForm();
+      });
+
+      document.getElementById("btnCancelJob").addEventListener("click", hideForm);
+
+      document.getElementById("btnSaveJob").addEventListener("click", function() {
+        var title = document.getElementById("jobTitleInput").value.trim();
+        var type = document.getElementById("jobTypeInput").value;
+        var location = document.getElementById("jobLocationInput").value.trim();
+        var status = document.getElementById("jobStatusInput").value;
+        var description = document.getElementById("jobDescInput").value.trim();
+        var editId = document.getElementById("jobEditId").value;
+
+        if (!title) { showToast("Job title is required"); return; }
+
+        var jobs = getCareers();
+
+        if (editId) {
+          var idx = jobs.findIndex(function(j) { return j.id === editId; });
+          if (idx !== -1) {
+            jobs[idx].title = title;
+            jobs[idx].type = type;
+            jobs[idx].location = location;
+            jobs[idx].status = status;
+            jobs[idx].description = description;
+          }
+          showToast("Position updated");
+        } else {
+          jobs.push({
+            id: generateId(),
+            title: title,
+            type: type,
+            location: location,
+            status: status,
+            description: description
+          });
+          showToast("Position created");
+        }
+
+        saveCareers(jobs);
+        hideForm();
+        renderList();
+      });
+
+      renderList();
+    })();
+
+    /* ══════════════════════════════════════════════
+       Built-in Pages Editor
+       ══════════════════════════════════════════════ */
+
+    (function initBuiltinPages() {
+      var BUILTIN_KEYS = ["home", "services", "staff", "testimonials", "education", "locations", "careers", "portal"];
+      var container = document.getElementById("builtinPagesList");
+      if (!container) return;
+
+      function readSettings() {
+        try { return JSON.parse(localStorage.getItem("siteNavFooterSettings") || "null"); }
+        catch (e) { return null; }
+      }
+
+      function load() {
+        var s = readSettings();
+        if (!s) return;
+        container.innerHTML = BUILTIN_KEYS.map(function(key) {
+          var navItem = s.nav[key] || {};
+          var footerItem = s.footer[key] || {};
+          var label = navItem.label || key.charAt(0).toUpperCase() + key.slice(1);
+          var href = navItem.href || footerItem.href || "";
+          var isVisible = navItem.visible;
+          var badge = isVisible
+            ? '<span style="font-size:0.6875rem;font-weight:600;padding:3px 8px;border-radius:6px;background:#d4edda;color:#2a7d2e">Visible</span>'
+            : '<span style="font-size:0.6875rem;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--light-gray);color:var(--mid-gray)">Hidden</span>';
+
+          return '<div style="display:grid;grid-template-columns:100px 1fr 1fr auto;gap:12px;align-items:center" data-bp-key="' + key + '">' +
+            '<span style="font-size:0.8125rem;font-weight:600;text-transform:capitalize">' + escapeHtml(key) + '</span>' +
+            '<input type="text" class="bp-label" value="' + escapeHtml(label) + '" placeholder="Nav Label" style="padding:8px 12px;font-size:0.875rem;border:1px solid var(--light-gray);border-radius:8px;font-family:inherit">' +
+            '<input type="text" class="bp-href" value="' + escapeHtml(href) + '" placeholder="Link URL" style="padding:8px 12px;font-size:0.875rem;border:1px solid var(--light-gray);border-radius:8px;font-family:inherit">' +
+            badge +
+          '</div>';
+        }).join('');
+      }
+
+      load();
+
+      document.getElementById("btnSaveBuiltinPages").addEventListener("click", function() {
+        var s = readSettings();
+        if (!s) { showToast("No nav settings found — visit Navigation & Footer first"); return; }
+
+        container.querySelectorAll("[data-bp-key]").forEach(function(row) {
+          var key = row.dataset.bpKey;
+          var label = row.querySelector(".bp-label").value.trim();
+          var href = row.querySelector(".bp-href").value.trim();
+
+          if (s.nav[key]) {
+            if (label) s.nav[key].label = label;
+            if (href) s.nav[key].href = href;
+          }
+          if (s.footer && s.footer[key]) {
+            if (label) s.footer[key].label = label;
+            if (href) s.footer[key].href = href;
+          }
+        });
+
+        localStorage.setItem("siteNavFooterSettings", JSON.stringify(s));
+        showToast("Built-in page settings saved");
+        load();
       });
     })();
   </script>
