@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.16.4 — 2026-02-14
+
+### Bento Noir Tint, Image Focus & Overlay Fade
+
+- **`style.css` — Image focus shift** — `background-position` changed from `center` to `center 20%` on `.card.card-bg-image`, shifting the focal point higher to better capture faces and tops of landmarks.
+- **`style.css` — Flat noir overlay** — `.card-bg-overlay` changed from a gradient (`25%→60%` opacity) to a flat `rgba(0,0,0,0.30)` tint with `transition: opacity 0.5s ease`. On `.active-color` click, the overlay fades to `opacity: 0` for a full vibrant reveal.
+- **`main.js` — Click delay adjusted** — Color reveal timeout changed from 500ms to 400ms.
+
+## v3.16.3 — 2026-02-14
+
+### Modal Contrast, Ribbon Background Color & Form Layout
+
+- **`style.css` — Modal text contrast** — `.bento-modal-desc` color changed from `var(--mid-gray)` to `#1a1a1a` for high legibility on frosted glass.
+- **`style.css` — Smart contrast blend** — `mix-blend-mode: difference; color: white;` applied to `.bento-modal--text-only` title and description for automatic background-aware contrast.
+- **`admin.html` — Ribbon background color picker** — New color picker (default `#2d3436` charcoal) in Trust & Social Proof > Background Style. Ribbon `background` now uses the admin-chosen color instead of hardcoded blue.
+- **`main.js` — Ribbon bg color support** — `renderSuccessRibbon()` parses saved `bgColor` hex to RGB for alpha blending.
+- **`main.js` — Consultation form stacking** — "I am..." and "I want to..." dropdowns removed from side-by-side row, now stack vertically with natural spacing.
+
 ## v3.16.2 — 2026-02-14
 
 ### Bento Tile Reveal Refinements
