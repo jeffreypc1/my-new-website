@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.16.1 — 2026-02-14
+
+### Bento Tile Click-to-Reveal Color Transition
+
+- **`style.css` — Bento image filter update** — Default blur increased from `4px` to `8px`. Hover now keeps grayscale with blur removed (`grayscale(100%) blur(0px)`). New `.active-color` class reveals full color (`grayscale(0%) blur(0px) !important`) on click.
+- **`main.js` — Click-to-reveal interaction** — Clicking a bento image tile adds `.active-color` for a 300ms color reveal transition before opening the detail modal. Prevents the default click and removes the class after the modal opens.
+
 ## v3.16 — 2026-02-14
 
 ### Pages Infrastructure, Careers Page & Design Controls
