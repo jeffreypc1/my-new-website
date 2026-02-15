@@ -2584,6 +2584,17 @@
           </div>
         </div>
 
+        <div class="form-row" style="margin-top:16px">
+          <div class="form-group">
+            <label for="designPrimaryColor">Primary Action Color</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="color" id="designPrimaryColor" value="#0066CC" style="width:48px;height:36px;border:1px solid var(--light-gray);border-radius:8px;cursor:pointer;padding:2px">
+              <span id="designPrimaryColorHex" style="font-size:0.8125rem;color:var(--mid-gray);font-family:monospace">#0066CC</span>
+            </div>
+            <p style="font-size:0.8125rem;color:var(--mid-gray);margin-top:4px">Used for navigation CTA, consultation button, and other primary actions.</p>
+          </div>
+        </div>
+
         <div class="form-group" style="margin-top:16px">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="designBentoGrayscale" checked>
@@ -5897,6 +5908,8 @@
 
       var colorInput = document.getElementById("designSidebarColor");
       var colorHex = document.getElementById("designSidebarColorHex");
+      var primaryColorInput = document.getElementById("designPrimaryColor");
+      var primaryColorHex = document.getElementById("designPrimaryColorHex");
       var grayscaleCheck = document.getElementById("designBentoGrayscale");
       var sidebar = document.querySelector(".sidebar");
       if (!colorInput) return;
@@ -5907,6 +5920,10 @@
         colorInput.value = saved.adminSidebarColor;
         colorHex.textContent = saved.adminSidebarColor;
         if (sidebar) sidebar.style.background = saved.adminSidebarColor;
+      }
+      if (saved.primaryColor) {
+        primaryColorInput.value = saved.primaryColor;
+        primaryColorHex.textContent = saved.primaryColor;
       }
       if (saved.bentoGrayscale === false) {
         grayscaleCheck.checked = false;
@@ -5919,12 +5936,25 @@
         if (sidebar) sidebar.style.background = c;
       });
 
+      // Live preview primary color hex label
+      primaryColorInput.addEventListener("input", function() {
+        primaryColorHex.textContent = primaryColorInput.value;
+      });
+
       document.getElementById("btnSaveDesign").addEventListener("click", function() {
         var ds = {
           adminSidebarColor: colorInput.value,
+          primaryColor: primaryColorInput.value,
           bentoGrayscale: grayscaleCheck.checked
         };
         localStorage.setItem("siteDesignSettings", JSON.stringify(ds));
+
+        // Also save primary color to siteSettings so applySiteSettings picks it up
+        var siteSettings = {};
+        try { siteSettings = JSON.parse(localStorage.getItem("siteSettings") || "{}"); } catch (e) {}
+        siteSettings["--primary-color"] = primaryColorInput.value;
+        localStorage.setItem("siteSettings", JSON.stringify(siteSettings));
+
         showToast("Design settings saved");
       });
     })();

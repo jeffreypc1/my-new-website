@@ -1087,8 +1087,8 @@ function renderPostsSection() {
    ══════════════════════════════════════════════ */
 
 var BTN_STYLES = {
-  pill: { "--btn-radius": "980px", "--btn-bg": "var(--accent-color)", "--btn-color": "var(--white)", "--btn-border": "none", "--btn-backdrop": "none" },
-  modern: { "--btn-radius": "8px", "--btn-bg": "var(--accent-color)", "--btn-color": "var(--white)", "--btn-border": "none", "--btn-backdrop": "none" },
+  pill: { "--btn-radius": "980px", "--btn-bg": "var(--primary-color, #0066CC)", "--btn-color": "#ffffff", "--btn-border": "none", "--btn-backdrop": "none" },
+  modern: { "--btn-radius": "8px", "--btn-bg": "var(--primary-color, #0066CC)", "--btn-color": "#ffffff", "--btn-border": "none", "--btn-backdrop": "none" },
   glass: { "--btn-radius": "980px", "--btn-bg": "rgba(255,255,255,0.15)", "--btn-color": "var(--dark)", "--btn-border": "1px solid rgba(0,0,0,0.12)", "--btn-backdrop": "saturate(180%) blur(12px)" }
 };
 

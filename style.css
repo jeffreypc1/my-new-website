@@ -13,6 +13,7 @@
   --primary-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --heading-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --accent-color: #1d1d1f;
+  --primary-color: #0066CC;
   --hero-bg-image: url('https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=2400&q=80');
 
   /* ── Base palette ── */
@@ -29,7 +30,7 @@
 
   /* ── Button style engine ── */
   --btn-radius: 980px;
-  --btn-bg: var(--accent-color);
+  --btn-bg: var(--primary-color, #0066CC);
   --btn-color: var(--white);
   --btn-border: none;
   --btn-backdrop: none;
@@ -658,16 +659,16 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
   flex-shrink: 0;
   white-space: nowrap;
-  background: var(--btn-bg);
-  color: var(--btn-color) !important;
+  background: var(--primary-color, #0066CC);
+  color: #ffffff !important;
+  font-weight: 600;
   padding: 8px 20px;
-  border-radius: var(--btn-radius);
-  border: var(--btn-border);
-  backdrop-filter: var(--btn-backdrop);
-  -webkit-backdrop-filter: var(--btn-backdrop);
-  transition: background var(--transition),
+  border-radius: 50px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  transition: filter 0.2s ease,
               transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-              filter 0.2s ease;
+              box-shadow 0.2s ease;
 }
 
 .nav-cta::before {
@@ -690,12 +691,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .nav-cta:hover {
-  background: var(--accent-color) !important;
   filter: brightness(0.85);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
 }
 
 .nav-cta:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
 }
 
 /* ── Aurora glow for primary buttons ── */
@@ -732,8 +734,6 @@ h1, h2, h3, h4, h5, h6 {
 /* ── Smart Contrast — text auto-inverts over any background ── */
 
 .hero-btn,
-.nav-cta,
-.consult-submit,
 .mobile-menu-cta {
   mix-blend-mode: difference;
   color: white;
@@ -1461,18 +1461,21 @@ body.page-leaving {
   padding: 14px;
   margin-top: 8px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
-  color: var(--btn-color);
-  background: var(--btn-bg);
-  border: var(--btn-border);
-  border-radius: var(--btn-radius);
+  color: #ffffff;
+  background: var(--primary-color, #0066CC);
+  border: none;
+  border-radius: 50px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  transition: filter 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s;
 }
 
 .consult-submit:hover {
-  background: #000;
+  filter: brightness(0.88);
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 102, 204, 0.4);
 }
 
 .consult-submit:active {
@@ -2441,20 +2444,22 @@ body.page-leaving {
   align-self: flex-start;
   padding: 14px 32px;
   border: none;
-  border-radius: var(--btn-radius);
-  background: var(--btn-bg);
-  color: var(--btn-color);
+  border-radius: 50px;
+  background: var(--primary-color, #0066CC);
+  color: #ffffff;
   font-family: var(--primary-font);
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
   transition: transform 0.3s cubic-bezier(0.15, 0.83, 0.66, 1),
               box-shadow 0.3s cubic-bezier(0.15, 0.83, 0.66, 1);
 }
 
 .bento-modal-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  filter: brightness(0.88);
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 102, 204, 0.4);
 }
 
 .bento-modal-close {
