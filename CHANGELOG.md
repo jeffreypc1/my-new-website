@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.16.5 — 2026-02-14
+
+### Layout Preview (Device Previewer)
+
+- **`admin.html` — Layout Preview section** — New "Layout Preview" sidebar link under System Settings. Iframe-based site preview loads `index.html` with three device buttons: Laptop (100%), Tablet (768px centered), and Mobile (375px centered). Width transitions smoothly between sizes. Mobile mode wraps the iframe in a realistic phone bezel (rounded black border with shadow). Reload button refreshes the preview to reflect recent admin changes.
+
 ## v3.16.4 — 2026-02-14
 
 ### Bento Noir Tint, Image Focus & Overlay Fade
