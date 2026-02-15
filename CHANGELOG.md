@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.11 — 2026-02-14
+
+### Multi-Contact Profile Selection
+
+- **`portal-auth.js` — `fetchAllContacts()`** — Replaces `fetchContactData()`. Queries `SELECT Id, FirstName, LastName, Box_Upload_Link__c, Box_View_Only_Link__c FROM Contact WHERE Email = '...'` without LIMIT, returning all matching contacts as an array. New `fetchContactById()` fetches a single contact by Salesforce ID for session restoration. New `updateSessionContact()` persists selected Contact ID and name in the session.
+- **`portal-dashboard.html` — Profile selection flow** — On load after authentication: fetches all contacts matching the email. Single match auto-selects. Multiple matches display a "Whose records would you like to view?" picker with glassmorphism buttons showing each contact's initials, full name, and "View documents for this person" subtitle. Selection stores the Contact ID in the session and loads that contact's Box links. A "Switch profile" link appears in the header for returning to the picker. Session persists the selected contact across page reloads.
+- **Privacy** — Login page shows only email, no names. The profile picker with names only appears after the magic link token has been verified and the session is authenticated.
+
 ## v3.10 — 2026-02-14
 
 ### Magic Link Authentication with Salesforce Verification

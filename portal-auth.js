@@ -37,9 +37,20 @@
       method: data.method || "unknown",
       email: data.email || "",
       displayName: data.displayName || data.email || "",
+      contactId: data.contactId || null,
+      contactName: data.contactName || null,
       token: data.token || generateUUID(),
       expiresAt: Date.now() + SESSION_DURATION
     };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    return session;
+  }
+
+  function updateSessionContact(contactId, contactName) {
+    var session = getPortalSession();
+    if (!session) return null;
+    session.contactId = contactId;
+    session.contactName = contactName;
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
   }
@@ -256,13 +267,49 @@
     }
   }
 
-  function fetchContactData(email) {
+  function fetchAllContacts(email) {
     var config = getSalesforceConfig();
     if (!config || !config.instanceUrl || !email) {
+      return Promise.resolve([]);
+    }
+
+    var soql = "SELECT Id, FirstName, LastName, Box_Upload_Link__c, Box_View_Only_Link__c FROM Contact WHERE Email='" + email.replace(/'/g, "\\'") + "'";
+    var url = config.instanceUrl.replace(/\/+$/, "") + "/services/data/v59.0/query/?q=" + encodeURIComponent(soql);
+
+    return fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": "Bearer " + (config.accessToken || ""),
+        "Content-Type": "application/json"
+      }
+    }).then(function(resp) {
+      if (!resp.ok) return [];
+      return resp.json();
+    }).then(function(data) {
+      if (data && data.records && data.records.length > 0) {
+        return data.records.map(function(rec) {
+          return {
+            id: rec.Id,
+            firstName: rec.FirstName || "",
+            lastName: rec.LastName || "",
+            uploadLink: rec.Box_Upload_Link__c || null,
+            viewLink: rec.Box_View_Only_Link__c || null
+          };
+        });
+      }
+      return [];
+    }).catch(function() {
+      return [];
+    });
+  }
+
+  function fetchContactById(contactId) {
+    var config = getSalesforceConfig();
+    if (!config || !config.instanceUrl || !contactId) {
       return Promise.resolve(null);
     }
 
-    var soql = "SELECT FirstName, Box_Upload_Link__c, Box_View_Only_Link__c FROM Contact WHERE Email='" + email.replace(/'/g, "\\'") + "' LIMIT 1";
+    var soql = "SELECT Id, FirstName, LastName, Box_Upload_Link__c, Box_View_Only_Link__c FROM Contact WHERE Id='" + contactId.replace(/'/g, "\\'") + "' LIMIT 1";
     var url = config.instanceUrl.replace(/\/+$/, "") + "/services/data/v59.0/query/?q=" + encodeURIComponent(soql);
 
     return fetch(url, {
@@ -278,7 +325,9 @@
       if (data && data.records && data.records.length > 0) {
         var rec = data.records[0];
         return {
-          firstName: rec.FirstName || null,
+          id: rec.Id,
+          firstName: rec.FirstName || "",
+          lastName: rec.LastName || "",
           uploadLink: rec.Box_Upload_Link__c || null,
           viewLink: rec.Box_View_Only_Link__c || null
         };
@@ -294,6 +343,7 @@
   window.portalAuth = {
     getSession: getPortalSession,
     setSession: setPortalSession,
+    updateSessionContact: updateSessionContact,
     clearSession: clearPortalSession,
     requireAuth: requireAuth,
     verifyEmail: verifyEmail,
@@ -303,7 +353,8 @@
     initGoogleSignIn: initGoogleSignIn,
     showToast: showPortalToast,
     getSalesforceConfig: getSalesforceConfig,
-    fetchContactData: fetchContactData
+    fetchAllContacts: fetchAllContacts,
+    fetchContactById: fetchContactById
   };
 
 })();

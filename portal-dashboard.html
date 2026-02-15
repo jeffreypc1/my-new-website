@@ -95,6 +95,107 @@
       border-radius: 980px;
     }
 
+    /* Profile selection */
+    .portal-profile-picker {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
+    }
+
+    .portal-profile-prompt {
+      font-family: var(--heading-font);
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .portal-profile-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .portal-profile-btn {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: saturate(140%) blur(16px);
+      -webkit-backdrop-filter: saturate(140%) blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 16px;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04),
+                  0 4px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .portal-profile-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06),
+                  0 12px 32px rgba(0, 0, 0, 0.08);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    [data-theme="dark"] .portal-profile-btn {
+      background: rgba(40, 40, 40, 0.6);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .portal-profile-btn:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+
+    .portal-profile-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.125rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .portal-profile-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--dark);
+      line-height: 1.3;
+    }
+
+    .portal-profile-sub {
+      font-size: 0.8125rem;
+      color: var(--mid-gray);
+      margin-top: 2px;
+    }
+
+    .portal-switch-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.8125rem;
+      color: #3b82f6;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .portal-switch-link:hover {
+      color: #2563eb;
+    }
+
     /* Box iframes */
     .portal-iframe-wrap {
       margin-top: 20px;
@@ -233,6 +334,9 @@
       background: rgba(214, 48, 49, 0.05);
     }
 
+    /* Hidden by default, shown by JS */
+    .portal-hidden { display: none; }
+
     @media (max-width: 768px) {
       .portal-secondary-cards {
         grid-template-columns: 1fr;
@@ -255,48 +359,55 @@
       <p id="portalSubtext">Your secure client portal for case updates and documents.</p>
     </section>
 
-    <!-- Primary sections: Upload + View -->
-    <div class="portal-sections">
+    <!-- Profile Selection (shown when multiple contacts match) -->
+    <div id="profilePicker" class="portal-profile-picker portal-hidden"></div>
 
-      <!-- Section 1: Upload Documents -->
-      <div class="portal-card" id="uploadCard">
-        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <h3>Upload Documents</h3>
-        <div id="uploadContent">
-          <p style="color:var(--mid-gray);font-size:0.875rem">Loading upload center...</p>
+    <!-- Dashboard content (hidden until contact is resolved) -->
+    <div id="dashboardContent" class="portal-hidden">
+
+      <!-- Primary sections: Upload + View -->
+      <div class="portal-sections">
+
+        <!-- Section 1: Upload Documents -->
+        <div class="portal-card" id="uploadCard">
+          <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <h3>Upload Documents</h3>
+          <div id="uploadContent">
+            <p style="color:var(--mid-gray);font-size:0.875rem">Loading upload center...</p>
+          </div>
         </div>
-      </div>
 
-      <!-- Section 2: View My Documents -->
-      <div class="portal-card" id="viewCard">
-        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h3>View My Documents</h3>
-        <div id="viewContent">
-          <p style="color:var(--mid-gray);font-size:0.875rem">Loading documents...</p>
+        <!-- Section 2: View My Documents -->
+        <div class="portal-card" id="viewCard">
+          <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <h3>View My Documents</h3>
+          <div id="viewContent">
+            <p style="color:var(--mid-gray);font-size:0.875rem">Loading documents...</p>
+          </div>
         </div>
+
       </div>
 
-    </div>
-
-    <div class="portal-security-note">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Documents are shared via secure links. No Box account required.
-    </div>
-
-    <!-- Secondary: My Cases & Messages -->
-    <div class="portal-secondary-cards">
-      <div class="portal-card">
-        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <h3>My Cases</h3>
-        <p>View your active cases and track progress through every stage of your immigration journey.</p>
-        <span class="coming-soon">Coming Soon</span>
+      <div class="portal-security-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Documents are shared via secure links. No Box account required.
       </div>
 
-      <div class="portal-card">
-        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <h3>Messages</h3>
-        <p>Communicate directly with your legal team through secure, encrypted messaging.</p>
-        <span class="coming-soon">Coming Soon</span>
+      <!-- Secondary: My Cases & Messages -->
+      <div class="portal-secondary-cards">
+        <div class="portal-card">
+          <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <h3>My Cases</h3>
+          <p>View your active cases and track progress through every stage of your immigration journey.</p>
+          <span class="coming-soon">Coming Soon</span>
+        </div>
+
+        <div class="portal-card">
+          <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <h3>Messages</h3>
+          <p>Communicate directly with your legal team through secure, encrypted messaging.</p>
+          <span class="coming-soon">Coming Soon</span>
+        </div>
       </div>
     </div>
 
@@ -322,31 +433,141 @@
       var session = portalAuth.requireAuth();
       if (!session) return;
 
-      // Default welcome (overridden by Salesforce FirstName if available)
-      var name = session.displayName || session.email;
-      document.getElementById("portalWelcome").textContent = "Welcome, " + name;
-      document.getElementById("portalSubtext").textContent = "Signed in as " + session.email + " via " + session.method.replace("-", " ");
+      // Generic welcome (no names until contact resolved — privacy)
+      document.getElementById("portalWelcome").textContent = "Welcome";
+      document.getElementById("portalSubtext").textContent = "Signed in as " + session.email;
 
+      var profilePicker = document.getElementById("profilePicker");
+      var dashboardContent = document.getElementById("dashboardContent");
       var uploadContent = document.getElementById("uploadContent");
       var viewContent = document.getElementById("viewContent");
 
-      // Fetch contact data from Salesforce
-      portalAuth.fetchContactData(session.email).then(function(contact) {
-        if (contact) {
-          // Personalize with FirstName
-          if (contact.firstName) {
-            document.getElementById("portalWelcome").textContent = "Welcome back, " + contact.firstName + "!";
+      // Cache contacts for profile switching
+      var allContacts = [];
+
+      // If a contact is already selected in this session, load directly
+      if (session.contactId) {
+        portalAuth.fetchContactById(session.contactId).then(function(contact) {
+          if (contact) {
+            loadDashboard(contact);
+          } else {
+            // Saved contact no longer found — re-fetch all
+            resolveContacts();
           }
-          renderUploadSection(contact.uploadLink);
-          renderViewSection(contact.viewLink);
-        } else {
+        }).catch(function() {
+          resolveContacts();
+        });
+      } else {
+        resolveContacts();
+      }
+
+      function resolveContacts() {
+        portalAuth.fetchAllContacts(session.email).then(function(contacts) {
+          allContacts = contacts;
+
+          if (contacts.length === 0) {
+            // No contacts found — show dashboard with pending state
+            document.getElementById("portalWelcome").textContent = "Welcome";
+            showDashboard();
+            renderUploadSection(null);
+            renderViewSection(null);
+
+          } else if (contacts.length === 1) {
+            // Single contact — auto-select
+            selectContact(contacts[0]);
+
+          } else {
+            // Multiple contacts — show profile picker
+            showProfilePicker(contacts);
+          }
+        }).catch(function() {
+          // Salesforce unreachable — show dashboard with pending
+          showDashboard();
           renderUploadSection(null);
           renderViewSection(null);
+        });
+      }
+
+      function showProfilePicker(contacts) {
+        profilePicker.classList.remove("portal-hidden");
+        dashboardContent.classList.add("portal-hidden");
+
+        var html = '<p class="portal-profile-prompt">Whose records would you like to view?</p>';
+        html += '<div class="portal-profile-list">';
+
+        contacts.forEach(function(c, i) {
+          var fullName = ((c.firstName || "") + " " + (c.lastName || "")).trim() || "Contact";
+          var initials = ((c.firstName || "")[0] || "") + ((c.lastName || "")[0] || "");
+          initials = initials.toUpperCase() || "?";
+
+          html += '<button class="portal-profile-btn" data-index="' + i + '">'
+            + '<div class="portal-profile-avatar">' + esc(initials) + '</div>'
+            + '<div>'
+            + '<div class="portal-profile-name">' + esc(fullName) + '</div>'
+            + '<div class="portal-profile-sub">View documents for this person</div>'
+            + '</div>'
+            + '</button>';
+        });
+
+        html += '</div>';
+        profilePicker.innerHTML = html;
+
+        // Bind click handlers
+        profilePicker.querySelectorAll(".portal-profile-btn").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var idx = parseInt(btn.getAttribute("data-index"), 10);
+            selectContact(contacts[idx]);
+          });
+        });
+      }
+
+      function selectContact(contact) {
+        var fullName = ((contact.firstName || "") + " " + (contact.lastName || "")).trim();
+        // Persist selection in session
+        portalAuth.updateSessionContact(contact.id, fullName);
+        loadDashboard(contact);
+      }
+
+      function loadDashboard(contact) {
+        var firstName = contact.firstName || "";
+        var fullName = ((contact.firstName || "") + " " + (contact.lastName || "")).trim();
+
+        // Personalize
+        if (firstName) {
+          document.getElementById("portalWelcome").textContent = "Welcome, " + firstName + "!";
         }
-      }).catch(function() {
-        renderUploadSection(null);
-        renderViewSection(null);
-      });
+        document.getElementById("portalSubtext").textContent = fullName
+          ? "Viewing records for " + fullName
+          : "Signed in as " + session.email;
+
+        // Show dashboard, hide picker
+        showDashboard();
+
+        // If multiple contacts exist, show a "Switch profile" link
+        if (allContacts.length > 1) {
+          var subtext = document.getElementById("portalSubtext");
+          var switchBtn = document.createElement("button");
+          switchBtn.className = "portal-switch-link";
+          switchBtn.textContent = "Switch profile";
+          switchBtn.addEventListener("click", function() {
+            // Clear selected contact from session
+            portalAuth.updateSessionContact(null, null);
+            session = portalAuth.getSession();
+            // Re-show picker
+            dashboardContent.classList.add("portal-hidden");
+            showProfilePicker(allContacts);
+          });
+          subtext.parentNode.insertBefore(switchBtn, subtext.nextSibling);
+        }
+
+        renderUploadSection(contact.uploadLink);
+        renderViewSection(contact.viewLink);
+      }
+
+      function showDashboard() {
+        profilePicker.classList.add("portal-hidden");
+        dashboardContent.classList.remove("portal-hidden");
+      }
 
       // Section 1: Upload Documents
       function renderUploadSection(uploadLink) {
