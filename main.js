@@ -546,7 +546,7 @@ function renderBentoGrid() {
       setTimeout(function() {
         card.classList.remove("active-color");
         openBentoModal(tile);
-      }, 500);
+      }, 400);
     });
   });
 
