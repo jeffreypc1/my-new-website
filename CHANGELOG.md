@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.16.6 — 2026-02-15
+
+### Primary Action Color & Apple-Style Button System
+
+- **`style.css` — `--primary-color` CSS variable** — New `--primary-color: #0066CC` (Apple Science Blue) in `:root`. `--btn-bg` now references `--primary-color` instead of `--accent-color`. All CTA buttons (`.nav-cta`, `.consult-submit`, `.bento-modal-cta`) updated to pill shape (`border-radius: 50px`), white bold text, floating `box-shadow: 0 4px 12px rgba(0,102,204,0.3)`, and Apple-style hover (darken via `brightness(0.88)` + `scale(1.02)`).
+- **`main.js` — BTN_STYLES updated** — Pill and modern button presets now use `var(--primary-color)` with explicit `#ffffff` text color.
+- **`admin.html` — Primary Action Color picker** — New color picker in Design > Appearance (default `#0066CC`). Saves to both `siteDesignSettings` and `siteSettings` (`--primary-color` CSS variable) for site-wide application.
+- **`style.css` — Removed mix-blend-mode** — `mix-blend-mode: difference` removed from `.nav-cta` and `.consult-submit` to prevent color conflicts with the new explicit primary color system. Retained on `.hero-btn` and `.mobile-menu-cta`.
+
 ## v3.16.5 — 2026-02-14
 
 ### Layout Preview (Device Previewer)
