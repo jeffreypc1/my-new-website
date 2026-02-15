@@ -221,13 +221,13 @@
     }
   }
 
-  function fetchBoxLink(email) {
+  function fetchContactData(email) {
     var config = getSalesforceConfig();
     if (!config || !config.instanceUrl || !email) {
       return Promise.resolve(null);
     }
 
-    var soql = "SELECT Box_Shared_Link__c FROM Contact WHERE Email='" + email.replace(/'/g, "\\'") + "' LIMIT 1";
+    var soql = "SELECT FirstName, Box_Upload_Link__c, Box_View_Only_Link__c FROM Contact WHERE Email='" + email.replace(/'/g, "\\'") + "' LIMIT 1";
     var url = config.instanceUrl.replace(/\/+$/, "") + "/services/data/v59.0/query/?q=" + encodeURIComponent(soql);
 
     return fetch(url, {
@@ -241,7 +241,12 @@
       return resp.json();
     }).then(function(data) {
       if (data && data.records && data.records.length > 0) {
-        return data.records[0].Box_Shared_Link__c || null;
+        var rec = data.records[0];
+        return {
+          firstName: rec.FirstName || null,
+          uploadLink: rec.Box_Upload_Link__c || null,
+          viewLink: rec.Box_View_Only_Link__c || null
+        };
       }
       return null;
     }).catch(function() {
@@ -262,7 +267,7 @@
     initGoogleSignIn: initGoogleSignIn,
     showToast: showPortalToast,
     getSalesforceConfig: getSalesforceConfig,
-    fetchBoxLink: fetchBoxLink
+    fetchContactData: fetchContactData
   };
 
 })();

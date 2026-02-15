@@ -32,11 +32,14 @@
       line-height: 1.6;
     }
 
-    /* Primary document card — full width */
-    .portal-primary-card {
+    /* Section container */
+    .portal-sections {
       max-width: 960px;
       margin: 0 auto;
       padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
     .portal-card {
@@ -47,15 +50,9 @@
       border-radius: 24px;
       padding: 36px 28px;
       text-align: center;
-      transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+      transition: box-shadow 0.3s ease-out;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04),
                   0 4px 16px rgba(0, 0, 0, 0.04);
-    }
-
-    .portal-card:hover {
-      transform: translateY(-4px) scale(1.01);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06),
-                  0 16px 48px rgba(0, 0, 0, 0.10);
     }
 
     [data-theme="dark"] .portal-card {
@@ -98,8 +95,44 @@
       border-radius: 980px;
     }
 
-    /* Box link button */
-    .portal-box-link {
+    /* Box iframes */
+    .portal-iframe-wrap {
+      margin-top: 20px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] .portal-iframe-wrap {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .portal-iframe-wrap iframe {
+      display: block;
+      width: 100%;
+      height: 600px;
+      border: none;
+      background: var(--white);
+    }
+
+    .portal-iframe-note {
+      margin-top: 12px;
+      font-size: 0.8125rem;
+      color: var(--mid-gray);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .portal-iframe-note svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    /* Open folder button */
+    .portal-open-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -116,25 +149,14 @@
       transition: background 0.2s, transform 0.15s;
     }
 
-    .portal-box-link:hover {
+    .portal-open-btn:hover {
       background: #2563eb;
       transform: translateY(-1px);
     }
 
-    .portal-box-link svg {
+    .portal-open-btn svg {
       width: 18px;
       height: 18px;
-    }
-
-    /* Box Content Explorer placeholder */
-    #boxExplorerMount {
-      margin-top: 20px;
-      padding: 32px 24px;
-      border: 2px dashed rgba(59, 130, 246, 0.2);
-      border-radius: 16px;
-      background: rgba(59, 130, 246, 0.03);
-      font-size: 0.8125rem;
-      color: var(--mid-gray);
     }
 
     /* Folder pending state */
@@ -155,6 +177,26 @@
 
     .portal-pending p {
       max-width: 400px;
+    }
+
+    /* Security note */
+    .portal-security-note {
+      max-width: 960px;
+      margin: 16px auto 0;
+      padding: 0 24px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--mid-gray);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .portal-security-note svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
     }
 
     /* Secondary cards row */
@@ -195,6 +237,9 @@
       .portal-secondary-cards {
         grid-template-columns: 1fr;
       }
+      .portal-iframe-wrap iframe {
+        height: 480px;
+      }
     }
   </style>
 </head>
@@ -210,14 +255,32 @@
       <p id="portalSubtext">Your secure client portal for case updates and documents.</p>
     </section>
 
-    <!-- Primary: My Case Documents -->
-    <div class="portal-primary-card">
-      <div class="portal-card" id="caseDocumentsCard">
-        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h3>My Case Documents</h3>
-        <p id="docStatusText" style="color:var(--mid-gray);font-size:0.875rem">Loading documents...</p>
-        <div id="docContent"></div>
+    <!-- Primary sections: Upload + View -->
+    <div class="portal-sections">
+
+      <!-- Section 1: Upload Documents -->
+      <div class="portal-card" id="uploadCard">
+        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <h3>Upload Documents</h3>
+        <div id="uploadContent">
+          <p style="color:var(--mid-gray);font-size:0.875rem">Loading upload center...</p>
+        </div>
       </div>
+
+      <!-- Section 2: View My Documents -->
+      <div class="portal-card" id="viewCard">
+        <svg class="portal-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <h3>View My Documents</h3>
+        <div id="viewContent">
+          <p style="color:var(--mid-gray);font-size:0.875rem">Loading documents...</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="portal-security-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Documents are shared via secure links. No Box account required.
     </div>
 
     <!-- Secondary: My Cases & Messages -->
@@ -257,41 +320,76 @@
     (function() {
       // Require authentication
       var session = portalAuth.requireAuth();
-      if (!session) return; // redirect already triggered
+      if (!session) return;
 
-      // Personalize welcome
+      // Default welcome (overridden by Salesforce FirstName if available)
       var name = session.displayName || session.email;
       document.getElementById("portalWelcome").textContent = "Welcome, " + name;
       document.getElementById("portalSubtext").textContent = "Signed in as " + session.email + " via " + session.method.replace("-", " ");
 
-      // Fetch Box link from Salesforce
-      var docStatus = document.getElementById("docStatusText");
-      var docContent = document.getElementById("docContent");
+      var uploadContent = document.getElementById("uploadContent");
+      var viewContent = document.getElementById("viewContent");
 
-      portalAuth.fetchBoxLink(session.email).then(function(boxLink) {
-        if (boxLink) {
-          docStatus.textContent = "Your documents are ready.";
-          docContent.innerHTML =
-            '<a class="portal-box-link" href="' + boxLink.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener noreferrer">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-              'Open Your Documents' +
-            '</a>' +
-            '<div id="boxExplorerMount">Box Content Explorer will be embedded here when the Box UI Elements SDK is configured.</div>';
+      // Fetch contact data from Salesforce
+      portalAuth.fetchContactData(session.email).then(function(contact) {
+        if (contact) {
+          // Personalize with FirstName
+          if (contact.firstName) {
+            document.getElementById("portalWelcome").textContent = "Welcome back, " + contact.firstName + "!";
+          }
+          renderUploadSection(contact.uploadLink);
+          renderViewSection(contact.viewLink);
         } else {
-          showPendingState();
+          renderUploadSection(null);
+          renderViewSection(null);
         }
       }).catch(function() {
-        showPendingState();
+        renderUploadSection(null);
+        renderViewSection(null);
       });
 
-      function showPendingState() {
-        docStatus.style.display = "none";
-        docContent.innerHTML =
+      // Section 1: Upload Documents
+      function renderUploadSection(uploadLink) {
+        if (uploadLink) {
+          uploadContent.innerHTML =
+            '<div class="portal-iframe-wrap">' +
+              '<iframe src="' + esc(uploadLink) + '" title="Secure Upload Center" allow="clipboard-write" loading="lazy"></iframe>' +
+            '</div>' +
+            '<p class="portal-iframe-note">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+              'Drag and drop files here. No account required.' +
+            '</p>';
+        } else {
+          showPending(uploadContent);
+        }
+      }
+
+      // Section 2: View My Documents
+      function renderViewSection(viewLink) {
+        if (viewLink) {
+          viewContent.innerHTML =
+            '<div class="portal-iframe-wrap">' +
+              '<iframe src="' + esc(viewLink) + '" title="View My Documents" loading="lazy"></iframe>' +
+            '</div>' +
+            '<a class="portal-open-btn" href="' + esc(viewLink) + '" target="_blank" rel="noopener noreferrer">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+              'Open Folder' +
+            '</a>';
+        } else {
+          showPending(viewContent);
+        }
+      }
+
+      function showPending(container) {
+        container.innerHTML =
           '<div class="portal-pending">' +
             '<svg class="portal-pending-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-            '<h3 style="margin-bottom:0">Folder Pending</h3>' +
-            '<p>Your document folder is being prepared. Please check back shortly or contact the office.</p>' +
+            '<p>Your secure folder is being prepared. Please check back shortly.</p>' +
           '</div>';
+      }
+
+      function esc(str) {
+        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       }
 
       // Sign out

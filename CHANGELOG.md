@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.9 — 2026-02-14
+
+### Client Portal Dashboard — Box Upload & View Integration
+
+- **`portal-auth.js` — `fetchContactData()` replaces `fetchBoxLink()`** — SOQL query now selects `FirstName`, `Box_Upload_Link__c`, and `Box_View_Only_Link__c` from Contact by email. Returns an object with `firstName`, `uploadLink`, and `viewLink` fields. Gracefully returns `null` on any failure.
+- **`portal-dashboard.html` — Two-section Salesforce-driven layout** — Section 1 "Upload Documents": embeds `Box_Upload_Link__c` in a 600px iframe titled "Secure Upload Center" with drag-and-drop note. Section 2 "View My Documents": embeds `Box_View_Only_Link__c` in a 600px iframe plus an "Open Folder" button for new-tab access. Both use Box shared links (People with the link / View+Download) requiring no Box seats. Welcome header personalizes to "Welcome back, [FirstName]!" when Salesforce returns a first name. If either link is missing, shows "Your secure folder is being prepared" fallback.
+
 ## v3.8 — 2026-02-14
 
 ### Salesforce Sandbox Integration & Portal Enhancements
