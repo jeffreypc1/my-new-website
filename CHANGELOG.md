@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.15 — 2026-02-14
+
+### Light-Only Color Scheme & Smart Button Contrast
+
+- **Disable automatic dark mode** — Added `color-scheme: only light` to `:root` in style.css and `<meta name="color-scheme" content="light only">` to the `<head>` of index.html, staff.html, admin.html, and portal-dashboard.html. Prevents the browser from auto-applying dark backgrounds.
+- **Smart button contrast** — Applied `mix-blend-mode: difference; color: white;` to all primary buttons (`.hero-btn`, `.nav-cta`, `.consult-submit`, `.mobile-menu-cta`) and dashboard action buttons (`.portal-open-btn`). Text automatically inverts based on the background it sits over — black on light, white on dark.
+
 ## v3.14 — 2026-02-14
 
 ### Admin Noir Sidebar, Bento Hover Effect & Dark Mode Contrast

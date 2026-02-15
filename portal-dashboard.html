@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
   <title>Dashboard — Client Portal — O'Brien Immigration Law</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -253,6 +254,11 @@
     .portal-open-btn:hover {
       background: #2563eb;
       transform: translateY(-1px);
+    }
+
+    .portal-open-btn {
+      mix-blend-mode: difference;
+      color: white;
     }
 
     [data-theme="dark"] .portal-open-btn {
