@@ -1500,6 +1500,7 @@
           <a class="sidebar-link" data-section="translation"><span>Translation</span></a>
           <a class="sidebar-link" data-section="salesforcebox"><span>Salesforce & Box</span></a>
           <a class="sidebar-link" data-section="design"><span>Design</span></a>
+          <a class="sidebar-link" data-section="layoutpreview"><span>Layout Preview</span></a>
         </div>
       </div>
     </nav>
@@ -2593,6 +2594,37 @@
 
         <div style="margin-top:20px">
           <button class="btn btn-primary" id="btnSaveDesign">Save Design Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Layout Preview ── -->
+    <div id="layoutpreview" class="section">
+      <h1>Layout Preview</h1>
+      <p class="subtitle">Preview your site at different screen sizes. Changes saved in other sections appear instantly on reload.</p>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+        <button class="btn btn-primary btn-sm lp-btn active" data-lp-width="100%" data-lp-mode="laptop" id="lpLaptop">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+          Laptop
+        </button>
+        <button class="btn btn-secondary btn-sm lp-btn" data-lp-width="768px" data-lp-mode="tablet" id="lpTablet">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+          Tablet
+        </button>
+        <button class="btn btn-secondary btn-sm lp-btn" data-lp-width="375px" data-lp-mode="mobile" id="lpMobile">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+          Mobile
+        </button>
+        <button class="btn btn-secondary btn-sm" id="lpReload" title="Reload preview" style="margin-left:auto">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Reload
+        </button>
+      </div>
+
+      <div id="lpContainer" style="display:flex;justify-content:center">
+        <div id="lpFrame" style="width:100%;transition:width 0.4s cubic-bezier(0.15,0.83,0.66,1);position:relative">
+          <iframe id="lpIframe" src="index.html" style="width:100%;height:80vh;border:1px solid var(--light-gray);border-radius:var(--radius);background:var(--white);display:block"></iframe>
         </div>
       </div>
     </div>
@@ -5894,6 +5926,66 @@
         };
         localStorage.setItem("siteDesignSettings", JSON.stringify(ds));
         showToast("Design settings saved");
+      });
+    })();
+
+    /* ══════════════════════════════════════════════
+       Layout Preview
+       ══════════════════════════════════════════════ */
+
+    (function initLayoutPreview() {
+      var frame = document.getElementById("lpFrame");
+      var iframe = document.getElementById("lpIframe");
+      var btns = document.querySelectorAll(".lp-btn");
+      if (!frame || !iframe) return;
+
+      var phoneStyles = {
+        border: "12px solid #1a1a1a",
+        borderRadius: "40px",
+        boxShadow: "0 0 0 3px #333, 0 8px 40px rgba(0,0,0,0.25)",
+        padding: "0"
+      };
+
+      function clearPhoneFrame() {
+        frame.style.border = "none";
+        frame.style.borderRadius = "0";
+        frame.style.boxShadow = "none";
+        frame.style.padding = "0";
+        iframe.style.borderRadius = "var(--radius)";
+      }
+
+      function applyPhoneFrame() {
+        frame.style.border = phoneStyles.border;
+        frame.style.borderRadius = phoneStyles.borderRadius;
+        frame.style.boxShadow = phoneStyles.boxShadow;
+        iframe.style.borderRadius = "28px";
+      }
+
+      btns.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          btns.forEach(function(b) {
+            b.classList.remove("active");
+            b.className = b.className.replace("btn-primary", "btn-secondary");
+          });
+          btn.classList.add("active");
+          btn.className = btn.className.replace("btn-secondary", "btn-primary");
+
+          var w = btn.dataset.lpWidth;
+          var mode = btn.dataset.lpMode;
+
+          frame.style.width = w;
+
+          if (mode === "mobile") {
+            applyPhoneFrame();
+          } else {
+            clearPhoneFrame();
+          }
+        });
+      });
+
+      document.getElementById("lpReload").addEventListener("click", function() {
+        iframe.src = iframe.src;
+        showToast("Preview reloaded");
       });
     })();
 
