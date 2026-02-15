@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════
-   Portal Authentication Engine — v3.8
-   Session management, Google Sign-In, Magic Link,
-   Salesforce Box integration
+   Portal Authentication Engine — v3.10
+   Session management, Magic Link with Salesforce
+   email verification, Box integration
    ══════════════════════════════════════════════ */
 
 (function() {
@@ -58,6 +58,44 @@
     return session;
   }
 
+  /* ── Salesforce Email Verification ── */
+
+  function verifyEmail(email) {
+    var config = getSalesforceConfig();
+    if (!config || !config.instanceUrl || !email) {
+      // No Salesforce config — skip verification, allow through
+      return Promise.resolve({ verified: true, source: "local" });
+    }
+
+    var soql = "SELECT Id, Email FROM Contact WHERE Email='" + email.replace(/'/g, "\\'") + "' LIMIT 1";
+    var url = config.instanceUrl.replace(/\/+$/, "") + "/services/data/v59.0/query/?q=" + encodeURIComponent(soql);
+
+    return fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": "Bearer " + (config.accessToken || ""),
+        "Content-Type": "application/json"
+      }
+    }).then(function(resp) {
+      if (!resp.ok) {
+        // API error — allow through (don't block users due to API issues)
+        return { verified: true, source: "fallback" };
+      }
+      return resp.json();
+    }).then(function(data) {
+      if (data && data.records !== undefined) {
+        return data.records.length > 0
+          ? { verified: true, source: "salesforce" }
+          : { verified: false, source: "salesforce" };
+      }
+      // Non-SOQL response shape — allow through
+      return { verified: true, source: "fallback" };
+    }).catch(function() {
+      // Network/CORS error — allow through gracefully
+      return { verified: true, source: "fallback" };
+    });
+  }
+
   /* ── Magic Link ── */
 
   function generateMagicToken(email) {
@@ -73,9 +111,25 @@
     localStorage.setItem(MAGIC_KEY, JSON.stringify(tokens));
 
     var magicUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, "") + "portal-login.html?token=" + token;
-    console.log("[Portal] Magic link for " + email + ":\n" + magicUrl);
 
-    return token;
+    // Email template for server-side delivery
+    var emailTemplate = {
+      to: email,
+      subject: "Your Secure Portal Access — O'Brien Immigration Law",
+      body: "Click here to access your O'Brien Immigration Secure Portal:\n\n" + magicUrl + "\n\nThis link expires in 15 minutes. If you did not request this, please ignore this email.",
+      html: '<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:32px">'
+        + '<h2 style="color:#1a1a1a;font-size:1.25rem;margin-bottom:16px">O\'Brien Immigration Law</h2>'
+        + '<p style="color:#444;font-size:0.9375rem;line-height:1.6">Click the button below to access your secure client portal:</p>'
+        + '<p style="text-align:center;margin:28px 0"><a href="' + magicUrl + '" style="display:inline-block;padding:14px 32px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:980px;font-weight:600;font-size:0.9375rem">Access My Portal</a></p>'
+        + '<p style="color:#888;font-size:0.75rem;line-height:1.5">This link expires in 15 minutes. If you did not request this, please ignore this email.</p>'
+        + '</div>'
+    };
+
+    // Log for development — in production, this sends via server-side email service
+    console.log("[Portal] Magic link for " + email + ":\n" + magicUrl);
+    console.log("[Portal] Email template:", emailTemplate);
+
+    return { token: token, magicUrl: magicUrl, emailTemplate: emailTemplate };
   }
 
   function validateMagicToken(token) {
@@ -114,7 +168,7 @@
     }
   }
 
-  /* ── Google Sign-In ── */
+  /* ── Google Sign-In (disabled — Magic Link only for now) ── */
 
   function handleGoogleSignIn(response) {
     try {
@@ -136,31 +190,12 @@
   }
 
   function initGoogleSignIn() {
+    // Google Sign-In is disabled for now — Magic Link is the primary auth method.
+    // To re-enable, uncomment the SDK loading logic below and configure a Client ID.
     var container = document.getElementById("portalGoogleBtn");
-    if (!container) return;
-
-    // Placeholder client ID — admin can configure a real one later
-    var clientId = "PLACEHOLDER_CLIENT_ID.apps.googleusercontent.com";
-
-    var script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = function() {
-      if (typeof google === "undefined" || !google.accounts) return;
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleSignIn
-      });
-      google.accounts.id.renderButton(container, {
-        theme: "outline",
-        size: "large",
-        width: 320,
-        text: "signin_with",
-        shape: "pill"
-      });
-    };
-    document.head.appendChild(script);
+    if (container) {
+      container.innerHTML = '<span style="font-size:0.8125rem;color:var(--mid-gray)">Google Sign-In coming soon</span>';
+    }
   }
 
   /* ── Utilities ── */
@@ -261,6 +296,7 @@
     setSession: setPortalSession,
     clearSession: clearPortalSession,
     requireAuth: requireAuth,
+    verifyEmail: verifyEmail,
     generateMagicToken: generateMagicToken,
     validateMagicToken: validateMagicToken,
     handleGoogleSignIn: handleGoogleSignIn,

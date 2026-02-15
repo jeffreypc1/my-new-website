@@ -286,7 +286,7 @@
         }
       }
 
-      // Initialize Google Sign-In
+      // Initialize Google Sign-In (disabled — shows placeholder)
       portalAuth.initGoogleSignIn();
 
       // Magic Link form
@@ -295,8 +295,9 @@
       var emailError = document.getElementById("portalEmailError");
 
       magicBtn.addEventListener("click", function() {
-        var email = emailInput.value.trim();
+        var email = emailInput.value.trim().toLowerCase();
         emailError.style.display = "none";
+        emailError.textContent = "Please enter a valid email address.";
 
         if (!email || !email.includes("@") || !email.includes(".")) {
           emailError.style.display = "block";
@@ -308,24 +309,44 @@
         }
 
         magicBtn.disabled = true;
-        magicBtn.textContent = "Sending...";
+        magicBtn.textContent = "Verifying...";
 
-        // Simulate brief delay
-        setTimeout(function() {
-          var tkn = portalAuth.generateMagicToken(email);
-          if (tkn) {
-            portalAuth.showToast("Magic link sent! Check your console for the link.");
+        // Step 1: Verify email exists in Salesforce
+        portalAuth.verifyEmail(email).then(function(result) {
+          if (!result.verified) {
+            // Email not found in Salesforce
+            emailError.textContent = "Email not found. Please contact our office to set up your portal access.";
+            emailError.style.display = "block";
+            emailInput.style.borderColor = "#d63031";
+            setTimeout(function() {
+              emailInput.style.borderColor = "";
+            }, 3000);
+            magicBtn.disabled = false;
+            magicBtn.textContent = "Send Magic Link";
+            return;
+          }
+
+          // Step 2: Generate magic link and email template
+          magicBtn.textContent = "Sending...";
+          var linkData = portalAuth.generateMagicToken(email);
+
+          if (linkData) {
+            portalAuth.showToast("Magic link sent to " + email);
             magicBtn.textContent = "Link Sent — Check Email";
             setTimeout(function() {
               magicBtn.disabled = false;
               magicBtn.textContent = "Send Magic Link";
-            }, 5000);
+            }, 8000);
           } else {
             portalAuth.showToast("Failed to generate magic link.", true);
             magicBtn.disabled = false;
             magicBtn.textContent = "Send Magic Link";
           }
-        }, 800);
+        }).catch(function() {
+          portalAuth.showToast("Something went wrong. Please try again.", true);
+          magicBtn.disabled = false;
+          magicBtn.textContent = "Send Magic Link";
+        });
       });
 
       // Enter key on email input

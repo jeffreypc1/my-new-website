@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.10 — 2026-02-14
+
+### Magic Link Authentication with Salesforce Verification
+
+- **`portal-auth.js` — `verifyEmail()` function** — Queries `SELECT Id, Email FROM Contact WHERE Email = '...'` against Salesforce before generating a magic link. If the email is not found, returns `{ verified: false }` so the login page can show "Email not found. Please contact our office to set up your portal access." If Salesforce is unreachable (CORS/network), gracefully allows through to avoid blocking users.
+- **`portal-auth.js` — `generateMagicToken()` upgraded** — Now returns an object with `token`, `magicUrl`, and `emailTemplate` (HTML + plain text). The email template includes branded HTML with an "Access My Portal" button, expiry notice, and firm name. Template is logged to console for development; ready for server-side email delivery.
+- **`portal-auth.js` — Google Sign-In disabled** — `initGoogleSignIn()` now shows a "Google Sign-In coming soon" placeholder instead of loading the Google Identity Services SDK. Handler preserved for future re-enablement.
+- **`portal-login.html` — Verify-then-send flow** — Button now shows "Verifying..." while querying Salesforce, then "Sending..." while generating the link. Unknown emails get a red inline error. Successful generation shows "Link Sent — Check Email" for 8 seconds.
+- **Session duration** — 24-hour session expiry unchanged; magic link tokens expire in 15 minutes.
+
 ## v3.9 — 2026-02-14
 
 ### Client Portal Dashboard — Box Upload & View Integration
