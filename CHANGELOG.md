@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.16.2 — 2026-02-14
+
+### Bento Tile Reveal Refinements
+
+- **`style.css` — Progressive color reveal** — Hover now teases color at `grayscale(60%) blur(0px)` instead of staying fully desaturated. Click adds a subtle `scale(0.97)` press-in effect via `.active-color` class for tactile feedback.
+- **`main.js` — Longer reveal delay** — Color reveal timeout extended from 300ms to 500ms so the full-color transition is visible before the modal opens.
+
 ## v3.16.1 — 2026-02-14
 
 ### Bento Tile Click-to-Reveal Color Transition
