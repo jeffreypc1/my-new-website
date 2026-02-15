@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.14 — 2026-02-14
+
+### Admin Noir Sidebar, Bento Hover Effect & Dark Mode Contrast
+
+- **`admin.html` — Noir sidebar** — Sidebar background changed from white to sleek black (`#1a1a1a`) with white text, translucent link colors, and matching border/footer tones. All SVG icons inherit color via `currentColor`. Active group headers use a subtle blue-tinted highlight.
+- **`style.css` — Bento "Noir" hover effect** — Image-mode bento cards (`.card.card-bg-image`) now display with `grayscale(100%) blur(4px)` by default via a `::before` pseudo-element. On hover, the image transitions to full color with minimal blur (`grayscale(0%) blur(1px)`) over 0.4s. Text content remains sharp and unaffected above the filtered layer.
+- **`style.css` — `--text-color` CSS variable** — New `--text-color` variable added to `:root` (`#1d1d1f`) and `[data-theme="dark"]` (`#ffffff`) for components that need explicit text color control beyond the existing `--dark` variable.
+- **`portal-dashboard.html` — Dark mode button contrast** — Added `[data-theme="dark"]` overrides for `.portal-open-btn` (Upload/View buttons remain white-on-blue, hover lightens to `#60a5fa`) and `.portal-signout-btn` (translucent white text on dark background, red tint on hover). All dashboard text elements use CSS variable-driven colors that flip automatically.
+
 ## v3.13 — 2026-02-14
 
 ### Cloudflare Worker Email Delivery
