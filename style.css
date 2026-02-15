@@ -957,7 +957,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .card.card-bg-image:hover::before {
-  filter: grayscale(100%) blur(0px);
+  filter: grayscale(60%) blur(0px);
+}
+
+.card.card-bg-image.active-color {
+  transform: scale(0.97);
 }
 
 .card.card-bg-image.active-color::before {
