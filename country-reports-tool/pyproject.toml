@@ -1,0 +1,17 @@
+[project]
+name = "country-reports-tool"
+version = "0.1.0"
+description = "Country Conditions Assembler - Search and assemble country condition reports for immigration law"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "boxsdk>=3.12.0",
+    "PyMuPDF>=1.25.0",
+    "chromadb>=0.6.0",
+    "python-dotenv>=1.0.0",
+    "pydantic-settings>=2.7.0",
+    "streamlit>=1.41.0",
+    "requests>=2.31.0",
+]
