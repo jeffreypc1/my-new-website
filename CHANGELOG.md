@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.13 — 2026-02-14
+
+### Cloudflare Worker Email Delivery
+
+- **`cloudflare-worker/send-magic-link.js` — New Cloudflare Worker** — HTTP-based email delivery endpoint using the Resend API (CF Workers cannot make TCP/SMTP connections). Accepts POST requests with `{to, subject, html}` body. Security: CORS preflight handling, origin checking (`ALLOWED_ORIGIN`), Bearer token authentication (`PORTAL_SECRET`). Required Cloudflare secrets: `RESEND_API_KEY`, `PORTAL_SECRET`, `ALLOWED_ORIGIN`. Optional env: `FROM_EMAIL`.
+- **`portal-auth.js` — Bearer token auth for email delivery** — `generateMagicToken()` now sends `Authorization: Bearer <portalSecret>` header and a simplified `{to, subject, html}` body (no SMTP credentials) to the configured Worker endpoint. Reads `portalSecret` from the `siteSalesforceBox` localStorage config.
+- **`admin.html` — Email Delivery panel redesigned** — Replaced SMTP credential fields (host, port, username, password, sender) with two fields: Worker Endpoint URL and Portal Secret. "Send Test Email" button now prompts for a recipient email and authenticates via Bearer token. Cleaner UI reflecting the Cloudflare Worker architecture.
+
 ## v3.12 — 2026-02-14
 
 ### SMTP Email Delivery Configuration

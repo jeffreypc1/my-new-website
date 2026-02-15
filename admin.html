@@ -2474,38 +2474,19 @@
       </div>
 
       <div class="panel" style="margin-top:24px">
-        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:6px">Email Delivery (SMTP)</h2>
-        <p style="font-size:0.8rem;color:var(--mid-gray);margin-bottom:20px">SMTP credentials for sending magic link emails. Stored locally — never committed to source code. Requires a server-side proxy for delivery.</p>
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:6px">Email Delivery (Cloudflare Worker)</h2>
+        <p style="font-size:0.8rem;color:var(--mid-gray);margin-bottom:20px">Magic link emails are sent via a Cloudflare Worker using the Resend API. Enter your Worker URL and shared secret below.</p>
 
         <div class="form-group">
-          <label for="smtpHost">SMTP Host</label>
-          <input type="text" id="smtpHost" placeholder="smtp.gmail.com">
+          <label for="smtpEndpoint">Worker Endpoint URL</label>
+          <input type="text" id="smtpEndpoint" placeholder="https://send-magic-link.your-account.workers.dev">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Your deployed Cloudflare Worker URL. The portal sends magic link emails to this endpoint.</p>
         </div>
 
         <div class="form-group">
-          <label for="smtpPort">Port</label>
-          <input type="text" id="smtpPort" placeholder="587">
-        </div>
-
-        <div class="form-group">
-          <label for="smtpUser">Username / Email</label>
-          <input type="text" id="smtpUser" placeholder="you@example.com">
-        </div>
-
-        <div class="form-group">
-          <label for="smtpPass">App Password</label>
-          <input type="password" id="smtpPass" placeholder="••••••••">
-        </div>
-
-        <div class="form-group">
-          <label for="smtpSender">Sender Name</label>
-          <input type="text" id="smtpSender" placeholder="O'Brien Immigration Portal">
-        </div>
-
-        <div class="form-group">
-          <label for="smtpEndpoint">Delivery Endpoint URL</label>
-          <input type="text" id="smtpEndpoint" placeholder="https://your-worker.example.com/api/send-magic-link">
-          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">The server-side endpoint that receives the email payload and sends via SMTP. Required for actual email delivery.</p>
+          <label for="portalSecret">Portal Secret</label>
+          <input type="password" id="portalSecret" placeholder="••••••••">
+          <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:6px">Shared secret for authenticating requests to the Worker. Must match the <code>PORTAL_SECRET</code> set in your Cloudflare Worker.</p>
         </div>
 
         <div style="margin-top:16px">
@@ -5580,13 +5561,9 @@
       document.getElementById("sfUploadField").value = config.uploadLink || "";
       document.getElementById("sfViewField").value = config.viewLink || "";
 
-      // SMTP fields
-      document.getElementById("smtpHost").value = config.smtpHost || "smtp.gmail.com";
-      document.getElementById("smtpPort").value = config.smtpPort || "587";
-      document.getElementById("smtpUser").value = config.smtpUser || "";
-      document.getElementById("smtpPass").value = config.smtpPass || "";
-      document.getElementById("smtpSender").value = config.smtpSender || "O'Brien Immigration Portal";
+      // Email delivery fields
       document.getElementById("smtpEndpoint").value = config.smtpEndpoint || "";
+      document.getElementById("portalSecret").value = config.portalSecret || "";
 
       /* ── Connection Status Indicator ── */
       var statusEl = document.getElementById("sfConnectionStatus");
@@ -5628,12 +5605,8 @@
           boxFolderId: document.getElementById("boxFolderId").value.trim(),
           uploadLink: document.getElementById("sfUploadField").value.trim(),
           viewLink: document.getElementById("sfViewField").value.trim(),
-          smtpHost: document.getElementById("smtpHost").value.trim(),
-          smtpPort: document.getElementById("smtpPort").value.trim(),
-          smtpUser: document.getElementById("smtpUser").value.trim(),
-          smtpPass: document.getElementById("smtpPass").value.trim(),
-          smtpSender: document.getElementById("smtpSender").value.trim(),
-          smtpEndpoint: document.getElementById("smtpEndpoint").value.trim()
+          smtpEndpoint: document.getElementById("smtpEndpoint").value.trim(),
+          portalSecret: document.getElementById("portalSecret").value.trim()
         };
         // Clear connectionVerified if any required field is empty
         if (!data.consumerKey || !data.consumerSecret || !data.instanceUrl) {
@@ -5682,12 +5655,8 @@
             boxFolderId: document.getElementById("boxFolderId").value.trim(),
             uploadLink: document.getElementById("sfUploadField").value.trim(),
             viewLink: document.getElementById("sfViewField").value.trim(),
-            smtpHost: document.getElementById("smtpHost").value.trim(),
-            smtpPort: document.getElementById("smtpPort").value.trim(),
-            smtpUser: document.getElementById("smtpUser").value.trim(),
-            smtpPass: document.getElementById("smtpPass").value.trim(),
-            smtpSender: document.getElementById("smtpSender").value.trim(),
             smtpEndpoint: document.getElementById("smtpEndpoint").value.trim(),
+            portalSecret: document.getElementById("portalSecret").value.trim(),
             connectionVerified: true
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -5695,23 +5664,31 @@
         }, 1500);
       });
 
-      // SMTP Test
+      // Email Test via Cloudflare Worker
       document.getElementById("btnTestSmtp").addEventListener("click", function() {
         var btn = document.getElementById("btnTestSmtp");
         var result = document.getElementById("smtpTestResult");
         var endpoint = document.getElementById("smtpEndpoint").value.trim();
-        var smtpUser = document.getElementById("smtpUser").value.trim();
+        var secret = document.getElementById("portalSecret").value.trim();
 
         if (!endpoint) {
           result.style.display = "block";
           result.style.color = "#d63031";
-          result.textContent = "Please enter a Delivery Endpoint URL first. This is the server-side proxy that sends emails via SMTP.";
+          result.textContent = "Please enter the Worker Endpoint URL first.";
           return;
         }
-        if (!smtpUser) {
+        if (!secret) {
           result.style.display = "block";
           result.style.color = "#d63031";
-          result.textContent = "Please enter the SMTP username/email.";
+          result.textContent = "Please enter the Portal Secret.";
+          return;
+        }
+
+        var testEmail = prompt("Send test email to:", document.getElementById("sfConsumerKey").value ? "" : "");
+        if (!testEmail || !testEmail.includes("@")) {
+          result.style.display = "block";
+          result.style.color = "#d63031";
+          result.textContent = "Please enter a valid email address.";
           return;
         }
 
@@ -5719,39 +5696,35 @@
         btn.textContent = "Sending...";
         result.style.display = "block";
         result.style.color = "var(--mid-gray)";
-        result.textContent = "Sending test email to " + smtpUser + "...";
+        result.textContent = "Sending test email to " + testEmail + "...";
 
         fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + secret
+          },
           body: JSON.stringify({
-            to: smtpUser,
+            to: testEmail,
             subject: "Test — O'Brien Immigration Portal",
-            html: "<p>This is a test email from your portal SMTP configuration. If you see this, email delivery is working.</p>",
-            smtp: {
-              host: document.getElementById("smtpHost").value.trim(),
-              port: document.getElementById("smtpPort").value.trim(),
-              user: smtpUser,
-              pass: document.getElementById("smtpPass").value.trim(),
-              sender: document.getElementById("smtpSender").value.trim()
-            }
+            html: "<p>This is a test email from your portal email delivery configuration. If you see this, your Cloudflare Worker is working correctly.</p>"
           })
         }).then(function(resp) {
           btn.disabled = false;
           btn.textContent = "Send Test Email";
           if (resp.ok) {
             result.style.color = "#00b894";
-            result.textContent = "Test email sent successfully to " + smtpUser;
+            result.textContent = "Test email sent successfully to " + testEmail;
             showToast("Test email sent");
           } else {
             result.style.color = "#d63031";
-            result.textContent = "Delivery endpoint returned an error (HTTP " + resp.status + "). Check the endpoint URL and SMTP credentials.";
+            result.textContent = "Worker returned an error (HTTP " + resp.status + "). Check the endpoint URL and Portal Secret.";
           }
         }).catch(function(err) {
           btn.disabled = false;
           btn.textContent = "Send Test Email";
           result.style.color = "#d63031";
-          result.textContent = "Could not reach the delivery endpoint. Ensure the URL is correct and the server is running.";
+          result.textContent = "Could not reach the Worker endpoint. Ensure the URL is correct and the Worker is deployed.";
         });
       });
     })();

@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════
-   Portal Authentication Engine — v3.10
+   Portal Authentication Engine — v3.13
    Session management, Magic Link with Salesforce
    email verification, Box integration
    ══════════════════════════════════════════════ */
@@ -136,25 +136,21 @@
         + '</div>'
     };
 
-    // Attempt server-side email delivery if endpoint is configured
+    // Attempt email delivery via Cloudflare Worker
     var config = getSalesforceConfig();
     var sent = false;
-    if (config && config.smtpEndpoint) {
+    if (config && config.smtpEndpoint && config.portalSecret) {
       sent = true;
       fetch(config.smtpEndpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + config.portalSecret
+        },
         body: JSON.stringify({
           to: email,
           subject: emailTemplate.subject,
-          html: emailTemplate.html,
-          smtp: {
-            host: config.smtpHost || "smtp.gmail.com",
-            port: config.smtpPort || "587",
-            user: config.smtpUser || "",
-            pass: config.smtpPass || "",
-            sender: config.smtpSender || "O'Brien Immigration Portal"
-          }
+          html: emailTemplate.html
         })
       }).then(function(resp) {
         if (resp.ok) {
