@@ -4,3 +4,5 @@ __pycache__/
 *.lock
 data/
 .venv/
+google_token.json
+client_secret.json

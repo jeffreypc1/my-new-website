@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import html as html_mod
 import io
+import sys
 from datetime import date
+from pathlib import Path
 
 import streamlit as st
 from docx import Document
@@ -20,6 +22,9 @@ from docx.shared import Inches, Pt
 
 from app.drafts import delete_draft, list_drafts, load_draft, new_draft_id, save_draft
 from app.sections import BRIEF_TYPES, load_sections
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.google_upload import upload_to_google_docs
 
 # -- Page config --------------------------------------------------------------
 
@@ -802,5 +807,14 @@ with preview_col:
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True,
             )
+            if st.button("Upload to Google Docs", use_container_width=True):
+                with st.spinner("Uploading to Google Docs..."):
+                    try:
+                        url = upload_to_google_docs(docx_bytes, f"{brief_type} - {case_info['client_name']}")
+                        st.session_state.google_doc_url = url
+                    except Exception as e:
+                        st.error(f"Upload failed: {e}")
+            if st.session_state.get("google_doc_url"):
+                st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
         else:
             st.button("Download .docx", disabled=True, use_container_width=True)

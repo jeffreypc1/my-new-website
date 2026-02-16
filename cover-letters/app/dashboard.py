@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import html as html_mod
 import io
+import sys
 from datetime import date
+from pathlib import Path
 
 import streamlit as st
 from docx import Document
@@ -25,6 +27,9 @@ from app.templates import (
     get_standard_docs,
     render_cover_letter,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.google_upload import upload_to_google_docs
 
 # -- Page config --------------------------------------------------------------
 
@@ -685,3 +690,12 @@ with preview_col:
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True,
             )
+            if st.button("Upload to Google Docs", use_container_width=True):
+                with st.spinner("Uploading to Google Docs..."):
+                    try:
+                        url = upload_to_google_docs(docx_bytes, f"Cover Letter - {client_name}")
+                        st.session_state.google_doc_url = url
+                    except Exception as e:
+                        st.error(f"Upload failed: {e}")
+            if st.session_state.get("google_doc_url"):
+                st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
