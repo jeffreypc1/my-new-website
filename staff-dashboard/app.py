@@ -237,6 +237,7 @@ st.markdown(
     <div class="hero-badge">Internal Tools</div>
     <h1 class="hero-title">O'Brien Immigration Law</h1>
     <p class="hero-sub">Staff toolkit for research, document assembly, and case preparation.</p>
+    <p class="hero-sub" style="margin-top:0.5rem;font-size:0.85rem;">All tools export to <strong style="color:#1d1d1f;">.txt</strong>, <strong style="color:#1d1d1f;">.docx</strong>, and <strong style="color:#1d1d1f;">Google Docs</strong></p>
 </div>
 """,
     unsafe_allow_html=True,
