@@ -1,220 +1,179 @@
 """FastAPI backend for the Case Checklist tool.
 
-Provides endpoints for managing immigration cases and their associated
-checklists, including case creation with auto-populated checklists,
-status tracking, and checklist item updates.
+Provides RESTful endpoints for managing immigration cases and their
+associated checklists, including CRUD operations, item-level updates,
+and progress/status reporting.
 
 Part of the O'Brien Immigration Law tool suite.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 from app.checklists import (
-    CASE_TYPE_CHECKLISTS,
+    CASE_TYPES,
+    add_custom_item,
     create_case,
+    delete_case,
+    get_case_progress,
+    list_cases,
     load_case,
-    load_cases,
     save_case,
     update_item,
 )
 
-app = FastAPI(title="Case Checklist API")
+app = FastAPI(title="Case Checklist API — O'Brien Immigration Law")
 
 
-# ---------------------------------------------------------------------------
-# Request / response models
-# ---------------------------------------------------------------------------
+# ── Request / response models ────────────────────────────────────────────────
+
 
 class CreateCaseRequest(BaseModel):
-    """Payload for creating a new case with an auto-populated checklist."""
+    """Payload for creating a new case."""
 
-    case_id: str
     client_name: str
     case_type: str
     a_number: str = ""
+    attorney: str = ""
 
 
-class UpdateCaseRequest(BaseModel):
-    """Payload for updating case metadata or checklist items."""
+class UpdateItemRequest(BaseModel):
+    """Payload for updating a single checklist item."""
 
-    status: str | None = None
-    client_name: str | None = None
-    a_number: str | None = None
-    checklist_updates: list[dict[str, Any]] | None = None
-    # checklist_updates: list of {"index": int, "completed": bool, "notes": str}
+    is_completed: bool | None = None
+    deadline: str | None = None
+    notes: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
+class AddItemRequest(BaseModel):
+    """Payload for adding a custom checklist item."""
+
+    title: str
+    category: str = "Filing"
+    deadline: str | None = None
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
 
 @app.get("/api/case-types")
-def list_case_types() -> list[dict[str, Any]]:
-    """List all case types with their checklist item counts.
-
-    Returns each case type name along with the number of checklist items
-    and the categories covered by that checklist.
-    """
-    result = []
-    for case_type, items in CASE_TYPE_CHECKLISTS.items():
-        categories = sorted({item.category for item in items})
-        result.append({
-            "case_type": case_type,
-            "item_count": len(items),
-            "categories": categories,
-            "items": [
-                {
-                    "label": item.label,
-                    "required": item.required,
-                    "category": item.category,
-                    "deadline_days": item.deadline_days,
-                }
-                for item in items
-            ],
-        })
-    return result
+def get_case_types() -> list[str]:
+    """List all available case types."""
+    return CASE_TYPES
 
 
 @app.get("/api/cases")
-def list_active_cases(
-    status: str | None = Query(None, description="Filter by status"),
+def get_cases(
+    status: str | None = Query(None, description="Filter by status (Active/Completed)"),
     case_type: str | None = Query(None, description="Filter by case type"),
 ) -> list[dict[str, Any]]:
-    """List all active cases with summary info.
+    """List all cases with progress summaries.
 
-    Returns each case with its metadata and checklist completion percentage.
     Supports optional filtering by status and case type.
-
-    TODO: Add pagination support.
-    TODO: Add sorting options (by deadline, by name, by creation date).
     """
-    cases = load_cases()
+    cases = list_cases()
 
     if status:
         cases = [c for c in cases if c.get("status") == status]
     if case_type:
         cases = [c for c in cases if c.get("case_type") == case_type]
 
-    # Add completion summary to each case
+    # Attach progress summary to each case
     for case in cases:
-        checklist = case.get("checklist", [])
-        total = len(checklist)
-        completed = sum(1 for item in checklist if item.get("completed"))
-        case["completion"] = {
-            "total": total,
-            "completed": completed,
-            "pct": round((completed / total) * 100) if total > 0 else 0,
-        }
+        case["progress"] = get_case_progress(case)
 
     return cases
 
 
-@app.post("/api/cases")
+@app.post("/api/cases", status_code=201)
 def create_new_case(request: CreateCaseRequest) -> dict[str, Any]:
-    """Create a new case with an auto-populated checklist.
-
-    The checklist is pre-filled based on the case type. Each item includes
-    a label, category, required status, and deadline (if applicable).
-
-    TODO: Validate that case_id is unique.
-    TODO: Support custom checklist items in addition to the template.
-    """
+    """Create a new case with checklist auto-populated from template."""
+    if request.case_type not in CASE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown case type: {request.case_type}. "
+            f"Valid types: {', '.join(CASE_TYPES)}",
+        )
     case = create_case(
-        case_id=request.case_id,
         client_name=request.client_name,
         case_type=request.case_type,
         a_number=request.a_number,
+        attorney=request.attorney,
     )
+    case["progress"] = get_case_progress(case)
     return case
 
 
-@app.put("/api/cases/{case_id}")
-def update_case(case_id: str, request: UpdateCaseRequest) -> dict[str, Any]:
-    """Update case metadata and/or checklist items.
-
-    Supports updating the case status, client name, A-number, and
-    individual checklist items. Checklist updates should be provided
-    as a list of dicts with 'index' and the fields to update.
-
-    TODO: Add validation for status transitions.
-    TODO: Add audit logging for checklist changes.
-    """
+@app.get("/api/cases/{case_id}")
+def get_case(case_id: str) -> dict[str, Any]:
+    """Get a single case by ID, including full checklist and progress."""
     case = load_case(case_id)
     if case is None:
-        return {"error": f"Case not found: {case_id}"}
-
-    # Update case-level metadata
-    if request.status is not None:
-        case["status"] = request.status
-    if request.client_name is not None:
-        case["client_name"] = request.client_name
-    if request.a_number is not None:
-        case["a_number"] = request.a_number
-
-    # Update individual checklist items
-    if request.checklist_updates:
-        for update in request.checklist_updates:
-            index = update.get("index")
-            if index is not None:
-                updates = {k: v for k, v in update.items() if k != "index"}
-                update_item(case_id, index, updates)
-
-    # Re-read the case after updates
-    case = load_case(case_id)
-    if case is None:
-        return {"error": "Failed to reload case after update."}
-
-    save_case(case)
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    case["progress"] = get_case_progress(case)
     return case
 
 
-@app.get("/api/cases/{case_id}/status")
-def get_case_status(case_id: str) -> dict[str, Any]:
-    """Get the completion status of a specific case.
+@app.delete("/api/cases/{case_id}")
+def remove_case(case_id: str) -> dict[str, str]:
+    """Delete a case by ID."""
+    deleted = delete_case(case_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    return {"status": "deleted", "case_id": case_id}
 
-    Returns detailed status including per-category completion, overdue items,
-    and upcoming deadlines.
 
-    TODO: Add deadline computation relative to current date.
-    TODO: Add urgency color coding (red/yellow/green).
-    """
+@app.put("/api/cases/{case_id}/items/{item_id}")
+def update_checklist_item(
+    case_id: str,
+    item_id: str,
+    request: UpdateItemRequest,
+) -> dict[str, Any]:
+    """Update a specific checklist item (toggle completion, set deadline, add notes)."""
+    updates: dict[str, Any] = {}
+    if request.is_completed is not None:
+        updates["is_completed"] = request.is_completed
+    if request.deadline is not None:
+        updates["deadline"] = request.deadline
+    if request.notes is not None:
+        updates["notes"] = request.notes
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updates provided.")
+
+    result = update_item(case_id, item_id, updates)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Case or item not found.")
+    result["progress"] = get_case_progress(result)
+    return result
+
+
+@app.post("/api/cases/{case_id}/items", status_code=201)
+def add_checklist_item(case_id: str, request: AddItemRequest) -> dict[str, Any]:
+    """Add a custom checklist item to an existing case."""
+    result = add_custom_item(
+        case_id=case_id,
+        title=request.title,
+        category=request.category,
+        deadline=request.deadline,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    result["progress"] = get_case_progress(result)
+    return result
+
+
+@app.get("/api/cases/{case_id}/progress")
+def get_progress(case_id: str) -> dict[str, Any]:
+    """Get completion progress for a specific case."""
     case = load_case(case_id)
     if case is None:
-        return {"error": f"Case not found: {case_id}"}
-
-    checklist = case.get("checklist", [])
-    total = len(checklist)
-    completed = sum(1 for item in checklist if item.get("completed"))
-
-    # Per-category breakdown
-    categories: dict[str, dict] = {}
-    for item in checklist:
-        cat = item.get("category", "General")
-        if cat not in categories:
-            categories[cat] = {"total": 0, "completed": 0}
-        categories[cat]["total"] += 1
-        if item.get("completed"):
-            categories[cat]["completed"] += 1
-
-    # Find overdue items
-    # TODO: Implement actual date comparison using deadline_date field
-    overdue_items = [
-        item["label"]
-        for item in checklist
-        if not item.get("completed") and item.get("deadline_date")
-    ]
-
-    return {
-        "case_id": case_id,
-        "status": case.get("status", "Unknown"),
-        "completion": {
-            "total": total,
-            "completed": completed,
-            "pct": round((completed / total) * 100) if total > 0 else 0,
-        },
-        "categories": categories,
-        "overdue_items": overdue_items,
-    }
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    progress = get_case_progress(case)
+    progress["case_id"] = case_id
+    progress["status"] = case.get("status", "Active")
+    return progress

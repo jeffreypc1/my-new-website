@@ -1,230 +1,552 @@
-"""Cover letter template engine for the Cover Letter Generator.
+"""Cover letter templates for the Cover Letter Generator.
 
-Templates define the standard sections and boilerplate language for
-immigration cover letters. A typical USCIS cover letter includes:
-
-- Date and addressee (filing office / service center)
-- RE: line identifying the client (name, A-number, receipt number)
-- Purpose of filing (what benefit is being sought)
-- List of enclosed forms and supporting documents
-- Brief summary or argument (case-type dependent)
-- Attorney information and signature block
-- Certificate of service (if applicable)
-
-Each case type has its own standard sections and required fields.
-Templates are stored as structured dicts and rendered by substituting
-case data into placeholder variables.
+Each case type has a structured template with standard enclosed documents,
+filing offices, required fields, and a render() function that produces
+the complete cover letter text from case data.
 """
 
 from __future__ import annotations
 
+from datetime import date
+
 
 # ---------------------------------------------------------------------------
-# Standard sections for each case type
+# Filing office address book
 # ---------------------------------------------------------------------------
 
-COVER_LETTER_TYPES: dict[str, dict] = {
-    "Asylum": {
-        "name": "Asylum Cover Letter",
-        "description": "Cover letter for affirmative or defensive asylum applications (I-589).",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "purpose_of_filing",
-            "enclosed_forms",          # I-589, supporting declarations, etc.
-            "enclosed_evidence",       # Country conditions, personal evidence
-            "legal_basis_summary",     # Brief reference to INA 208
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "a_number", "filing_office"],
-    },
-    "Family-Based": {
-        "name": "Family-Based Petition Cover Letter",
-        "description": "Cover letter for family-based immigrant petitions (I-130, I-485).",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "purpose_of_filing",
-            "petitioner_beneficiary_info",
-            "enclosed_forms",
-            "enclosed_evidence",
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "filing_office"],
-    },
-    "Employment-Based": {
-        "name": "Employment-Based Petition Cover Letter",
-        "description": "Cover letter for employment-based petitions (I-140, I-485).",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "purpose_of_filing",
-            "enclosed_forms",
-            "enclosed_evidence",
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "filing_office"],
-    },
-    "VAWA": {
-        "name": "VAWA Self-Petition Cover Letter",
-        "description": "Cover letter for Violence Against Women Act self-petitions (I-360).",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "purpose_of_filing",
-            "confidentiality_notice",  # VAWA confidentiality provisions
-            "enclosed_forms",
-            "enclosed_evidence",
-            "legal_basis_summary",
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "filing_office"],
-    },
-    "U-Visa": {
-        "name": "U-Visa Cover Letter",
-        "description": "Cover letter for U nonimmigrant status petitions (I-918).",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "purpose_of_filing",
-            "certification_reference",  # Law enforcement certification (I-918B)
-            "enclosed_forms",
-            "enclosed_evidence",
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "filing_office"],
-    },
-    "T-Visa": {
-        "name": "T-Visa Cover Letter",
-        "description": "Cover letter for T nonimmigrant status applications (I-914).",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "purpose_of_filing",
-            "certification_reference",
-            "enclosed_forms",
-            "enclosed_evidence",
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "filing_office"],
-    },
-    "Removal Defense": {
-        "name": "Removal Defense Cover Letter",
-        "description": "Cover letter for filings with immigration court in removal proceedings.",
-        "sections": [
-            "date_and_addressee",
-            "re_line",
-            "case_posture",            # Current status of removal proceedings
-            "purpose_of_filing",
-            "enclosed_forms",
-            "enclosed_evidence",
-            "certificate_of_service",  # Required for court filings
-            "attorney_signature",
-        ],
-        "required_fields": ["client_name", "a_number", "filing_office"],
-    },
+FILING_OFFICES: dict[str, str] = {
+    "USCIS Nebraska Service Center": (
+        "USCIS Nebraska Service Center\n"
+        "P.O. Box 87589\n"
+        "Lincoln, NE 68501-7589"
+    ),
+    "USCIS Texas Service Center": (
+        "USCIS Texas Service Center\n"
+        "6046 N. Belt Line Road, Suite 172\n"
+        "Irving, TX 75038-0001"
+    ),
+    "USCIS Vermont Service Center": (
+        "USCIS Vermont Service Center\n"
+        "75 Lower Welden Street\n"
+        "St. Albans, VT 05479-0001"
+    ),
+    "USCIS California Service Center": (
+        "USCIS California Service Center\n"
+        "P.O. Box 30111\n"
+        "Laguna Niguel, CA 92607-0111"
+    ),
+    "USCIS Potomac Service Center": (
+        "USCIS Potomac Service Center\n"
+        "131 South Dearborn, 3rd Floor\n"
+        "Chicago, IL 60603-5517"
+    ),
+    "USCIS Chicago Lockbox": (
+        "USCIS Chicago Lockbox\n"
+        "131 South Dearborn, 3rd Floor\n"
+        "Chicago, IL 60603-5517"
+    ),
+    "USCIS Dallas Lockbox": (
+        "USCIS Dallas Lockbox\n"
+        "P.O. Box 650888\n"
+        "Dallas, TX 75265"
+    ),
+    "USCIS Phoenix Lockbox": (
+        "USCIS Phoenix Lockbox\n"
+        "P.O. Box 21281\n"
+        "Phoenix, AZ 85036"
+    ),
+    "USCIS Lewisville Lockbox": (
+        "USCIS Lewisville Lockbox\n"
+        "2501 S. State Hwy 121 Business\n"
+        "Suite 400\n"
+        "Lewisville, TX 75067"
+    ),
+    "Immigration Court": (
+        "[Immigration Court Name]\n"
+        "[Court Address]\n"
+        "[City, State ZIP]"
+    ),
+    "Board of Immigration Appeals": (
+        "Board of Immigration Appeals\n"
+        "Clerk's Office\n"
+        "5107 Leesburg Pike, Suite 2000\n"
+        "Falls Church, VA 22041"
+    ),
+    "USCIS Vermont Service Center (VAWA Unit)": (
+        "USCIS Vermont Service Center\n"
+        "VAWA Unit\n"
+        "75 Lower Welden Street\n"
+        "St. Albans, VT 05479-0001"
+    ),
+    "Other": "",
 }
 
 
 # ---------------------------------------------------------------------------
-# Template loading and retrieval
+# Template definitions by case type
 # ---------------------------------------------------------------------------
 
-def load_templates() -> list[dict]:
-    """Load all available cover letter templates.
+TEMPLATES: dict[str, dict] = {
+    "Asylum (I-589)": {
+        "case_type": "Asylum (I-589)",
+        "form_numbers": ["I-589"],
+        "filing_offices": [
+            "USCIS Nebraska Service Center",
+            "USCIS Texas Service Center",
+            "USCIS Chicago Lockbox",
+            "Immigration Court",
+            "Board of Immigration Appeals",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Form I-589, Application for Asylum and for Withholding of Removal",
+            "Applicant's personal declaration",
+            "Country condition reports and supporting documentation",
+            "Supporting evidence (photographs, medical records, police reports)",
+            "Legal brief / memorandum of law in support of application",
+            "Form G-28, Notice of Entry of Appearance as Attorney",
+            "Copies of identity documents (passport, national ID)",
+            "Translations and translator certifications (if applicable)",
+        ],
+        "required_fields": ["client_name", "filing_office"],
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "Form I-589, Application for Asylum and for Withholding of Removal, "
+            "filed on behalf of the above-referenced applicant, {client_name}. "
+            "The applicant seeks asylum in the United States pursuant to Section "
+            "208 of the Immigration and Nationality Act (INA) and withholding of "
+            "removal pursuant to INA Section 241(b)(3) and the Convention Against "
+            "Torture."
+        ),
+        "closing_paragraph": (
+            "Should you require any additional information or documentation "
+            "regarding this application, please do not hesitate to contact our "
+            "office. We respectfully request that all correspondence regarding "
+            "this matter be directed to the undersigned attorney of record. "
+            "Thank you for your time and attention to this matter."
+        ),
+    },
+    "Family-Based (I-130/I-485)": {
+        "case_type": "Family-Based (I-130/I-485)",
+        "form_numbers": ["I-130", "I-485", "I-765", "I-131", "I-864"],
+        "filing_offices": [
+            "USCIS Chicago Lockbox",
+            "USCIS Dallas Lockbox",
+            "USCIS Phoenix Lockbox",
+            "USCIS Lewisville Lockbox",
+            "USCIS Nebraska Service Center",
+            "USCIS Texas Service Center",
+            "USCIS California Service Center",
+            "USCIS Potomac Service Center",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Form I-130, Petition for Alien Relative",
+            "Form I-485, Application to Register Permanent Residence or Adjust Status",
+            "Form I-765, Application for Employment Authorization",
+            "Form I-131, Application for Travel Document",
+            "Form I-864, Affidavit of Support Under Section 213A of the INA",
+            "Form G-28, Notice of Entry of Appearance as Attorney",
+            "Civil documents (birth certificates, marriage certificate)",
+            "Evidence of bona fide marriage (joint accounts, photos, lease agreements)",
+            "Passport-style photographs of petitioner and beneficiary",
+            "Copies of immigration documents (passport, I-94, prior approvals)",
+            "Certified English translations of foreign language documents",
+            "Form I-693, Report of Medical Examination and Vaccination Record (sealed)",
+        ],
+        "required_fields": ["client_name", "filing_office"],
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "Form I-130, Petition for Alien Relative, and Form I-485, Application "
+            "to Register Permanent Residence or Adjust Status, along with "
+            "accompanying applications, filed on behalf of the above-referenced "
+            "petitioner and beneficiary, {client_name}. The applicant seeks "
+            "adjustment of status to lawful permanent resident based on an "
+            "approved family-based immigrant petition."
+        ),
+        "closing_paragraph": (
+            "Should you require any additional information or documentation "
+            "regarding this filing, please do not hesitate to contact our "
+            "office. We respectfully request that all correspondence regarding "
+            "this matter be directed to the undersigned attorney of record. "
+            "Thank you for your time and consideration."
+        ),
+    },
+    "Employment-Based": {
+        "case_type": "Employment-Based",
+        "form_numbers": ["I-140", "I-485"],
+        "filing_offices": [
+            "USCIS Nebraska Service Center",
+            "USCIS Texas Service Center",
+            "USCIS Dallas Lockbox",
+            "USCIS Chicago Lockbox",
+            "USCIS Potomac Service Center",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Form I-140, Immigrant Petition for Alien Workers",
+            "Form I-485, Application to Register Permanent Residence or Adjust Status",
+            "Approved Labor Certification (PERM ETA Form 9089)",
+            "Employer support letter describing position and qualifications",
+            "Form G-28, Notice of Entry of Appearance as Attorney",
+            "Evidence of education (diplomas, transcripts, credential evaluations)",
+            "Evidence of employment experience (letters from prior employers)",
+            "Copies of immigration documents (passport, I-94, current visa status)",
+            "Form I-765, Application for Employment Authorization (if concurrent filing)",
+            "Form I-131, Application for Travel Document (if concurrent filing)",
+            "Passport-style photographs",
+        ],
+        "required_fields": ["client_name", "filing_office"],
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "Form I-140, Immigrant Petition for Alien Workers, and accompanying "
+            "applications filed on behalf of the above-referenced beneficiary, "
+            "{client_name}. The petitioning employer seeks classification of the "
+            "beneficiary under the applicable employment-based immigrant visa "
+            "category."
+        ),
+        "closing_paragraph": (
+            "Should you require any additional information or documentation "
+            "regarding this petition, please do not hesitate to contact our "
+            "office. We respectfully request that all correspondence regarding "
+            "this matter be directed to the undersigned attorney of record. "
+            "Thank you for your time and consideration."
+        ),
+    },
+    "VAWA (I-360)": {
+        "case_type": "VAWA (I-360)",
+        "form_numbers": ["I-360"],
+        "filing_offices": [
+            "USCIS Vermont Service Center (VAWA Unit)",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Form I-360, Petition for Amerasian, Widow(er), or Special Immigrant",
+            "Personal declaration of the self-petitioner",
+            "Evidence of qualifying relationship (marriage certificate, birth certificate)",
+            "Evidence of abuser's U.S. citizenship or lawful permanent residence",
+            "Evidence of battery or extreme cruelty (police reports, medical records, "
+            "restraining orders, photographs, affidavits)",
+            "Evidence of good faith marriage (joint accounts, photos, lease agreements, "
+            "affidavits of friends/family)",
+            "Evidence of good moral character",
+            "Evidence of residence in the United States",
+            "Form G-28, Notice of Entry of Appearance as Attorney",
+            "Copies of identity and immigration documents",
+            "Certified English translations of foreign language documents",
+        ],
+        "required_fields": ["client_name", "filing_office"],
+        "confidentiality_notice": (
+            "CONFIDENTIALITY NOTICE: This filing contains information protected "
+            "under the Violence Against Women Act (VAWA). Pursuant to 8 U.S.C. "
+            "Section 1367, the information contained in this petition is confidential "
+            "and may not be disclosed to any person or entity, including the "
+            "alleged abuser. Any unauthorized disclosure is a violation of "
+            "federal law. This petition and all supporting documentation must "
+            "be maintained in accordance with VAWA confidentiality provisions."
+        ),
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "Form I-360, Petition for Amerasian, Widow(er), or Special Immigrant, "
+            "filed as a self-petition under the Violence Against Women Act (VAWA) "
+            "on behalf of the above-referenced self-petitioner, {client_name}. "
+            "The self-petitioner has been subjected to battery and/or extreme "
+            "cruelty by a U.S. citizen or lawful permanent resident spouse and "
+            "seeks humanitarian protection under VAWA."
+        ),
+        "closing_paragraph": (
+            "We respectfully remind the Service of the confidentiality provisions "
+            "of 8 U.S.C. Section 1367 applicable to this filing. Should you "
+            "require any additional information or documentation, please do not "
+            "hesitate to contact our office. We respectfully request that all "
+            "correspondence be directed to the undersigned attorney of record. "
+            "Thank you for your attention to this matter."
+        ),
+    },
+    "U-Visa (I-918)": {
+        "case_type": "U-Visa (I-918)",
+        "form_numbers": ["I-918", "I-918 Supplement B"],
+        "filing_offices": [
+            "USCIS Vermont Service Center",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Form I-918, Petition for U Nonimmigrant Status",
+            "Form I-918 Supplement B, U Nonimmigrant Status Certification "
+            "(signed by certifying law enforcement agency)",
+            "Personal declaration of the petitioner",
+            "Evidence of qualifying criminal activity (police reports, court records, "
+            "protective orders)",
+            "Evidence of substantial physical or mental abuse suffered",
+            "Evidence of helpfulness to law enforcement",
+            "Form G-28, Notice of Entry of Appearance as Attorney",
+            "Copies of identity and immigration documents",
+            "Form I-192, Application for Advance Permission to Enter as Nonimmigrant "
+            "(waiver of inadmissibility, if applicable)",
+            "Certified English translations of foreign language documents",
+        ],
+        "required_fields": ["client_name", "filing_office"],
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "Form I-918, Petition for U Nonimmigrant Status, filed on behalf of "
+            "the above-referenced petitioner, {client_name}. The petitioner is a "
+            "victim of qualifying criminal activity who has suffered substantial "
+            "physical or mental abuse as a result of such criminal activity and "
+            "has been, is being, or is likely to be helpful to a federal, state, "
+            "or local law enforcement agency in the investigation or prosecution "
+            "of the qualifying criminal activity."
+        ),
+        "closing_paragraph": (
+            "Should you require any additional information or documentation "
+            "regarding this petition, please do not hesitate to contact our "
+            "office. We respectfully request that all correspondence regarding "
+            "this matter be directed to the undersigned attorney of record. "
+            "Thank you for your time and attention to this matter."
+        ),
+    },
+    "T-Visa (I-914)": {
+        "case_type": "T-Visa (I-914)",
+        "form_numbers": ["I-914"],
+        "filing_offices": [
+            "USCIS Vermont Service Center",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Form I-914, Application for T Nonimmigrant Status",
+            "Personal declaration of the applicant",
+            "Evidence of trafficking (police reports, court records, news articles)",
+            "Evidence of physical presence in the United States on account of trafficking",
+            "Evidence of compliance with reasonable requests for assistance from "
+            "law enforcement (or evidence of age under 18)",
+            "Evidence that applicant would suffer extreme hardship involving unusual "
+            "and severe harm upon removal",
+            "Form I-914 Supplement B, Declaration of Law Enforcement Officer "
+            "(if available)",
+            "Form G-28, Notice of Entry of Appearance as Attorney",
+            "Copies of identity and immigration documents",
+            "Form I-192, Application for Advance Permission to Enter as Nonimmigrant "
+            "(waiver of inadmissibility, if applicable)",
+            "Certified English translations of foreign language documents",
+        ],
+        "required_fields": ["client_name", "filing_office"],
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "Form I-914, Application for T Nonimmigrant Status, filed on behalf of "
+            "the above-referenced applicant, {client_name}. The applicant is a "
+            "victim of a severe form of trafficking in persons who is physically "
+            "present in the United States on account of such trafficking and has "
+            "complied with reasonable requests for assistance in the investigation "
+            "or prosecution of acts of trafficking."
+        ),
+        "closing_paragraph": (
+            "Should you require any additional information or documentation "
+            "regarding this application, please do not hesitate to contact our "
+            "office. We respectfully request that all correspondence regarding "
+            "this matter be directed to the undersigned attorney of record. "
+            "Thank you for your time and attention to this matter."
+        ),
+    },
+    "Removal Defense": {
+        "case_type": "Removal Defense",
+        "form_numbers": [],
+        "filing_offices": [
+            "Immigration Court",
+            "Board of Immigration Appeals",
+            "Other",
+        ],
+        "standard_enclosed_docs": [
+            "Respondent's application for relief (as applicable)",
+            "Respondent's personal declaration",
+            "Supporting evidence and documentation",
+            "Legal brief / memorandum of law in support of application",
+            "Country condition reports (if applicable)",
+            "Form EOIR-28, Notice of Entry of Appearance as Attorney",
+            "Certificate of Service",
+        ],
+        "required_fields": ["client_name", "a_number", "filing_office"],
+        "certificate_of_service": (
+            "I hereby certify that on {date}, a copy of the foregoing cover letter "
+            "and all enclosed documents was served upon the Office of the Chief "
+            "Counsel, U.S. Immigration and Customs Enforcement, by [ ] hand "
+            "delivery / [ ] first-class mail / [ ] electronic filing, at the "
+            "following address:\n\n"
+            "Office of the Chief Counsel\n"
+            "U.S. Immigration and Customs Enforcement\n"
+            "[Address]"
+        ),
+        "purpose_paragraph": (
+            "Please accept this letter as the cover letter for the enclosed "
+            "filing on behalf of the above-referenced respondent, {client_name}, "
+            "in removal proceedings before the Immigration Court. The respondent "
+            "respectfully submits the enclosed documents in support of the "
+            "pending application for relief from removal."
+        ),
+        "closing_paragraph": (
+            "The respondent respectfully requests that the Court consider the "
+            "enclosed documentation in support of the application for relief. "
+            "Should the Court require any additional information or documentation, "
+            "please do not hesitate to contact the undersigned attorney of record. "
+            "Thank you for the Court's time and attention to this matter."
+        ),
+    },
+}
 
-    Returns a list of template metadata dicts, one per case type defined
-    in COVER_LETTER_TYPES. Each dict includes: id, name, case_type,
-    description, and sections.
-
-    TODO: Support loading custom templates from a JSON file or database
-          so attorneys can create and save their own variants.
-    TODO: Support firm-specific boilerplate loaded from Box or local storage.
-    """
-    templates: list[dict] = []
-    for case_type, config in COVER_LETTER_TYPES.items():
-        templates.append({
-            "id": case_type.lower().replace("-", "_").replace(" ", "_"),
-            "name": config["name"],
-            "case_type": case_type,
-            "description": config["description"],
-            "sections": config["sections"],
-        })
-    return templates
+# Ordered list of case type names for UI selectors
+CASE_TYPES: list[str] = list(TEMPLATES.keys())
 
 
-def get_template(template_id: str) -> dict | None:
-    """Retrieve a single template by its ID.
+# ---------------------------------------------------------------------------
+# Template retrieval helpers
+# ---------------------------------------------------------------------------
 
-    Returns the full template dict or None if not found.
-
-    TODO: Add support for versioned templates.
-    """
-    templates = load_templates()
-    for t in templates:
-        if t["id"] == template_id:
-            return t
-    return None
+def get_template(case_type: str) -> dict | None:
+    """Retrieve a template by case type name."""
+    return TEMPLATES.get(case_type)
 
 
-def render_template(template_id: str, case_data: dict) -> dict:
-    """Render a cover letter by merging a template with case data.
+def get_filing_offices(case_type: str) -> list[str]:
+    """Return the list of filing offices for a case type."""
+    tpl = TEMPLATES.get(case_type)
+    if tpl is None:
+        return []
+    return tpl.get("filing_offices", [])
 
-    Produces the full cover letter text by iterating through each section
-    defined in the template and substituting case data values into
-    placeholder variables.
+
+def get_standard_docs(case_type: str) -> list[str]:
+    """Return the standard enclosed documents for a case type."""
+    tpl = TEMPLATES.get(case_type)
+    if tpl is None:
+        return []
+    return list(tpl.get("standard_enclosed_docs", []))
+
+
+def get_filing_office_address(office_name: str) -> str:
+    """Look up a filing office address by name."""
+    return FILING_OFFICES.get(office_name, office_name)
+
+
+# ---------------------------------------------------------------------------
+# Render a complete cover letter
+# ---------------------------------------------------------------------------
+
+def render_cover_letter(
+    case_type: str,
+    client_name: str,
+    a_number: str,
+    receipt_number: str,
+    filing_office: str,
+    enclosed_docs: list[dict[str, str]],
+    attorney_name: str,
+    bar_number: str,
+    firm_name: str,
+    firm_address: str,
+    custom_purpose: str = "",
+    custom_closing: str = "",
+) -> str:
+    """Render a complete cover letter as plain text.
 
     Args:
-        template_id: The template to render.
-        case_data: Dict of case fields (client_name, a_number, etc.).
+        case_type: The case type key (must match a TEMPLATES key).
+        client_name: Full name of the client.
+        a_number: Alien registration number.
+        receipt_number: USCIS receipt number.
+        filing_office: Name of the filing office.
+        enclosed_docs: List of dicts with 'name' and optional 'description'.
+        attorney_name: Name of the attorney.
+        bar_number: Attorney bar number.
+        firm_name: Law firm name.
+        firm_address: Firm mailing address.
+        custom_purpose: Override for the purpose paragraph.
+        custom_closing: Override for the closing paragraph.
 
     Returns:
-        Dict with keys:
-        - text: The full rendered letter as a string.
-        - sections: List of dicts with 'heading' and 'body' for each section.
-        - warnings: List of warning messages (e.g. missing required fields).
-
-    TODO: Implement actual rendering logic:
-        - Build date/addressee block from filing_office
-        - Build RE: line from client_name, a_number, receipt_number
-        - Enumerate enclosed_documents as a numbered list
-        - Insert case-type-specific boilerplate language
-        - Add attorney signature block
-    TODO: Support Jinja2 or similar templating for custom templates.
+        The full cover letter as a string.
     """
-    template = get_template(template_id)
-    warnings: list[str] = []
+    tpl = TEMPLATES.get(case_type)
+    if tpl is None:
+        return f"[Error: Unknown case type '{case_type}']"
 
-    if template is None:
-        return {
-            "text": "",
-            "sections": [],
-            "warnings": [f"Template '{template_id}' not found."],
-        }
+    today = date.today().strftime("%B %d, %Y")
+    office_addr = get_filing_office_address(filing_office)
 
-    # Check for missing required fields
-    config = COVER_LETTER_TYPES.get(template.get("case_type", ""), {})
-    required = config.get("required_fields", [])
-    for field in required:
-        if not case_data.get(field):
-            warnings.append(f"Missing required field: {field}")
-
-    # TODO: Replace this stub with actual section-by-section rendering
-    sections: list[dict] = []
     lines: list[str] = []
 
-    for section_key in template.get("sections", []):
-        heading = section_key.replace("_", " ").title()
-        body = f"[{heading} content will be generated here]"
-        sections.append({"heading": heading, "body": body})
-        lines.append(f"--- {heading} ---")
-        lines.append(body)
+    # Date
+    lines.append(today)
+    lines.append("")
+
+    # Filing office address
+    if office_addr:
+        lines.append(office_addr)
+    else:
+        lines.append(filing_office)
+    lines.append("")
+
+    # RE block
+    lines.append(f"RE: {client_name}")
+    if a_number:
+        lines.append(f"    A# {a_number}")
+    if receipt_number:
+        lines.append(f"    Receipt# {receipt_number}")
+    lines.append(f"    {case_type}")
+    lines.append("")
+
+    # Salutation
+    lines.append("Dear Sir or Madam:")
+    lines.append("")
+
+    # Confidentiality notice (VAWA)
+    if "confidentiality_notice" in tpl:
+        lines.append(tpl["confidentiality_notice"])
         lines.append("")
 
-    rendered_text = "\n".join(lines)
+    # Purpose paragraph
+    purpose = custom_purpose or tpl.get("purpose_paragraph", "")
+    if purpose:
+        lines.append(purpose.format(client_name=client_name))
+    lines.append("")
 
-    return {
-        "text": rendered_text,
-        "sections": sections,
-        "warnings": warnings,
-    }
+    # Enclosed documents
+    lines.append(
+        "Enclosed please find the following documents in support of the "
+        "above-referenced matter:"
+    )
+    lines.append("")
+    for idx, doc in enumerate(enclosed_docs, start=1):
+        name = doc.get("name", "")
+        desc = doc.get("description", "")
+        if desc:
+            lines.append(f"    {idx}. {name} -- {desc}")
+        else:
+            lines.append(f"    {idx}. {name}")
+    lines.append("")
+
+    # Closing paragraph
+    closing = custom_closing or tpl.get("closing_paragraph", "")
+    if closing:
+        lines.append(closing)
+    lines.append("")
+
+    # Signature block
+    lines.append("Respectfully submitted,")
+    lines.append("")
+    lines.append("____________________________")
+    if attorney_name:
+        lines.append(attorney_name)
+    if bar_number:
+        lines.append(f"Bar No. {bar_number}")
+    if firm_name:
+        lines.append(firm_name)
+    if firm_address:
+        for addr_line in firm_address.strip().splitlines():
+            lines.append(addr_line)
+
+    # Certificate of service (Removal Defense)
+    if "certificate_of_service" in tpl:
+        lines.append("")
+        lines.append("")
+        lines.append("CERTIFICATE OF SERVICE")
+        lines.append("")
+        lines.append(tpl["certificate_of_service"].format(date=today))
+
+    return "\n".join(lines)

@@ -256,9 +256,9 @@ tools = [
         "icon": "&#x2709;&#xFE0F;",  # envelope
         "name": "Cover Letters",
         "desc": "Generate and customize cover letters for filings and correspondence.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8504",
     },
     {
         "icon": "&#x1F4DC;",  # scroll
@@ -272,17 +272,17 @@ tools = [
         "icon": "&#x1F58A;&#xFE0F;",  # pen
         "name": "Declaration Drafter",
         "desc": "Guided templates for asylum declarations, personal statements, and witness affidavits.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8503",
     },
     {
         "icon": "&#x1F4C5;",  # calendar
         "name": "Timeline Builder",
         "desc": "Build visual chronologies of persecution events, travel history, and case milestones.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8505",
     },
     {
         "icon": "&#x2696;&#xFE0F;",  # scales of justice
@@ -304,9 +304,9 @@ tools = [
         "icon": "&#x1F4CB;",  # clipboard
         "name": "Case Checklist",
         "desc": "Track filing requirements, deadlines, and document checklists per case type.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8506",
     },
     {
         "icon": "&#x1F5C2;&#xFE0F;",  # file folder dividers

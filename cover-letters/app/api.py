@@ -1,14 +1,25 @@
 """FastAPI backend for the Cover Letter Generator tool.
 
-Part of the O'Brien Immigration Law tool suite. Provides endpoints for
-managing cover letter templates and generating formatted cover letters
-from case data for various immigration filing types.
+Provides endpoints for template listing, draft CRUD, cover letter
+generation, and Word document export.
 """
 
-from fastapi import FastAPI, Query
+from __future__ import annotations
+
+import io
+from datetime import date
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.templates import get_template, load_templates, render_template
+from app.drafts import delete_draft, list_drafts, load_draft, save_draft
+from app.templates import (
+    CASE_TYPES,
+    TEMPLATES,
+    get_filing_office_address,
+    render_cover_letter,
+)
 
 app = FastAPI(title="Cover Letter Generator API")
 
@@ -17,120 +28,171 @@ app = FastAPI(title="Cover Letter Generator API")
 # Request / response models
 # ---------------------------------------------------------------------------
 
-class CaseData(BaseModel):
-    """Input data for generating a cover letter."""
+class EnclosedDoc(BaseModel):
+    name: str
+    description: str = ""
 
+
+class GenerateRequest(BaseModel):
     case_type: str
     client_name: str
     a_number: str = ""
     receipt_number: str = ""
     filing_office: str = ""
-    enclosed_documents: list[str] = []
-    # TODO: Add additional fields as needed per case type:
-    #   - priority_date, petitioner_name, beneficiary_name
-    #   - court_date, judge_name (removal defense)
-    #   - certification_date (U-Visa / T-Visa)
+    enclosed_docs: list[EnclosedDoc] = []
+    attorney_name: str = ""
+    bar_number: str = ""
+    firm_name: str = "O'Brien Immigration Law"
+    firm_address: str = ""
 
 
-class GenerateRequest(BaseModel):
-    """Request body for cover letter generation."""
-
-    template_id: str
-    case_data: CaseData
-
-
-class ExportRequest(BaseModel):
-    """Request body for DOCX export."""
-
-    template_id: str
-    case_data: CaseData
-    # TODO: Add formatting options (letterhead toggle, font size, etc.)
+class DraftSaveRequest(BaseModel):
+    draft_id: str
+    case_type: str
+    client: dict
+    attorney: dict
+    filing_office: str = ""
+    enclosed_docs: list[dict] = []
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Template endpoints
 # ---------------------------------------------------------------------------
 
 @app.get("/api/templates")
-def list_templates(
-    case_type: str | None = Query(None, description="Filter templates by case type"),
-) -> list[dict]:
-    """List all available cover letter templates.
-
-    Returns a list of template metadata dicts with keys: id, name,
-    case_type, description, and sections. Optionally filter by case type
-    (e.g. "Asylum", "VAWA").
-
-    TODO: Load templates from persistent storage (JSON files or database).
-    """
-    templates = load_templates()
-    if case_type:
-        templates = [t for t in templates if t.get("case_type") == case_type]
-    return templates
+def api_list_templates() -> list[dict]:
+    """List all available case types and their template metadata."""
+    result = []
+    for case_type in CASE_TYPES:
+        tpl = TEMPLATES[case_type]
+        result.append({
+            "case_type": case_type,
+            "form_numbers": tpl.get("form_numbers", []),
+            "filing_offices": tpl.get("filing_offices", []),
+            "standard_enclosed_docs": tpl.get("standard_enclosed_docs", []),
+            "required_fields": tpl.get("required_fields", []),
+        })
+    return result
 
 
-@app.get("/api/templates/{template_id}")
-def get_template_by_id(template_id: str) -> dict:
-    """Retrieve a specific cover letter template by its ID.
+@app.get("/api/templates/{case_type}")
+def api_get_template(case_type: str) -> dict:
+    """Retrieve a single template by case type."""
+    tpl = TEMPLATES.get(case_type)
+    if tpl is None:
+        raise HTTPException(status_code=404, detail=f"Template '{case_type}' not found")
+    return tpl
 
-    Returns the full template including its section definitions, placeholder
-    fields, and default language blocks. Returns 404 if not found.
 
-    TODO: Return proper HTTPException on missing template.
-    """
-    template = get_template(template_id)
-    if template is None:
-        return {"error": "Template not found"}
-    return template
+# ---------------------------------------------------------------------------
+# Draft endpoints
+# ---------------------------------------------------------------------------
 
+@app.get("/api/drafts")
+def api_list_drafts() -> list[dict]:
+    """List all saved drafts."""
+    return list_drafts()
+
+
+@app.get("/api/drafts/{draft_id}")
+def api_get_draft(draft_id: str) -> dict:
+    """Load a specific draft."""
+    draft = load_draft(draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return draft
+
+
+@app.post("/api/drafts")
+def api_save_draft(req: DraftSaveRequest) -> dict:
+    """Save or update a draft."""
+    return save_draft(
+        draft_id=req.draft_id,
+        case_type=req.case_type,
+        client=req.client,
+        attorney=req.attorney,
+        filing_office=req.filing_office,
+        enclosed_docs=req.enclosed_docs,
+    )
+
+
+@app.delete("/api/drafts/{draft_id}")
+def api_delete_draft(draft_id: str) -> dict:
+    """Delete a draft."""
+    if delete_draft(draft_id):
+        return {"status": "deleted", "id": draft_id}
+    raise HTTPException(status_code=404, detail="Draft not found")
+
+
+# ---------------------------------------------------------------------------
+# Generation endpoints
+# ---------------------------------------------------------------------------
 
 @app.post("/api/generate")
-def generate_cover_letter(req: GenerateRequest) -> dict:
-    """Generate a cover letter from a template and case data.
-
-    Merges the selected template with the provided case data to produce
-    a complete cover letter. The result includes:
-    - rendered_text: the full letter as plain text
-    - sections: list of rendered section dicts (heading + body)
-    - warnings: any missing fields or validation issues
-
-    Cover letters typically include:
-    - Date and filing office address
-    - RE: line with client name, A-number, receipt number
-    - Purpose of filing
-    - List of enclosed forms and supporting documents
-    - Attorney signature block
-
-    TODO: Implement actual template rendering with variable substitution.
-    """
-    rendered = render_template(req.template_id, req.case_data.model_dump())
-    return {
-        "rendered_text": rendered.get("text", ""),
-        "sections": rendered.get("sections", []),
-        "warnings": rendered.get("warnings", []),
-    }
+def api_generate(req: GenerateRequest) -> dict:
+    """Generate a cover letter and return as plain text."""
+    docs = [{"name": d.name, "description": d.description} for d in req.enclosed_docs]
+    text = render_cover_letter(
+        case_type=req.case_type,
+        client_name=req.client_name,
+        a_number=req.a_number,
+        receipt_number=req.receipt_number,
+        filing_office=req.filing_office,
+        enclosed_docs=docs,
+        attorney_name=req.attorney_name,
+        bar_number=req.bar_number,
+        firm_name=req.firm_name,
+        firm_address=req.firm_address,
+    )
+    return {"text": text}
 
 
 @app.post("/api/export/docx")
-def export_to_docx(req: ExportRequest) -> dict:
-    """Export a generated cover letter to Word (.docx) format.
+def api_export_docx(req: GenerateRequest) -> StreamingResponse:
+    """Generate a cover letter and return as a .docx file."""
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Inches, Pt
 
-    Creates a formatted Word document using python-docx with firm
-    letterhead, proper formatting, and the rendered cover letter content.
-    The document can then be uploaded to Google Docs via the Google
-    Drive API for collaborative editing.
+    docs = [{"name": d.name, "description": d.description} for d in req.enclosed_docs]
+    text = render_cover_letter(
+        case_type=req.case_type,
+        client_name=req.client_name,
+        a_number=req.a_number,
+        receipt_number=req.receipt_number,
+        filing_office=req.filing_office,
+        enclosed_docs=docs,
+        attorney_name=req.attorney_name,
+        bar_number=req.bar_number,
+        firm_name=req.firm_name,
+        firm_address=req.firm_address,
+    )
 
-    Returns:
-    - download_url: temporary URL to download the generated .docx file
-    - filename: suggested filename for the download
+    doc = Document()
+    for section in doc.sections:
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
 
-    TODO: Implement DOCX generation with python-docx.
-    TODO: Add optional Google Docs upload (similar to country-reports-tool).
-    """
-    # TODO: Generate the DOCX file and return a download link
-    rendered = render_template(req.template_id, req.case_data.model_dump())
-    return {
-        "status": "not_implemented",
-        "filename": f"cover_letter_{req.case_data.client_name}.docx",
-        "rendered_text": rendered.get("text", ""),
-    }
+    def _run(para, txt, size=12, bold=False):
+        r = para.add_run(txt)
+        r.font.name = "Times New Roman"
+        r.font.size = Pt(size)
+        r.bold = bold
+        return r
+
+    for line in text.split("\n"):
+        p = doc.add_paragraph()
+        _run(p, line)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+
+    safe_name = req.client_name.replace(" ", "_") if req.client_name else "draft"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="Cover_Letter_{safe_name}.docx"'},
+    )
