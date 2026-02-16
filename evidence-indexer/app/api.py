@@ -2,69 +2,49 @@
 
 Provides endpoints for managing evidence packages, document metadata,
 exhibit ordering, and exporting exhibit indexes and compiled bundles.
+Uses JSON file persistence via the evidence module.
 
 Part of the O'Brien Immigration Law tool suite.
 """
 
-import io
 from typing import Any
 
-from fastapi import FastAPI, Query, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.evidence import (
     DOCUMENT_CATEGORIES,
     EvidenceItem,
+    _docs_to_items,
+    add_document,
     auto_assign_letters,
+    delete_case,
     generate_index,
     generate_index_docx,
+    list_cases,
+    load_case,
+    new_case_id,
+    remove_document,
     reorder_exhibits,
+    save_case,
+    update_document,
 )
 
 app = FastAPI(title="Evidence Indexer API")
 
 
 # ---------------------------------------------------------------------------
-# In-memory storage for evidence packages
-# TODO: Persist to JSON files in data/ directory (same pattern as case-checklist).
-# ---------------------------------------------------------------------------
-
-_cases: dict[str, dict[str, Any]] = {}
-
-
-def _get_or_create_case(case_id: str) -> dict[str, Any]:
-    """Get or create an in-memory case record."""
-    if case_id not in _cases:
-        _cases[case_id] = {
-            "case_id": case_id,
-            "client_name": "",
-            "documents": [],
-            "next_doc_id": 1,
-        }
-    return _cases[case_id]
-
-
-def _docs_to_items(case: dict) -> list[EvidenceItem]:
-    """Convert stored document dicts to EvidenceItem objects."""
-    return [
-        EvidenceItem(
-            exhibit_letter=d.get("exhibit_letter", ""),
-            title=d.get("title", ""),
-            category=d.get("category", "Other"),
-            page_count=d.get("page_count", 0),
-            date_added=d.get("date_added", ""),
-            box_url=d.get("box_url", ""),
-            description=d.get("description", ""),
-            doc_id=d.get("doc_id", ""),
-        )
-        for d in case.get("documents", [])
-    ]
-
-
-# ---------------------------------------------------------------------------
 # Request / response models
 # ---------------------------------------------------------------------------
+
+
+class CreateCaseRequest(BaseModel):
+    """Payload for creating a new case."""
+
+    client_name: str = ""
+    a_number: str = ""
+
 
 class AddDocumentRequest(BaseModel):
     """Payload for adding a document to an evidence package."""
@@ -84,6 +64,7 @@ class UpdateDocumentRequest(BaseModel):
     category: str | None = None
     description: str | None = None
     page_count: int | None = None
+    box_url: str | None = None
 
 
 class ReorderRequest(BaseModel):
@@ -96,100 +77,110 @@ class ReorderRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/categories")
-def list_categories() -> list[str]:
+def get_categories() -> list[str]:
     """List standard immigration evidence document categories."""
     return DOCUMENT_CATEGORIES
 
 
 @app.get("/api/cases")
-def list_cases() -> list[dict[str, Any]]:
+def get_cases() -> list[dict[str, Any]]:
     """List all cases with evidence packages.
 
-    Returns each case with its document count and exhibit letter range.
-
-    TODO: Persist cases to disk and load on startup.
-    TODO: Add pagination and filtering.
+    Returns each case with its document count and last-updated timestamp.
     """
-    result = []
-    for case_id, case in _cases.items():
-        docs = case.get("documents", [])
-        result.append({
-            "case_id": case_id,
-            "client_name": case.get("client_name", ""),
-            "document_count": len(docs),
-        })
-    return result
+    return list_cases()
+
+
+@app.post("/api/cases")
+def create_case(request: CreateCaseRequest) -> dict[str, Any]:
+    """Create a new empty evidence case.
+
+    Returns the newly created case data.
+    """
+    case_id = new_case_id()
+    return save_case(
+        case_id=case_id,
+        client_name=request.client_name,
+        a_number=request.a_number,
+        documents=[],
+    )
+
+
+@app.get("/api/cases/{case_id}")
+def get_case(case_id: str) -> dict[str, Any]:
+    """Get a single case with all its documents."""
+    case_data = load_case(case_id)
+    if case_data is None:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    return case_data
+
+
+@app.delete("/api/cases/{case_id}")
+def delete_case_endpoint(case_id: str) -> dict[str, str]:
+    """Delete a case and its data."""
+    if not delete_case(case_id):
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    return {"status": "deleted", "case_id": case_id}
 
 
 @app.post("/api/cases/{case_id}/documents")
-def add_document(case_id: str, request: AddDocumentRequest) -> dict[str, Any]:
+def add_document_endpoint(case_id: str, request: AddDocumentRequest) -> dict[str, Any]:
     """Add a document to an evidence package.
 
     The document is assigned the next sequential exhibit letter automatically.
-    The letter can be overridden later via the update endpoint.
-
-    TODO: Support file upload (PDF) and auto-extract page count.
-    TODO: Integrate with Box API for file references.
     """
-    from datetime import date as _date
-
-    case = _get_or_create_case(case_id)
-    doc_id = str(case["next_doc_id"])
-    case["next_doc_id"] += 1
-
-    doc = {
-        "doc_id": doc_id,
-        "title": request.title,
-        "category": request.category,
-        "description": request.description,
-        "page_count": request.page_count,
-        "box_url": request.box_url,
-        "date_added": _date.today().isoformat(),
-        "exhibit_letter": "",  # Will be auto-assigned
-    }
-    case["documents"].append(doc)
-
-    # Auto-assign exhibit letters to all documents
-    items = _docs_to_items(case)
-    items = auto_assign_letters(items)
-    for i, item in enumerate(items):
-        case["documents"][i]["exhibit_letter"] = item.exhibit_letter
-
+    doc = add_document(
+        case_id=case_id,
+        title=request.title,
+        category=request.category,
+        description=request.description,
+        page_count=request.page_count,
+        box_url=request.box_url,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
     return doc
 
 
 @app.put("/api/cases/{case_id}/documents/{doc_id}")
-def update_document(
+def update_document_endpoint(
     case_id: str,
     doc_id: str,
     request: UpdateDocumentRequest,
 ) -> dict[str, Any]:
-    """Update document metadata (label, exhibit letter, category, etc.).
-
-    TODO: Re-validate exhibit letter uniqueness.
-    TODO: Add audit logging for document changes.
-    """
-    case = _cases.get(case_id)
-    if case is None:
-        return {"error": f"Case not found: {case_id}"}
-
-    doc = next((d for d in case["documents"] if d["doc_id"] == doc_id), None)
-    if doc is None:
-        return {"error": f"Document not found: {doc_id}"}
-
+    """Update document metadata (title, exhibit letter, category, etc.)."""
+    updates = {}
     if request.title is not None:
-        doc["title"] = request.title
-    if request.exhibit_letter is not None:
-        doc["exhibit_letter"] = request.exhibit_letter
+        updates["title"] = request.title
     if request.category is not None:
-        doc["category"] = request.category
+        updates["category"] = request.category
     if request.description is not None:
-        doc["description"] = request.description
+        updates["description"] = request.description
     if request.page_count is not None:
-        doc["page_count"] = request.page_count
+        updates["page_count"] = request.page_count
+    if request.box_url is not None:
+        updates["box_url"] = request.box_url
 
+    doc = update_document(case_id, doc_id, **updates)
+    if doc is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Case or document not found: {case_id}/{doc_id}",
+        )
     return doc
+
+
+@app.delete("/api/cases/{case_id}/documents/{doc_id}")
+def remove_document_endpoint(case_id: str, doc_id: str) -> dict[str, str]:
+    """Remove a document from an evidence package and reassign exhibit letters."""
+    if not remove_document(case_id, doc_id):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Case or document not found: {case_id}/{doc_id}",
+        )
+    return {"status": "removed", "doc_id": doc_id}
 
 
 @app.post("/api/cases/{case_id}/reorder")
@@ -198,30 +189,33 @@ def reorder_documents(case_id: str, request: ReorderRequest) -> list[dict[str, A
 
     Accepts a list of current indices in the desired new order.
     All exhibit letters are reassigned sequentially after reordering.
-
-    TODO: Validate new_order indices.
-    TODO: Support drag-and-drop single-item moves.
     """
-    case = _cases.get(case_id)
-    if case is None:
-        return [{"error": f"Case not found: {case_id}"}]
+    case_data = load_case(case_id)
+    if case_data is None:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
 
-    items = _docs_to_items(case)
+    documents = case_data.get("documents", [])
+    items = _docs_to_items(documents)
     reordered = reorder_exhibits(items, request.new_order)
 
-    # Update the case documents in the new order
-    old_docs = case["documents"]
+    # Build new documents list in the reordered sequence
     new_docs = []
     for idx in request.new_order:
-        if 0 <= idx < len(old_docs):
-            new_docs.append(old_docs[idx])
+        if 0 <= idx < len(documents):
+            new_docs.append(documents[idx])
 
     # Apply new exhibit letters
     for i, item in enumerate(reordered):
         if i < len(new_docs):
             new_docs[i]["exhibit_letter"] = item.exhibit_letter
 
-    case["documents"] = new_docs
+    save_case(
+        case_id=case_data["id"],
+        client_name=case_data.get("client_name", ""),
+        a_number=case_data.get("a_number", ""),
+        documents=new_docs,
+    )
+
     return new_docs
 
 
@@ -232,13 +226,20 @@ def export_index(case_id: str) -> Response:
     Generates a formatted table listing all exhibits with their letters,
     titles, categories, and page counts.
     """
-    case = _cases.get(case_id)
-    if case is None:
-        return Response(content=b"", status_code=404)
+    case_data = load_case(case_id)
+    if case_data is None:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
 
-    items = _docs_to_items(case)
-    client_name = case.get("client_name", "")
+    documents = case_data.get("documents", [])
+    items = _docs_to_items(documents)
+    client_name = case_data.get("client_name", "")
     docx_bytes = generate_index_docx(items, case_name=client_name)
+
+    if not docx_bytes:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not generate Word document. Is python-docx installed?",
+        )
 
     filename = f"exhibit_index_{case_id}.docx"
     return Response(
@@ -256,28 +257,18 @@ def export_bundle(case_id: str) -> dict[str, Any]:
     downloads PDFs from Box, inserts tab divider pages between exhibits,
     merges into a single PDF, and adds Bates-style page numbers.
 
-    TODO: Implement PDF compilation using pymupdf.
-    TODO: Share exhibit_compiler code with country-reports-tool.
-    TODO: Support configurable tab page styling.
-    TODO: Return the compiled PDF bytes as a download response.
+    Not yet implemented -- returns a status message.
     """
-    case = _cases.get(case_id)
-    if case is None:
-        return {"error": f"Case not found: {case_id}"}
+    case_data = load_case(case_id)
+    if case_data is None:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
 
-    items = _docs_to_items(case)
-
-    # TODO: For each item with a box_url:
-    #   1. Download the PDF from Box
-    #   2. Insert a tab divider page (TAB A, TAB B, etc.)
-    #   3. Append the document pages
-    #   4. Add Bates-style page numbers to content pages
-    #   5. Return the merged PDF bytes
+    documents = case_data.get("documents", [])
 
     return {
         "status": "not_implemented",
         "case_id": case_id,
-        "document_count": len(items),
+        "document_count": len(documents),
         "message": (
             "Bundle compilation is not yet implemented. "
             "Will follow the same pattern as country-reports-tool exhibit compiler."

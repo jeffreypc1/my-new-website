@@ -1,12 +1,20 @@
 """Form field definitions for the Forms Assistant tool.
 
 Provides structured metadata for USCIS immigration forms including field
-definitions, section layouts, validation rules, and filing requirements.
+definitions, section layouts, validation rules, filing requirements,
+and draft persistence.
 
 Part of the O'Brien Immigration Law tool suite.
 """
 
+from __future__ import annotations
+
+import json
+import re
+import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 
 
 @dataclass
@@ -184,7 +192,7 @@ I589_FIELDS: dict[str, list[FormField]] = {
         ),
         FormField(
             name="phone_number",
-            field_type="phone",
+            field_type="text",
             required=False,
             section="Part A",
             help_text="Your telephone number.",
@@ -318,7 +326,491 @@ I589_FIELDS: dict[str, list[FormField]] = {
 
 
 # ---------------------------------------------------------------------------
-# Validation stubs
+# I-130 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I130_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Relationship": [
+        FormField(
+            name="relationship_type",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select the relationship of the beneficiary to the petitioner.",
+            options=["Spouse", "Parent", "Child"],
+        ),
+        FormField(
+            name="petitioner_status",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select the petitioner's immigration status.",
+            options=["U.S. Citizen", "Lawful Permanent Resident"],
+        ),
+    ],
+    "Part 2: Information About You (Petitioner)": [
+        FormField(
+            name="petitioner_name",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Full legal name of the petitioner.",
+        ),
+        FormField(
+            name="petitioner_dob",
+            field_type="date",
+            required=True,
+            section="Part 2",
+            help_text="Petitioner's date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="petitioner_country_of_birth",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Country where the petitioner was born.",
+        ),
+        FormField(
+            name="petitioner_ssn",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Petitioner's Social Security Number (9 digits).",
+            validation_rules={"pattern": r"^\d{3}-?\d{2}-?\d{4}$"},
+        ),
+        FormField(
+            name="petitioner_address",
+            field_type="textarea",
+            required=True,
+            section="Part 2",
+            help_text="Petitioner's current mailing address.",
+        ),
+        FormField(
+            name="petitioner_phone",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Petitioner's daytime telephone number.",
+        ),
+    ],
+    "Part 3: Information About Beneficiary": [],
+    "Part 4: Additional Information About Beneficiary": [],
+    "Part 5: Other Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-485 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I485_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="applicant_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your full legal name as it appears on your passport or travel document.",
+        ),
+        FormField(
+            name="applicant_dob",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="applicant_country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="applicant_nationality",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your country of nationality or citizenship.",
+        ),
+        FormField(
+            name="applicant_ssn",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your Social Security Number, if any.",
+            validation_rules={"pattern": r"^\d{3}-?\d{2}-?\d{4}$"},
+        ),
+        FormField(
+            name="applicant_a_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your Alien Registration Number (A-Number), if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="applicant_uscis_account",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your USCIS Online Account Number, if any.",
+        ),
+        FormField(
+            name="applicant_gender",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select your gender.",
+            options=["Male", "Female"],
+        ),
+        FormField(
+            name="applicant_marital_status",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Your current marital status.",
+            options=["Single", "Married", "Divorced", "Widowed"],
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Your current physical address in the United States.",
+        ),
+    ],
+    "Part 2: Application Type": [],
+    "Part 3: Processing Information": [],
+    "Part 4: Accommodations for Individuals with Disabilities": [],
+    "Part 5: Additional Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-765 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I765_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Reason for Applying": [
+        FormField(
+            name="eligibility_category",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select the eligibility category for your EAD application.",
+            options=[
+                "(c)(8) - Asylum Applicant",
+                "(c)(9) - Adjustment Pending",
+                "(a)(12) - TPS",
+                "(c)(10) - Withholding Applicant",
+            ],
+        ),
+        FormField(
+            name="application_type",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select whether this is an initial, renewal, or replacement application.",
+            options=["Initial", "Renewal", "Replacement"],
+        ),
+    ],
+    "Part 2: Information About You": [
+        FormField(
+            name="applicant_name",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Your full legal name.",
+        ),
+        FormField(
+            name="applicant_dob",
+            field_type="date",
+            required=True,
+            section="Part 2",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Your Alien Registration Number (A-Number), if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="ssn",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Your Social Security Number, if any.",
+            validation_rules={"pattern": r"^\d{3}-?\d{2}-?\d{4}$"},
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 2",
+            help_text="Your current mailing address in the United States.",
+        ),
+    ],
+    "Part 3: Applicant's Statement": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-131 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I131_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="applicant_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your full legal name.",
+        ),
+        FormField(
+            name="applicant_dob",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="country_of_birth",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your Alien Registration Number (A-Number), if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Your current mailing address in the United States.",
+        ),
+    ],
+    "Part 2: Application Type": [
+        FormField(
+            name="document_type",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select the type of travel document you are requesting.",
+            options=["Advance Parole", "Reentry Permit", "Refugee Travel Document"],
+        ),
+        FormField(
+            name="purpose_of_trip",
+            field_type="textarea",
+            required=False,
+            section="Part 2",
+            help_text="Describe the purpose of your proposed travel.",
+        ),
+        FormField(
+            name="countries_to_visit",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="List the countries you plan to visit.",
+        ),
+        FormField(
+            name="departure_date",
+            field_type="date",
+            required=False,
+            section="Part 2",
+            help_text="Planned departure date (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="return_date",
+            field_type="date",
+            required=False,
+            section="Part 2",
+            help_text="Planned return date (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+    ],
+    "Part 3: Processing Information": [],
+    "Part 4: Information About Your Proposed Travel": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-290B detailed field definitions
+# ---------------------------------------------------------------------------
+
+I290B_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="appellant_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Full legal name of the appellant or movant.",
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your Alien Registration Number (A-Number), if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="receipt_number",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="The receipt number from the decision being appealed or reconsidered.",
+        ),
+    ],
+    "Part 2: Information About the Appeal or Motion": [
+        FormField(
+            name="filing_type",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select whether you are filing an appeal, motion to reopen, or motion to reconsider.",
+            options=["Appeal", "Motion to Reopen", "Motion to Reconsider"],
+        ),
+        FormField(
+            name="basis_summary",
+            field_type="textarea",
+            required=True,
+            section="Part 2",
+            help_text=(
+                "Summarize the basis for your appeal or motion. Include the specific "
+                "errors of law or fact you believe were made in the original decision."
+            ),
+        ),
+    ],
+    "Part 3: Basis for the Appeal or Motion": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-360 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I360_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="petitioner_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Full legal name of the self-petitioner.",
+        ),
+        FormField(
+            name="petitioner_dob",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="country_of_birth",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your Alien Registration Number (A-Number), if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+    ],
+    "Part 2: Classification Sought": [
+        FormField(
+            name="classification",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select the classification you are seeking.",
+            options=[
+                "VAWA Self-Petitioner - Spouse",
+                "VAWA Self-Petitioner - Child",
+                "Special Immigrant Juvenile",
+            ],
+        ),
+        FormField(
+            name="abuser_name",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Full legal name of the abuser (if VAWA self-petition).",
+        ),
+        FormField(
+            name="abuser_status",
+            field_type="select",
+            required=False,
+            section="Part 2",
+            help_text="Immigration status of the abuser.",
+            options=["U.S. Citizen", "Lawful Permanent Resident"],
+        ),
+    ],
+    "Part 3: Additional Information": [],
+    "Part 4: Processing Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# Field lookup: form_id -> fields dict
+# ---------------------------------------------------------------------------
+
+FIELD_DEFINITIONS: dict[str, dict[str, list[FormField]]] = {
+    "I-589": I589_FIELDS,
+    "I-130": I130_FIELDS,
+    "I-485": I485_FIELDS,
+    "I-765": I765_FIELDS,
+    "I-131": I131_FIELDS,
+    "I-290B": I290B_FIELDS,
+    "I-360": I360_FIELDS,
+}
+
+
+def get_fields_for_form(form_id: str) -> dict[str, list[FormField]]:
+    """Return the field definitions dict for a given form_id.
+
+    Args:
+        form_id: The form identifier (e.g. "I-589").
+
+    Returns:
+        Dict mapping section names to lists of FormField objects.
+        Empty dict if the form is not recognized.
+    """
+    return FIELD_DEFINITIONS.get(form_id, {})
+
+
+# ---------------------------------------------------------------------------
+# Validation
 # ---------------------------------------------------------------------------
 
 def validate_field(field_def: FormField, value: str) -> list[str]:
@@ -330,20 +822,37 @@ def validate_field(field_def: FormField, value: str) -> list[str]:
 
     Returns:
         List of validation error messages. Empty list means valid.
-
-    TODO: Implement pattern matching validation (regex).
-    TODO: Implement date format validation.
-    TODO: Implement required field checking.
-    TODO: Implement field-type-specific validation (phone, email, etc.).
     """
     errors: list[str] = []
 
-    if field_def.required and not value.strip():
-        errors.append(f"{field_def.name} is required.")
+    # Required check
+    if field_def.required and not str(value).strip():
+        label = field_def.name.replace("_", " ").title()
+        errors.append(f"{label} is required.")
 
-    # TODO: Check validation_rules patterns
-    # TODO: Validate date formats
-    # TODO: Validate select fields against allowed options
+    # Skip further validation if empty and not required
+    if not str(value).strip():
+        return errors
+
+    # Pattern validation
+    pattern = field_def.validation_rules.get("pattern")
+    if pattern:
+        if not re.match(pattern, str(value).strip()):
+            label = field_def.name.replace("_", " ").title()
+            errors.append(f"{label} format is invalid.")
+
+    # Date format validation
+    date_format = field_def.validation_rules.get("format")
+    if date_format == "mm/dd/yyyy" and str(value).strip():
+        if not re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", str(value).strip()):
+            label = field_def.name.replace("_", " ").title()
+            errors.append(f"{label} must be in mm/dd/yyyy format.")
+
+    # Select field validation
+    if field_def.field_type == "select" and field_def.options and str(value).strip():
+        if str(value).strip() not in field_def.options:
+            label = field_def.name.replace("_", " ").title()
+            errors.append(f"{label} must be one of: {', '.join(field_def.options)}.")
 
     return errors
 
@@ -365,20 +874,13 @@ def check_completeness(
         - required_missing: list of required fields without values
         - completion_pct: percentage complete (0-100)
         - errors: list of validation errors
-
-    TODO: Implement full field-by-field validation.
-    TODO: Cross-reference field dependencies (e.g. spouse fields only
-          required if marital_status is "Married").
     """
     form_meta = SUPPORTED_FORMS.get(form_id)
     if not form_meta:
         return {"error": f"Unknown form: {form_id}"}
 
-    # Use I-589 fields if available; otherwise return basic info
-    if form_id == "I-589":
-        all_fields = [f for section_fields in I589_FIELDS.values() for f in section_fields]
-    else:
-        # TODO: Add detailed field definitions for other forms
+    fields_dict = get_fields_for_form(form_id)
+    if not fields_dict:
         return {
             "total_fields": 0,
             "completed_fields": 0,
@@ -387,12 +889,31 @@ def check_completeness(
             "errors": ["Detailed field definitions not yet available for this form."],
         }
 
+    all_fields = [f for section_fields in fields_dict.values() for f in section_fields]
+
+    if not all_fields:
+        return {
+            "total_fields": 0,
+            "completed_fields": 0,
+            "required_missing": [],
+            "completion_pct": 0,
+            "errors": [],
+        }
+
     total = len(all_fields)
-    completed = sum(1 for f in all_fields if data.get(f.name, "").strip())
+    completed = sum(1 for f in all_fields if str(data.get(f.name, "")).strip())
     required_missing = [
         f.name for f in all_fields
-        if f.required and not data.get(f.name, "").strip()
+        if f.required and not str(data.get(f.name, "")).strip()
     ]
+
+    # Collect all validation errors
+    all_errors: list[str] = []
+    for f in all_fields:
+        val = str(data.get(f.name, ""))
+        errs = validate_field(f, val)
+        all_errors.extend(errs)
+
     pct = round((completed / total) * 100) if total > 0 else 0
 
     return {
@@ -400,5 +921,102 @@ def check_completeness(
         "completed_fields": completed,
         "required_missing": required_missing,
         "completion_pct": pct,
-        "errors": [],
+        "errors": all_errors,
     }
+
+
+# ---------------------------------------------------------------------------
+# Draft persistence
+# ---------------------------------------------------------------------------
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "drafts"
+
+
+def _ensure_dir() -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def new_draft_id() -> str:
+    """Generate a short unique ID for a new draft."""
+    return str(uuid.uuid4())[:8]
+
+
+def save_form_draft(
+    draft_id: str,
+    form_id: str,
+    form_data: dict[str, str],
+    current_section: int,
+) -> dict:
+    """Save or update a form draft. Returns the saved draft dict."""
+    _ensure_dir()
+    path = DATA_DIR / f"{draft_id}.json"
+
+    now = datetime.now().isoformat()
+    created_at = now
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text())
+            created_at = existing.get("created_at", now)
+        except Exception:
+            pass
+
+    # Derive a display name from form data
+    name_field = ""
+    for key in ("full_name", "applicant_name", "petitioner_name", "appellant_name"):
+        if form_data.get(key, "").strip():
+            name_field = form_data[key].strip()
+            break
+
+    draft = {
+        "id": draft_id,
+        "form_id": form_id,
+        "form_data": form_data,
+        "current_section": current_section,
+        "client_name": name_field or "Unnamed",
+        "created_at": created_at,
+        "updated_at": now,
+    }
+    path.write_text(json.dumps(draft, indent=2))
+    return draft
+
+
+def load_form_draft(draft_id: str) -> dict | None:
+    """Load a draft by ID. Returns None if not found."""
+    path = DATA_DIR / f"{draft_id}.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return None
+
+
+def list_form_drafts() -> list[dict]:
+    """Return summary info for all saved form drafts, newest first."""
+    _ensure_dir()
+    drafts = []
+    for p in DATA_DIR.glob("*.json"):
+        try:
+            d = json.loads(p.read_text())
+            drafts.append(
+                {
+                    "id": d["id"],
+                    "form_id": d.get("form_id", ""),
+                    "client_name": d.get("client_name", "Unnamed"),
+                    "updated_at": d.get("updated_at", ""),
+                    "created_at": d.get("created_at", ""),
+                }
+            )
+        except Exception:
+            continue
+    drafts.sort(key=lambda d: d["updated_at"], reverse=True)
+    return drafts
+
+
+def delete_form_draft(draft_id: str) -> bool:
+    """Delete a draft. Returns True if the file existed."""
+    path = DATA_DIR / f"{draft_id}.json"
+    if path.exists():
+        path.unlink()
+        return True
+    return False

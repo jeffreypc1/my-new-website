@@ -9,7 +9,6 @@ packages = ["app"]
 name = "brief-builder"
 version = "0.1.0"
 description = "Brief Builder - Draft and assemble immigration law briefs with standard legal frameworks"
-readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115.0",

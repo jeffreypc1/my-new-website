@@ -1,2 +1,6 @@
 country-reports-tool/
 __pycache__/
+.DS_Store
+*.lock
+data/
+.venv/

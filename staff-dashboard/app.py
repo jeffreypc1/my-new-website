@@ -264,9 +264,9 @@ tools = [
         "icon": "&#x1F4DC;",  # scroll
         "name": "Brief Builder",
         "desc": "Assemble legal briefs with templated sections, arguments, and citations.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8507",
     },
     {
         "icon": "&#x1F58A;&#xFE0F;",  # pen
@@ -288,17 +288,17 @@ tools = [
         "icon": "&#x2696;&#xFE0F;",  # scales of justice
         "name": "Legal Research",
         "desc": "Search case law, BIA decisions, and circuit court opinions for relevant precedent.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8508",
     },
     {
         "icon": "&#x1F4DD;",  # memo
         "name": "Forms Assistant",
         "desc": "Prepare and review I-589, I-130, I-485, and other immigration forms.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8509",
     },
     {
         "icon": "&#x1F4CB;",  # clipboard
@@ -312,9 +312,9 @@ tools = [
         "icon": "&#x1F5C2;&#xFE0F;",  # file folder dividers
         "name": "Evidence Indexer",
         "desc": "Organize and label supporting documents with auto-generated exhibit lists.",
-        "status": "planned",
-        "status_label": "Coming Soon",
-        "url": None,
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8510",
     },
 ]
 

@@ -2,21 +2,27 @@
 
 Provides endpoints for listing supported immigration forms, retrieving
 field definitions and requirements, validating form data completeness,
-and exporting completed form data.
+exporting completed form data, and managing drafts.
 
 Part of the O'Brien Immigration Law tool suite.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.form_definitions import (
-    I589_FIELDS,
     SUPPORTED_FORMS,
-    FormField,
     check_completeness,
+    delete_form_draft,
+    get_fields_for_form,
+    list_form_drafts,
+    load_form_draft,
+    new_draft_id,
+    save_form_draft,
     validate_field,
 )
 
@@ -38,6 +44,14 @@ class ExportRequest(BaseModel):
 
     data: dict[str, str]
     format: str = "json"  # "json", "csv", "pdf"
+
+
+class SaveDraftRequest(BaseModel):
+    """Payload for saving a form draft."""
+
+    form_id: str
+    form_data: dict[str, str]
+    current_section: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -70,35 +84,27 @@ def get_form_fields(form_id: str) -> dict[str, Any]:
 
     Returns all fields organized by section, including field type,
     required status, help text, and validation rules.
-
-    TODO: Add detailed field definitions for forms beyond I-589.
-    TODO: Return proper 404 HTTPException when form not found.
     """
     form_meta = SUPPORTED_FORMS.get(form_id)
     if form_meta is None:
-        return {"error": f"Unknown form: {form_id}"}
+        raise HTTPException(status_code=404, detail=f"Unknown form: {form_id}")
 
-    # Build field definitions per section
-    if form_id == "I-589":
-        sections = {}
-        for section_name, fields in I589_FIELDS.items():
-            sections[section_name] = [
-                {
-                    "name": f.name,
-                    "field_type": f.field_type,
-                    "required": f.required,
-                    "help_text": f.help_text,
-                    "options": f.options,
-                    "validation_rules": f.validation_rules,
-                }
-                for f in fields
-            ]
-    else:
-        # Placeholder for forms without detailed field definitions
-        sections = {
-            section: []
-            for section in form_meta["sections"]
-        }
+    fields_dict = get_fields_for_form(form_id)
+    sections: dict[str, list[dict]] = {}
+
+    for section_name in form_meta["sections"]:
+        field_list = fields_dict.get(section_name, [])
+        sections[section_name] = [
+            {
+                "name": f.name,
+                "field_type": f.field_type,
+                "required": f.required,
+                "help_text": f.help_text,
+                "options": f.options,
+                "validation_rules": f.validation_rules,
+            }
+            for f in field_list
+        ]
 
     return {
         "form_id": form_id,
@@ -115,22 +121,21 @@ def validate_form(form_id: str, request: ValidateRequest) -> dict[str, Any]:
     including required field checks, format validation, and type checking.
 
     Returns a completeness report with any validation errors.
-
-    TODO: Implement cross-field validation (e.g. spouse fields required
-          only if marital status is "Married").
-    TODO: Add section-level validation summaries.
     """
+    if form_id not in SUPPORTED_FORMS:
+        raise HTTPException(status_code=404, detail=f"Unknown form: {form_id}")
+
     completeness = check_completeness(form_id, request.data)
 
-    # Run individual field validations for I-589
+    # Run individual field validations
     field_errors: dict[str, list[str]] = {}
-    if form_id == "I-589":
-        for _section_name, fields in I589_FIELDS.items():
-            for field_def in fields:
-                value = request.data.get(field_def.name, "")
-                errors = validate_field(field_def, value)
-                if errors:
-                    field_errors[field_def.name] = errors
+    fields_dict = get_fields_for_form(form_id)
+    for _section_name, fields in fields_dict.items():
+        for field_def in fields:
+            value = request.data.get(field_def.name, "")
+            errors = validate_field(field_def, value)
+            if errors:
+                field_errors[field_def.name] = errors
 
     return {
         "form_id": form_id,
@@ -144,15 +149,10 @@ def export_form(form_id: str, request: ExportRequest) -> dict[str, Any]:
     """Export completed form data in the requested format.
 
     Supports JSON export (default). PDF and CSV export are planned.
-
-    TODO: Implement PDF export using python-docx or reportlab.
-    TODO: Implement CSV export for spreadsheet compatibility.
-    TODO: Map exported data to actual USCIS form field positions.
-    TODO: Pre-fill official PDF forms using pdfrw or PyPDF.
     """
     form_meta = SUPPORTED_FORMS.get(form_id)
     if form_meta is None:
-        return {"error": f"Unknown form: {form_id}"}
+        raise HTTPException(status_code=404, detail=f"Unknown form: {form_id}")
 
     if request.format == "json":
         return {
@@ -162,9 +162,53 @@ def export_form(form_id: str, request: ExportRequest) -> dict[str, Any]:
             "format": "json",
         }
 
-    # TODO: Implement other export formats
-    return {
-        "form_id": form_id,
-        "status": "not_implemented",
-        "message": f"Export format '{request.format}' is not yet supported.",
-    }
+    raise HTTPException(
+        status_code=400,
+        detail=f"Export format '{request.format}' is not yet supported.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Draft endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/drafts")
+def list_drafts() -> list[dict[str, Any]]:
+    """List all saved form drafts, newest first."""
+    return list_form_drafts()
+
+
+@app.post("/api/drafts")
+def create_draft(request: SaveDraftRequest) -> dict[str, Any]:
+    """Create a new form draft."""
+    draft_id = new_draft_id()
+    draft = save_form_draft(draft_id, request.form_id, request.form_data, request.current_section)
+    return draft
+
+
+@app.get("/api/drafts/{draft_id}")
+def get_draft(draft_id: str) -> dict[str, Any]:
+    """Load a specific draft by ID."""
+    draft = load_form_draft(draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    return draft
+
+
+@app.put("/api/drafts/{draft_id}")
+def update_draft(draft_id: str, request: SaveDraftRequest) -> dict[str, Any]:
+    """Update an existing draft."""
+    existing = load_form_draft(draft_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    draft = save_form_draft(draft_id, request.form_id, request.form_data, request.current_section)
+    return draft
+
+
+@app.delete("/api/drafts/{draft_id}")
+def remove_draft(draft_id: str) -> dict[str, str]:
+    """Delete a draft by ID."""
+    deleted = delete_form_draft(draft_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Draft not found: {draft_id}")
+    return {"status": "deleted", "draft_id": draft_id}
