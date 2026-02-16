@@ -22,8 +22,29 @@ _[Define: What types of cover letters? What inputs does staff provide? Are there
 ### 3. Brief Builder (Planned)
 _[Define: What types of briefs? Asylum merits briefs? Motions? What's the current manual workflow? What parts are repetitive and could be templated or assisted?]_
 
-### 4. [Future Tool]
-_[Add tools as needs arise]_
+### 4. Declaration Drafter (Planned)
+Guided templates for asylum declarations, personal statements, and witness affidavits. Walk the attorney/client through narrative structure.
+_[Define: What declaration types are most common? What's the typical structure? How much is templated vs. freeform?]_
+
+### 5. Timeline Builder (Planned)
+Build visual chronologies of persecution events, travel history, and case milestones for asylum and other cases.
+_[Define: What format do judges/officers expect? Should this export to Word/PDF? What data points per event?]_
+
+### 6. Legal Research (Planned)
+Search case law, BIA decisions, and circuit court opinions for relevant precedent.
+_[Define: What databases/sources? Westlaw/LexisNexis integration or independent index? Focus on immigration-specific decisions?]_
+
+### 7. Forms Assistant (Planned)
+Prepare and review I-589, I-130, I-485, and other immigration forms.
+_[Define: Which forms are highest priority? Auto-fill from case data? Validation/completeness checks?]_
+
+### 8. Case Checklist (Planned)
+Track filing requirements, deadlines, and document checklists per case type.
+_[Define: What case types? What are the typical checklist items? Integration with calendar/reminders?]_
+
+### 9. Evidence Indexer (Planned)
+Organize and label supporting documents with auto-generated exhibit lists.
+_[Define: How are documents currently organized? PDF labeling? Auto-numbering? Integration with exhibit compiler from Country Reports?]_
 
 ## Infrastructure
 

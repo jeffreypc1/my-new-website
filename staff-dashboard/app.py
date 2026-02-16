@@ -269,11 +269,51 @@ tools = [
         "url": None,
     },
     {
+        "icon": "&#x1F58A;&#xFE0F;",  # pen
+        "name": "Declaration Drafter",
+        "desc": "Guided templates for asylum declarations, personal statements, and witness affidavits.",
+        "status": "planned",
+        "status_label": "Coming Soon",
+        "url": None,
+    },
+    {
+        "icon": "&#x1F4C5;",  # calendar
+        "name": "Timeline Builder",
+        "desc": "Build visual chronologies of persecution events, travel history, and case milestones.",
+        "status": "planned",
+        "status_label": "Coming Soon",
+        "url": None,
+    },
+    {
+        "icon": "&#x2696;&#xFE0F;",  # scales of justice
+        "name": "Legal Research",
+        "desc": "Search case law, BIA decisions, and circuit court opinions for relevant precedent.",
+        "status": "planned",
+        "status_label": "Coming Soon",
+        "url": None,
+    },
+    {
+        "icon": "&#x1F4DD;",  # memo
+        "name": "Forms Assistant",
+        "desc": "Prepare and review I-589, I-130, I-485, and other immigration forms.",
+        "status": "planned",
+        "status_label": "Coming Soon",
+        "url": None,
+    },
+    {
         "icon": "&#x1F4CB;",  # clipboard
         "name": "Case Checklist",
         "desc": "Track filing requirements, deadlines, and document checklists per case type.",
-        "status": "idea",
-        "status_label": "Idea",
+        "status": "planned",
+        "status_label": "Coming Soon",
+        "url": None,
+    },
+    {
+        "icon": "&#x1F5C2;&#xFE0F;",  # file folder dividers
+        "name": "Evidence Indexer",
+        "desc": "Organize and label supporting documents with auto-generated exhibit lists.",
+        "status": "planned",
+        "status_label": "Coming Soon",
         "url": None,
     },
 ]
