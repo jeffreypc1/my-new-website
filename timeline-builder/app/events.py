@@ -19,9 +19,13 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data" / "timelines"
 
+import sys as _sys
+_sys.path.insert(0, str(BASE_DIR.parent))
+from shared.config_store import get_config_value
+
 # ── Category definitions ─────────────────────────────────────────────────────
 
-EVENT_CATEGORIES: dict[str, str] = {
+_DEFAULT_EVENT_CATEGORIES: dict[str, str] = {
     "Persecution": "#dc3545",   # red — incidents of harm, threats, discrimination
     "Travel": "#0d6efd",        # blue — departure, transit countries, arrival in US
     "Legal": "#198754",         # green — applications filed, RFEs, hearings, decisions
@@ -29,13 +33,17 @@ EVENT_CATEGORIES: dict[str, str] = {
     "Medical": "#6f42c1",       # purple — injuries, treatment, psychological evaluations
 }
 
-CATEGORY_DESCRIPTIONS: dict[str, str] = {
+_DEFAULT_CATEGORY_DESCRIPTIONS: dict[str, str] = {
     "Persecution": "Incidents of harm, threats, discrimination",
     "Travel": "Departure, transit countries, arrival in US",
     "Legal": "Applications filed, RFEs, hearings, decisions",
     "Personal": "Marriage, children, employment, education",
     "Medical": "Injuries, treatment, psychological evaluations",
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+EVENT_CATEGORIES: dict[str, str] = get_config_value("timeline-builder", "event_categories", _DEFAULT_EVENT_CATEGORIES)
+CATEGORY_DESCRIPTIONS: dict[str, str] = get_config_value("timeline-builder", "category_descriptions", _DEFAULT_CATEGORY_DESCRIPTIONS)
 
 # ── Data model ───────────────────────────────────────────────────────────────
 

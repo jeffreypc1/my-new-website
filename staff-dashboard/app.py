@@ -448,6 +448,15 @@ tools = [
         "status_label": "Live",
         "url": "http://localhost:8512",
     },
+    {
+        "icon": "&#x2699;&#xFE0F;",  # gear
+        "name": "Admin Panel",
+        "desc": "Configure tool settings, templates, and lists.",
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8513",
+        "no_client_param": True,
+    },
 ]
 
 # ── Render tool cards ──
@@ -457,7 +466,7 @@ cards_html = '<div class="tool-grid">'
 for tool in tools:
     status_class = f"status-{tool['status']}"
     url = tool["url"]
-    if url and _active_cid:
+    if url and _active_cid and not tool.get("no_client_param"):
         url = f"{url}?client_id={_active_cid}"
     if url:
         cards_html += f"""

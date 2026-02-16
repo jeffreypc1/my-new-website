@@ -520,6 +520,13 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+    st.divider()
+    try:
+        from shared.box_documents import render_box_sidebar
+        render_box_sidebar()
+    except ImportError:
+        pass
+
 
 # -- Handle save (after sidebar renders) -------------------------------------
 

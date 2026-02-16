@@ -546,6 +546,13 @@ with st.sidebar:
             help="Required for interpreter certification block",
         )
 
+    st.divider()
+    try:
+        from shared.box_documents import render_box_sidebar
+        render_box_sidebar()
+    except ImportError:
+        pass
+
 
 # ── Handle save (after sidebar widgets render so we can read values) ─────
 

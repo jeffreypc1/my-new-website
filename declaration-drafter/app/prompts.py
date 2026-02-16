@@ -6,11 +6,17 @@ helps junior attorneys know what to ask and what makes a strong answer.
 
 from __future__ import annotations
 
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
+
 # ---------------------------------------------------------------------------
 # Declaration type constants
 # ---------------------------------------------------------------------------
 
-DECLARATION_TYPES: list[str] = [
+_DEFAULT_DECLARATION_TYPES: list[str] = [
     "Asylum Declaration",
     "Witness Declaration",
     "Expert Declaration",
@@ -26,7 +32,7 @@ DECLARATION_TYPES: list[str] = [
 #   - "questions"     : list of dicts with "id", "label", and "tip"
 # ---------------------------------------------------------------------------
 
-DECLARATION_PROMPTS: dict[str, list[dict]] = {
+_DEFAULT_DECLARATION_PROMPTS: dict[str, list[dict]] = {
     # -----------------------------------------------------------------------
     # Asylum Declaration (I-589 Supplement)
     # -----------------------------------------------------------------------
@@ -580,6 +586,10 @@ DECLARATION_PROMPTS: dict[str, list[dict]] = {
         },
     ],
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+DECLARATION_TYPES: list[str] = get_config_value("declaration-drafter", "declaration_types", _DEFAULT_DECLARATION_TYPES)
+DECLARATION_PROMPTS: dict[str, list[dict]] = get_config_value("declaration-drafter", "prompts", _DEFAULT_DECLARATION_PROMPTS)
 
 
 # ---------------------------------------------------------------------------

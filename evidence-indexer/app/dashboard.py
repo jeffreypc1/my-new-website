@@ -497,6 +497,13 @@ with st.sidebar:
         else:
             st.warning("Create or load a case first.")
 
+    st.divider()
+    try:
+        from shared.box_documents import render_box_sidebar
+        render_box_sidebar()
+    except ImportError:
+        pass
+
 # -- Execute deferred sidebar actions (after sidebar renders) -----------------
 
 if _save_clicked:

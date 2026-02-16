@@ -18,6 +18,7 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
 from shared.salesforce_client import (
     get_client,
     get_field_metadata,
@@ -167,8 +168,14 @@ FIELD_GROUPS = {
     ],
     "Case Information": [
         "CaseNumber__c", "Client_Case_Strategy__c", "Nexus__c", "PSG__c",
+        "Box_Folder_ID__c",
     ],
 }
+
+# Filter out fields disabled in Admin Panel
+_disabled_fields: list[str] = get_config_value("salesforce", "disabled_fields", [])
+for group in FIELD_GROUPS:
+    FIELD_GROUPS[group] = [f for f in FIELD_GROUPS[group] if f not in _disabled_fields]
 
 all_field_names = []
 for fields in FIELD_GROUPS.values():
@@ -266,7 +273,9 @@ with push_cols[1]:
             st.error("No Salesforce record ID found. Pull the client again.")
         else:
             try:
-                update_client(sf_id, edited_values)
+                # Remove any disabled fields as safety net
+                push_values = {k: v for k, v in edited_values.items() if k not in _disabled_fields}
+                update_client(sf_id, push_values)
                 # Refresh the record
                 record = get_client(sf.get("Customer_ID__c", ""))
                 if record:
@@ -276,10 +285,196 @@ with push_cols[1]:
                 for key in list(st.session_state.keys()):
                     if key.startswith("fld_"):
                         del st.session_state[key]
-                st.success(f"Updated {len(edited_values)} field(s) in Salesforce")
+                st.success(f"Updated {len(push_values)} field(s) in Salesforce")
                 st.rerun()
             except Exception as e:
                 st.error(f"Push failed: {e}")
 
     if not edited_values:
         st.caption("Edit any field above, then push changes back to Salesforce.")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BOX DOCUMENT BROWSER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import base64
+import time
+
+_box_available = True
+try:
+    from shared.box_client import list_folder_items, get_file_content, get_folder_name, parse_folder_id
+except ImportError:
+    _box_available = False
+
+st.markdown("---")
+st.subheader("Client Documents (Box)")
+
+_folder_id_raw = sf.get("Box_Folder_ID__c", "") or ""
+_folder_id = parse_folder_id(_folder_id_raw) if (_box_available and _folder_id_raw) else _folder_id_raw
+
+if not _folder_id:
+    st.info("No Box folder linked. Enter the Box Folder ID in the **Box_Folder_ID__c** field above and push to Salesforce.")
+elif not _box_available:
+    st.warning("Box SDK not installed. Run `uv sync` in the client-info directory.")
+else:
+    # Reset nav stack when client changes
+    if st.session_state.get("_box_client_id") != sf.get("Customer_ID__c"):
+        st.session_state._box_nav_stack = [_folder_id]
+        st.session_state._box_client_id = sf.get("Customer_ID__c")
+        st.session_state.pop("_box_cache", None)
+
+    if "_box_nav_stack" not in st.session_state:
+        st.session_state._box_nav_stack = [_folder_id]
+
+    current_folder_id = st.session_state._box_nav_stack[-1]
+
+    # Back button + folder name
+    nav_cols = st.columns([1, 5])
+    with nav_cols[0]:
+        if len(st.session_state._box_nav_stack) > 1:
+            if st.button("Back", key="box_back"):
+                st.session_state._box_nav_stack.pop()
+                st.session_state.pop("_box_cache", None)
+                st.rerun()
+    with nav_cols[1]:
+        try:
+            folder_name = get_folder_name(current_folder_id)
+            st.caption(f"Folder: **{folder_name}** (`{current_folder_id}`)")
+        except Exception:
+            st.caption(f"Folder ID: `{current_folder_id}`")
+
+    # Cached folder listing (60-second TTL)
+    cache = st.session_state.get("_box_cache", {})
+    cache_key = current_folder_id
+    cached = cache.get(cache_key)
+    if cached and (time.time() - cached["ts"] < 60):
+        items = cached["items"]
+    else:
+        try:
+            with st.spinner("Loading folder contents..."):
+                items = list_folder_items(current_folder_id)
+            cache[cache_key] = {"items": items, "ts": time.time()}
+            st.session_state._box_cache = cache
+        except Exception as e:
+            st.error(f"Could not load Box folder: {e}")
+            items = []
+
+    if not items:
+        if not st.session_state.get("_box_load_error"):
+            st.caption("This folder is empty.")
+    else:
+        def _type_badge(item: dict) -> str:
+            ext = item.get("extension", "").lower()
+            if item["type"] == "folder":
+                return "FOLDER"
+            if ext in ("pdf",):
+                return "PDF"
+            if ext in ("doc", "docx"):
+                return "DOC"
+            if ext in ("jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"):
+                return "IMG"
+            if ext in ("xls", "xlsx", "csv"):
+                return "XLS"
+            if ext in ("txt", "rtf", "md"):
+                return "TXT"
+            return "FILE"
+
+        def _human_size(size: int) -> str:
+            if size < 1024:
+                return f"{size} B"
+            if size < 1024 * 1024:
+                return f"{size / 1024:.0f} KB"
+            return f"{size / (1024 * 1024):.1f} MB"
+
+        for idx, item in enumerate(items):
+            badge = _type_badge(item)
+            cols = st.columns([1, 4, 1, 2, 2])
+            with cols[0]:
+                st.markdown(f"**`{badge}`**")
+            with cols[1]:
+                st.markdown(item["name"])
+            with cols[2]:
+                if item["type"] != "folder":
+                    st.caption(_human_size(item["size"]))
+            with cols[3]:
+                if item["type"] != "folder":
+                    modified = item.get("modified_at", "")
+                    if modified and len(modified) >= 10:
+                        st.caption(modified[:10])
+            with cols[4]:
+                if item["type"] == "folder":
+                    if st.button("Open", key=f"box_open_{item['id']}_{idx}"):
+                        st.session_state._box_nav_stack.append(item["id"])
+                        st.session_state.pop("_box_cache", None)
+                        st.rerun()
+                else:
+                    btn_cols = st.columns(2)
+                    with btn_cols[0]:
+                        if st.button("Preview", key=f"box_preview_{item['id']}_{idx}"):
+                            st.session_state._box_preview_item = item
+                    with btn_cols[1]:
+                        st.markdown(
+                            f'<a href="{item["web_url"]}" target="_blank" '
+                            f'style="font-size:0.8rem;color:#0066CC;text-decoration:none;">Open in Box</a>',
+                            unsafe_allow_html=True,
+                        )
+
+    # Preview dialog
+    @st.dialog("Document Preview", width="large")
+    def _show_preview(item: dict):
+        st.markdown(f"**{item['name']}**")
+        ext = item.get("extension", "").lower()
+        size = item.get("size", 0)
+        content = None
+
+        if size > 10 * 1024 * 1024:
+            st.warning("File is larger than 10 MB. Download to view.")
+        elif ext == "pdf":
+            try:
+                with st.spinner("Loading PDF..."):
+                    content = get_file_content(item["id"])
+                b64 = base64.b64encode(content).decode()
+                st.markdown(
+                    f'<iframe src="data:application/pdf;base64,{b64}" '
+                    f'width="100%" height="600px" type="application/pdf"></iframe>',
+                    unsafe_allow_html=True,
+                )
+            except Exception as e:
+                st.error(f"Could not load PDF: {e}")
+        elif ext in ("jpg", "jpeg", "png", "gif", "bmp", "webp"):
+            try:
+                with st.spinner("Loading image..."):
+                    content = get_file_content(item["id"])
+                st.image(content, caption=item["name"])
+            except Exception as e:
+                st.error(f"Could not load image: {e}")
+        elif ext in ("txt", "md", "rtf", "csv"):
+            try:
+                with st.spinner("Loading file..."):
+                    content = get_file_content(item["id"])
+                st.code(content.decode("utf-8", errors="replace"), language=None)
+            except Exception as e:
+                st.error(f"Could not load file: {e}")
+        else:
+            st.info("Inline preview not available for this file type.")
+
+        # Download button for any file
+        try:
+            if content is None:
+                with st.spinner("Preparing download..."):
+                    content = get_file_content(item["id"])
+            st.download_button(
+                "Download",
+                data=content,
+                file_name=item["name"],
+                use_container_width=True,
+            )
+        except Exception:
+            st.markdown(
+                f'[Download from Box]({item["web_url"]})',
+                unsafe_allow_html=True,
+            )
+
+    if st.session_state.get("_box_preview_item"):
+        _show_preview(st.session_state._box_preview_item)
+        st.session_state._box_preview_item = None

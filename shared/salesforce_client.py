@@ -223,4 +223,5 @@ DEFAULT_FIELDS = [
     "Client_Case_Strategy__c",
     "Nexus__c",
     "PSG__c",
+    "Box_Folder_ID__c",
 ]

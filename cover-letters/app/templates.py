@@ -7,14 +7,19 @@ the complete cover letter text from case data.
 
 from __future__ import annotations
 
+import sys as _sys
 from datetime import date
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
 
 
 # ---------------------------------------------------------------------------
 # Filing office address book
 # ---------------------------------------------------------------------------
 
-FILING_OFFICES: dict[str, str] = {
+_DEFAULT_FILING_OFFICES: dict[str, str] = {
     "USCIS Nebraska Service Center": (
         "USCIS Nebraska Service Center\n"
         "P.O. Box 87589\n"
@@ -86,7 +91,7 @@ FILING_OFFICES: dict[str, str] = {
 # Template definitions by case type
 # ---------------------------------------------------------------------------
 
-TEMPLATES: dict[str, dict] = {
+_DEFAULT_TEMPLATES: dict[str, dict] = {
     "Asylum (I-589)": {
         "case_type": "Asylum (I-589)",
         "form_numbers": ["I-589"],
@@ -390,6 +395,10 @@ TEMPLATES: dict[str, dict] = {
         ),
     },
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+FILING_OFFICES: dict[str, str] = get_config_value("cover-letters", "filing_offices", _DEFAULT_FILING_OFFICES)
+TEMPLATES: dict[str, dict] = get_config_value("cover-letters", "templates", _DEFAULT_TEMPLATES)
 
 # Ordered list of case type names for UI selectors
 CASE_TYPES: list[str] = list(TEMPLATES.keys())

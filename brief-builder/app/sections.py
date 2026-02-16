@@ -7,14 +7,19 @@ references for immigration proceedings.
 Part of the O'Brien Immigration Law tool suite.
 """
 
+import sys as _sys
+from pathlib import Path as _Path
 from typing import Any
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
 
 
 # ---------------------------------------------------------------------------
 # Standard sections per brief type
 # ---------------------------------------------------------------------------
 
-BRIEF_TYPES: dict[str, list[dict[str, Any]]] = {
+_DEFAULT_BRIEF_TYPES: dict[str, list[dict[str, Any]]] = {
     "Asylum Merits Brief": [
         {
             "key": "introduction",
@@ -201,7 +206,7 @@ BRIEF_TYPES: dict[str, list[dict[str, Any]]] = {
 # Standard legal boilerplate (statutes, regulations, and case law)
 # ---------------------------------------------------------------------------
 
-_BOILERPLATE: dict[str, dict[str, str]] = {
+_DEFAULT_BOILERPLATE: dict[str, dict[str, str]] = {
     "Asylum Merits Brief": {
         "asylum_standard": (
             "To establish eligibility for asylum, an applicant must demonstrate that "
@@ -308,6 +313,10 @@ _BOILERPLATE: dict[str, dict[str, str]] = {
         ),
     },
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+BRIEF_TYPES: dict[str, list[dict[str, Any]]] = get_config_value("brief-builder", "brief_types", _DEFAULT_BRIEF_TYPES)
+_BOILERPLATE: dict[str, dict[str, str]] = get_config_value("brief-builder", "boilerplate", _DEFAULT_BOILERPLATE)
 
 
 # ---------------------------------------------------------------------------

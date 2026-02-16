@@ -17,6 +17,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
+
 
 # ---------------------------------------------------------------------------
 # Storage
@@ -49,7 +53,7 @@ class EvidenceItem:
 # Standard immigration evidence categories
 # ---------------------------------------------------------------------------
 
-DOCUMENT_CATEGORIES: list[str] = [
+_DEFAULT_DOCUMENT_CATEGORIES: list[str] = [
     "Identity Documents",
     "Country Conditions",
     "Medical/Psychological",
@@ -63,6 +67,9 @@ DOCUMENT_CATEGORIES: list[str] = [
     "Legal Documents",
     "Other",
 ]
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+DOCUMENT_CATEGORIES: list[str] = get_config_value("evidence-indexer", "document_categories", _DEFAULT_DOCUMENT_CATEGORIES)
 
 
 # ---------------------------------------------------------------------------

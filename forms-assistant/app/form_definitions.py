@@ -16,6 +16,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
+
 
 @dataclass
 class FormField:
@@ -34,7 +38,7 @@ class FormField:
 # Supported forms with metadata
 # ---------------------------------------------------------------------------
 
-SUPPORTED_FORMS: dict[str, dict] = {
+_DEFAULT_SUPPORTED_FORMS: dict[str, dict] = {
     "I-589": {
         "title": "Application for Asylum and for Withholding of Removal",
         "agency": "USCIS / EOIR",
@@ -122,6 +126,9 @@ SUPPORTED_FORMS: dict[str, dict] = {
         ],
     },
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+SUPPORTED_FORMS: dict[str, dict] = get_config_value("forms-assistant", "supported_forms", _DEFAULT_SUPPORTED_FORMS)
 
 
 # ---------------------------------------------------------------------------
@@ -804,8 +811,12 @@ def get_fields_for_form(form_id: str) -> dict[str, list[FormField]]:
 
     Returns:
         Dict mapping section names to lists of FormField objects.
-        Empty dict if the form is not recognized.
+        Empty dict if the form is not recognized or deleted.
     """
+    # Check if this form has been deleted
+    deleted = get_config_value("forms-assistant", "deleted_forms", [])
+    if form_id in deleted:
+        return {}
     return FIELD_DEFINITIONS.get(form_id, {})
 
 

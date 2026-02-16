@@ -138,27 +138,43 @@ Search and organize immigration case law, BIA decisions, and circuit court opini
 
 - **Location:** `legal-research/`
 
-### 7. Forms Assistant (Planned)
-Guided form preparation with field validation, completeness checks, and helpful instructions.
+### 7. Forms Assistant (Complete)
+Guided form preparation with field validation, completeness checks, PDF form filling, and preparer management.
+
+- **Status:** Working — Streamlit on port 8509, 7 hardcoded forms + PDF upload
+- **Location:** `forms-assistant/`
 
 **What it does:**
 - Multi-step wizard matching the actual form layout
 - Field-level help text explaining what each question is asking
 - Validation (required fields, format checks, consistency)
 - Progress indicator showing completion percentage
-- Exports completed data for transfer to official forms
+- Upload actual USCIS PDF forms → auto-extract fillable fields → fill and export completed PDFs
+- Office preparer management — tag fields with preparer roles, select a preparer to auto-fill
+- Exports: .txt, .docx, Google Docs, and filled PDF (for uploaded forms)
+- Draft save/load/delete with client name derivation
 
-**Priority forms:**
-- **I-589** — Application for Asylum and Withholding of Removal (Parts A–D + Supplements A–B)
+**Hardcoded forms (7):**
+- **I-589** — Application for Asylum and Withholding of Removal (71 fields across 6 sections)
 - **I-130** — Petition for Alien Relative
 - **I-485** — Application to Register Permanent Residence (Adjustment of Status)
 - **I-765** — Application for Employment Authorization
 - **I-131** — Application for Travel Document
 - **I-360** — Petition for Amerasian, Widow(er), or Special Immigrant (VAWA)
-- **I-918** — Petition for U Nonimmigrant Status
 - **I-290B** — Notice of Appeal or Motion
 
-- **Location:** `forms-assistant/`
+**PDF upload workflow:**
+1. Admin uploads a fillable USCIS PDF in Admin Panel → Forms Assistant tab → Upload PDF
+2. System extracts all AcroForm widgets (text, checkbox, select, combo) with auto-derived labels
+3. Admin edits field labels, assigns sections, tags preparer roles, sets required flags
+4. Staff selects the uploaded form in Forms Assistant, fills fields, downloads completed PDF
+
+**Key modules:**
+- `shared/pdf_form_extractor.py` — PyMuPDF-based field extraction and PDF filling
+- `shared/preparer_store.py` — JSON CRUD for office preparers (`data/config/preparers.json`)
+- `forms-assistant/app/pdf_form_store.py` — bridge merging hardcoded + uploaded forms
+- `forms-assistant/app/form_definitions.py` — 7 hardcoded form definitions with validation
+- `forms-assistant/app/dashboard.py` — Streamlit UI
 
 ### 8. Case Checklist (Planned)
 Track case progress with auto-populated checklists, deadline tracking, and status dashboards.
@@ -215,10 +231,20 @@ Organize, label, and compile supporting documents into exhibit packages with aut
 ### Port Assignments
 | Port | Service |
 |------|---------|
-| 8502 | Staff Dashboard (hub) |
-| 8501 | Country Reports (Streamlit) |
 | 8000 | Country Reports (API) |
-| 8503–8510 | Reserved for future tools |
+| 8501 | Country Reports (Streamlit) |
+| 8502 | Staff Dashboard (hub) |
+| 8503 | Declaration Drafter |
+| 8504 | Cover Letters |
+| 8505 | Timeline Builder |
+| 8506 | Case Checklist |
+| 8507 | Brief Builder |
+| 8508 | Legal Research |
+| 8509 | Forms Assistant |
+| 8510 | Evidence Indexer |
+| 8511 | Document Translator |
+| 8512 | Client Info |
+| 8513 | Admin Panel |
 
 ### Deployment TODO
 - [ ] Set up Mac Mini with Python 3.13 + uv
@@ -226,7 +252,7 @@ Organize, label, and compile supporting documents into exhibit packages with aut
 - [ ] Add basic authentication (password protection for the dashboard)
 - [ ] Set up local network access (static IP or hostname for the Mac Mini)
 - [ ] Backup strategy for data directories
-- [ ] Shared .env for Box/Google credentials across all tools
+- [x] Shared .env for Box/Google/Salesforce credentials across all tools
 
 ### Cross-Tool Integration Opportunities
 - **Country Reports → Brief Builder:** Insert country conditions citations directly into briefs
@@ -244,4 +270,4 @@ Organize, label, and compile supporting documents into exhibit packages with aut
 
 ---
 
-_Last updated: February 15, 2026_
+_Last updated: February 16, 2026_

@@ -16,6 +16,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
+
 
 # ---------------------------------------------------------------------------
 # Storage
@@ -47,7 +51,7 @@ class CaseLaw:
 # Landmark immigration decisions
 # ---------------------------------------------------------------------------
 
-KEY_DECISIONS: dict[str, CaseLaw] = {
+_DEFAULT_KEY_DECISIONS: dict[str, CaseLaw] = {
     "matter-of-acosta": CaseLaw(
         name="Matter of Acosta",
         citation="19 I&N Dec. 211 (BIA 1985)",
@@ -293,7 +297,7 @@ KEY_DECISIONS: dict[str, CaseLaw] = {
 # Legal topics for filtering and categorization
 # ---------------------------------------------------------------------------
 
-LEGAL_TOPICS: list[str] = [
+_DEFAULT_LEGAL_TOPICS: list[str] = [
     "asylum",
     "withholding",
     "CAT",
@@ -315,6 +319,32 @@ LEGAL_TOPICS: list[str] = [
     "forced recruitment",
     "family",
 ]
+
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+def _load_decisions() -> dict[str, CaseLaw]:
+    """Load decisions from config (plain dicts) or fall back to hardcoded defaults."""
+    from dataclasses import asdict
+    _default_dicts = {k: asdict(v) for k, v in _DEFAULT_KEY_DECISIONS.items()}
+    raw = get_config_value("legal-research", "decisions", _default_dicts)
+    result: dict[str, CaseLaw] = {}
+    for k, v in raw.items():
+        if isinstance(v, CaseLaw):
+            result[k] = v
+        else:
+            result[k] = CaseLaw(
+                name=v.get("name", ""),
+                citation=v.get("citation", ""),
+                court=v.get("court", ""),
+                date=v.get("date", ""),
+                holding=v.get("holding", ""),
+                full_text=v.get("full_text", ""),
+                topics=v.get("topics", []),
+            )
+    return result
+
+KEY_DECISIONS: dict[str, CaseLaw] = _load_decisions()
+LEGAL_TOPICS: list[str] = get_config_value("legal-research", "topics", _DEFAULT_LEGAL_TOPICS)
 
 
 # ---------------------------------------------------------------------------

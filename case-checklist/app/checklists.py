@@ -16,6 +16,10 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
+
 # ── Storage ──────────────────────────────────────────────────────────────────
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "cases"
@@ -55,7 +59,7 @@ class Case:
 
 # ── Templates ────────────────────────────────────────────────────────────────
 
-CASE_TYPES: list[str] = [
+_DEFAULT_CASE_TYPES: list[str] = [
     "Asylum (I-589)",
     "Family-Based (I-130/I-485)",
     "VAWA (I-360)",
@@ -63,7 +67,7 @@ CASE_TYPES: list[str] = [
     "Cancellation of Removal",
 ]
 
-_TEMPLATES: dict[str, list[dict[str, str]]] = {
+_DEFAULT_TEMPLATES: dict[str, list[dict[str, str]]] = {
     "Asylum (I-589)": [
         # Filing
         {"title": "I-589 application completed", "category": "Filing"},
@@ -150,6 +154,10 @@ _TEMPLATES: dict[str, list[dict[str, str]]] = {
         {"title": "Filing deadlines tracked", "category": "Administrative"},
     ],
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+CASE_TYPES: list[str] = get_config_value("case-checklist", "case_types", _DEFAULT_CASE_TYPES)
+_TEMPLATES: dict[str, list[dict[str, str]]] = get_config_value("case-checklist", "templates", _DEFAULT_TEMPLATES)
 
 
 def _make_item_id() -> str:

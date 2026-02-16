@@ -9,8 +9,13 @@ from __future__ import annotations
 
 import os
 import re
+import sys as _sys
+from pathlib import Path as _Path
 
 import requests
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import get_config_value
 
 # Google Translate v2 Basic API
 _API_KEY = os.environ.get("GOOGLE_TRANSLATE_API_KEY", "")
@@ -18,7 +23,7 @@ _TRANSLATE_URL = "https://translation.googleapis.com/language/translate/v2"
 _DETECT_URL = "https://translation.googleapis.com/language/translate/v2/detect"
 
 # Common immigration languages (code -> display name)
-LANGUAGES: dict[str, str] = {
+_DEFAULT_LANGUAGES: dict[str, str] = {
     "en": "English",
     "es": "Spanish",
     "pt": "Portuguese",
@@ -54,6 +59,9 @@ LANGUAGES: dict[str, str] = {
     "te": "Telugu",
     "pa": "Punjabi",
 }
+
+# ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
+LANGUAGES: dict[str, str] = get_config_value("document-translator", "languages", _DEFAULT_LANGUAGES)
 
 # Reverse lookup: display name -> code
 LANGUAGE_BY_NAME: dict[str, str] = {v: k for k, v in LANGUAGES.items()}
