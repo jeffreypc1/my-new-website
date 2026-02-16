@@ -270,3 +270,90 @@ def certification_header() -> str:
         "legal proceedings. The accuracy of this translation has not been "
         "verified by a certified translator."
     )
+
+
+# ---------------------------------------------------------------------------
+# EOIR certificates (per Immigration Court Practice Manual / 8 CFR § 1003.33)
+# ---------------------------------------------------------------------------
+
+CERTIFICATE_TYPES = [
+    "None",
+    "Certificate of Translation",
+    "Certificate of Sight Translation",
+    "Certificate of Interpretation",
+]
+
+
+def build_certificate(
+    cert_type: str,
+    translator_name: str,
+    translator_address: str,
+    translator_phone: str,
+    source_lang: str,
+    target_lang: str,
+    source_filename: str,
+    client_name: str = "",
+    client_pronoun: str = "they",
+) -> str:
+    """Build an EOIR-compliant certificate block.
+
+    Returns the certificate text, or empty string if cert_type is "None".
+    """
+    from datetime import date
+
+    if cert_type == "None" or not cert_type:
+        return ""
+
+    today = date.today().strftime("%B %d, %Y")
+
+    # Pronoun forms for interpretation cert
+    pronoun_map = {
+        "he": ("he", "his"),
+        "she": ("she", "her"),
+        "they": ("they", "their"),
+    }
+    subj, _poss = pronoun_map.get(client_pronoun, ("they", "their"))
+
+    if cert_type == "Certificate of Translation":
+        body = (
+            f"I, {translator_name}, of {translator_address}, hereby certify "
+            f"that I am competent to translate from {source_lang} to "
+            f"{target_lang}, and that the foregoing document, identified as "
+            f'"{source_filename}," is a true and accurate translation of the '
+            f"original to the best of my knowledge and ability."
+        )
+    elif cert_type == "Certificate of Sight Translation":
+        body = (
+            f"I, {translator_name}, of {translator_address}, hereby certify "
+            f"that I am competent to translate from {source_lang} to "
+            f"{target_lang}. On {today}, I performed a sight translation of "
+            f'the document identified as "{source_filename}," orally rendering '
+            f"the written {source_lang} text into {target_lang}. The sight "
+            f"translation was true and accurate to the best of my knowledge "
+            f"and ability."
+        )
+    elif cert_type == "Certificate of Interpretation":
+        body = (
+            f"I, {translator_name}, of {translator_address}, hereby certify "
+            f"that I am competent to interpret between {source_lang} and "
+            f"{target_lang}. I read and interpreted the contents of the "
+            f'document identified as "{source_filename}" to {client_name} in '
+            f"{source_lang}, a language which {subj} understands, and {subj} "
+            f"indicated understanding of the contents before signing."
+        )
+    else:
+        return ""
+
+    lines = [
+        cert_type.upper(),
+        "",
+        body,
+        "",
+        f"Name: {translator_name}",
+        f"Address: {translator_address}",
+        f"Telephone: {translator_phone}",
+        f"Date: {today}",
+        "",
+        "Signature: ____________________________",
+    ]
+    return "\n".join(lines)

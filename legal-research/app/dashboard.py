@@ -35,6 +35,7 @@ from app.case_law import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
+from shared.client_banner import render_client_banner
 
 # -- Page config --------------------------------------------------------------
 
@@ -253,6 +254,8 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+render_client_banner()
 
 # -- Session state defaults ---------------------------------------------------
 

@@ -12,6 +12,10 @@ import io
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 import streamlit as st
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -19,8 +23,10 @@ from docx.shared import Inches, Pt
 
 from app.drafts import delete_draft, list_drafts, load_draft, new_draft_id, save_draft
 from app.translator import (
+    CERTIFICATE_TYPES,
     LANGUAGES,
     TARGET_LANGUAGES,
+    build_certificate,
     certification_header,
     detect_language,
     extract_text,
@@ -30,6 +36,7 @@ from app.translator import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
+from shared.client_banner import render_client_banner
 
 # -- Page config --------------------------------------------------------------
 
@@ -210,6 +217,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+sf_record = render_client_banner()
+if sf_record and not st.session_state.get("inp_client_name"):
+    st.session_state.inp_client_name = sf_record.get("Name", "")
+
 # -- Session state defaults ---------------------------------------------------
 
 _DEFAULTS: dict = {
@@ -234,7 +245,17 @@ if st.session_state.draft_id is None:
 # -- Helpers ------------------------------------------------------------------
 
 
-def _do_save(client_name: str, target_lang: str, notes: str, include_original: bool) -> None:
+def _do_save(
+    client_name: str,
+    target_lang: str,
+    notes: str,
+    include_original: bool,
+    export_format: str,
+    certificate_type: str,
+    translator_info: dict,
+    client_pronoun: str,
+    show_disclaimer: bool,
+) -> None:
     """Save the current state as a draft."""
     # Build paragraphs list with any staff edits
     paras = []
@@ -257,6 +278,11 @@ def _do_save(client_name: str, target_lang: str, notes: str, include_original: b
         paragraphs=paras,
         notes=notes,
         include_original=include_original,
+        export_format=export_format,
+        certificate_type=certificate_type,
+        translator_info=translator_info,
+        client_pronoun=client_pronoun,
+        show_disclaimer=show_disclaimer,
     )
     name = client_name or "draft"
     st.session_state.last_saved_msg = f"Saved -- {name}"
@@ -283,6 +309,17 @@ def _do_load(draft_id: str) -> None:
     tl = draft.get("target_lang", "English")
     st.session_state.inp_target_lang = tl
 
+    # Restore new fields
+    st.session_state.inp_export_format = draft.get("export_format", "Translation only")
+    st.session_state.inp_cert_type = draft.get("certificate_type", "None")
+    st.session_state.inp_client_pronoun = draft.get("client_pronoun", "they")
+    st.session_state.inp_show_disclaimer = draft.get("show_disclaimer", True)
+
+    ti = draft.get("translator_info", {})
+    st.session_state.inp_translator_name = ti.get("name", "")
+    st.session_state.inp_translator_address = ti.get("address", "")
+    st.session_state.inp_translator_phone = ti.get("phone", "")
+
     # Restore edited text
     for i, p in enumerate(paras):
         st.session_state[f"edit_{i}"] = p.get("translated", "")
@@ -303,7 +340,11 @@ def _do_new() -> None:
     for key in list(st.session_state.keys()):
         if key.startswith("edit_"):
             del st.session_state[key]
-    for k in ("inp_client_name", "inp_notes"):
+    for k in (
+        "inp_client_name", "inp_notes", "inp_export_format", "inp_cert_type",
+        "inp_translator_name", "inp_translator_address", "inp_translator_phone",
+        "inp_client_pronoun", "inp_show_disclaimer", "sf_client",
+    ):
         if k in st.session_state:
             del st.session_state[k]
 
@@ -323,9 +364,13 @@ def _get_edited_paragraphs() -> list[dict]:
     return result
 
 
-def _build_plain_text(paras: list[dict], include_original: bool) -> str:
+def _build_plain_text(
+    paras: list[dict], include_original: bool, cert_text: str = "", show_disclaimer: bool = True
+) -> str:
     """Build a plain-text export of the translation."""
-    lines = [certification_header(), ""]
+    lines = []
+    if show_disclaimer:
+        lines.extend([certification_header(), ""])
 
     if st.session_state.get("source_filename"):
         lines.append(f"Source: {st.session_state.source_filename}")
@@ -343,10 +388,22 @@ def _build_plain_text(paras: list[dict], include_original: bool) -> str:
         lines.append(p["translated"])
         lines.append("")
 
+    if cert_text:
+        lines.append("=" * 60)
+        lines.append("")
+        lines.append(cert_text)
+        lines.append("")
+
     return "\n".join(lines)
 
 
-def _build_docx(paras: list[dict], include_original: bool, client_name: str) -> bytes:
+def _build_docx(
+    paras: list[dict],
+    include_original: bool,
+    client_name: str,
+    cert_text: str = "",
+    show_disclaimer: bool = True,
+) -> bytes:
     """Build a Word document from the translated paragraphs."""
     doc = Document()
     for section in doc.sections:
@@ -355,7 +412,7 @@ def _build_docx(paras: list[dict], include_original: bool, client_name: str) -> 
         section.left_margin = Inches(1)
         section.right_margin = Inches(1)
 
-    def _run(para, txt, size=12, bold=False, italic=False, color=None):
+    def _run(para, txt, size=12, bold=False, italic=False, color=None, align=None):
         r = para.add_run(txt)
         r.font.name = "Times New Roman"
         r.font.size = Pt(size)
@@ -365,12 +422,15 @@ def _build_docx(paras: list[dict], include_original: bool, client_name: str) -> 
             from docx.shared import RGBColor
 
             r.font.color.rgb = RGBColor(*color)
+        if align is not None:
+            para.alignment = align
         return r
 
     # Certification header
-    cert_para = doc.add_paragraph()
-    _run(cert_para, certification_header(), size=10, italic=True, color=(139, 69, 19))
-    cert_para.paragraph_format.space_after = Pt(12)
+    if show_disclaimer:
+        cert_para = doc.add_paragraph()
+        _run(cert_para, certification_header(), size=10, italic=True, color=(139, 69, 19))
+        cert_para.paragraph_format.space_after = Pt(12)
 
     # File info
     if st.session_state.get("source_filename"):
@@ -413,6 +473,22 @@ def _build_docx(paras: list[dict], include_original: bool, client_name: str) -> 
             para = doc.add_paragraph()
             _run(para, p["translated"], size=12)
             para.paragraph_format.space_after = Pt(6)
+
+    # EOIR certificate on new page
+    if cert_text:
+        doc.add_page_break()
+        cert_lines = cert_text.split("\n")
+        # Title line — centered, bold, 14pt
+        if cert_lines:
+            title_p = doc.add_paragraph()
+            _run(title_p, cert_lines[0], size=14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+            title_p.paragraph_format.space_after = Pt(18)
+
+        # Body lines
+        for line in cert_lines[1:]:
+            p = doc.add_paragraph()
+            _run(p, line, size=12)
+            p.paragraph_format.space_after = Pt(2)
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -481,11 +557,59 @@ with st.sidebar:
         key="inp_target_lang",
     )
 
-    include_original = st.checkbox(
-        "Include original text in export",
-        value=True,
-        key="inp_include_original",
+    _FORMAT_OPTIONS = ["Translation only", "Side-by-side (Original | Translated)"]
+    export_format = st.selectbox(
+        "Export Format",
+        options=_FORMAT_OPTIONS,
+        key="inp_export_format",
     )
+    include_original = export_format == _FORMAT_OPTIONS[1]
+
+    show_disclaimer = st.checkbox(
+        "Include machine translation disclaimer",
+        value=True,
+        key="inp_show_disclaimer",
+    )
+
+    cert_type = st.selectbox(
+        "Certificate",
+        options=CERTIFICATE_TYPES,
+        key="inp_cert_type",
+    )
+
+    if cert_type == "Certificate of Interpretation":
+        client_pronoun = st.selectbox(
+            "Client Pronoun",
+            options=["they", "he", "she"],
+            key="inp_client_pronoun",
+        )
+    else:
+        client_pronoun = st.session_state.get("inp_client_pronoun", "they")
+
+    # Translator / Interpreter info (shown when a cert is selected)
+    if cert_type != "None":
+        st.divider()
+        st.markdown("#### Translator / Interpreter")
+        translator_name = st.text_input(
+            "Full Name",
+            key="inp_translator_name",
+            placeholder="e.g. John Smith",
+        )
+        translator_address = st.text_area(
+            "Address",
+            key="inp_translator_address",
+            height=68,
+            placeholder="e.g. 123 Main St, City, State 00000",
+        )
+        translator_phone = st.text_input(
+            "Phone",
+            key="inp_translator_phone",
+            placeholder="e.g. (555) 123-4567",
+        )
+    else:
+        translator_name = st.session_state.get("inp_translator_name", "")
+        translator_address = st.session_state.get("inp_translator_address", "")
+        translator_phone = st.session_state.get("inp_translator_phone", "")
 
     st.divider()
 
@@ -503,7 +627,17 @@ with st.sidebar:
 # -- Handle save (after sidebar renders) -------------------------------------
 
 if save_clicked:
-    _do_save(client_name, target_lang, notes, include_original)
+    _do_save(
+        client_name,
+        target_lang,
+        notes,
+        include_original,
+        export_format,
+        cert_type,
+        {"name": translator_name, "address": translator_address, "phone": translator_phone},
+        client_pronoun,
+        show_disclaimer,
+    )
     st.rerun()
 
 
@@ -604,10 +738,34 @@ with work_col:
     # Editable translation results
     if st.session_state.get("translation_done") and st.session_state.get("translated"):
         st.markdown("---")
-        st.markdown(
-            '<div class="section-label">Review &amp; Edit Translation</div>',
-            unsafe_allow_html=True,
-        )
+
+        edit_hdr_cols = st.columns([3, 1])
+        with edit_hdr_cols[0]:
+            st.markdown(
+                '<div class="section-label">Review &amp; Edit Translation</div>',
+                unsafe_allow_html=True,
+            )
+        with edit_hdr_cols[1]:
+            @st.dialog("Original Document", width="large")
+            def _show_original_dialog():
+                detected = st.session_state.get("detected_lang", "")
+                if detected:
+                    st.markdown(
+                        f'<span class="lang-badge">{html_mod.escape(language_name(detected))}</span>',
+                        unsafe_allow_html=True,
+                    )
+                for idx, t in enumerate(st.session_state.translated):
+                    st.markdown(
+                        f'<div class="para-num">Paragraph {idx + 1}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(t.get("original", ""))
+                    if idx < len(st.session_state.translated) - 1:
+                        st.divider()
+
+            if st.button("View Original", use_container_width=True):
+                _show_original_dialog()
+
         st.caption("Edit any paragraph below. Changes are reflected in the preview and export.")
 
         for i, t in enumerate(st.session_state.translated):
@@ -638,9 +796,27 @@ with preview_col:
         # Build preview
         paras = _get_edited_paragraphs()
 
-        preview_parts = [
-            f'<div class="cert-notice">{html_mod.escape(certification_header())}</div>'
-        ]
+        # Build certificate text if applicable
+        cert_text = ""
+        if cert_type != "None" and translator_name:
+            detected = st.session_state.get("detected_lang", "")
+            cert_text = build_certificate(
+                cert_type=cert_type,
+                translator_name=translator_name,
+                translator_address=translator_address,
+                translator_phone=translator_phone,
+                source_lang=language_name(detected) if detected else "Unknown",
+                target_lang=target_lang,
+                source_filename=st.session_state.get("source_filename", ""),
+                client_name=client_name,
+                client_pronoun=client_pronoun,
+            )
+
+        preview_parts = []
+        if show_disclaimer:
+            preview_parts.append(
+                f'<div class="cert-notice">{html_mod.escape(certification_header())}</div>'
+            )
 
         if st.session_state.get("source_filename"):
             preview_parts.append(
@@ -659,6 +835,14 @@ with preview_col:
                 )
             preview_parts.append(f"<p>{html_mod.escape(p['translated'])}</p>")
 
+        # Certificate preview
+        if cert_text:
+            preview_parts.append("<hr>")
+            preview_parts.append(
+                f"<pre style='white-space:pre-wrap;font-family:Times New Roman,serif;'>"
+                f"{html_mod.escape(cert_text)}</pre>"
+            )
+
         preview_html = "\n".join(preview_parts)
         st.markdown(
             f'<div class="preview-panel">{preview_html}</div>',
@@ -673,7 +857,7 @@ with preview_col:
 
         exp_cols = st.columns(2)
         with exp_cols[0]:
-            plain_text = _build_plain_text(paras, include_original)
+            plain_text = _build_plain_text(paras, include_original, cert_text, show_disclaimer)
             st.download_button(
                 "Download .txt",
                 data=plain_text,
@@ -682,7 +866,7 @@ with preview_col:
                 use_container_width=True,
             )
         with exp_cols[1]:
-            docx_bytes = _build_docx(paras, include_original, client_name)
+            docx_bytes = _build_docx(paras, include_original, client_name, cert_text, show_disclaimer)
             st.download_button(
                 "Download .docx",
                 data=docx_bytes,
@@ -694,7 +878,7 @@ with preview_col:
         if st.button("Upload to Google Docs", use_container_width=True):
             with st.spinner("Uploading to Google Docs..."):
                 try:
-                    docx_data = _build_docx(paras, include_original, client_name)
+                    docx_data = _build_docx(paras, include_original, client_name, cert_text, show_disclaimer)
                     url = upload_to_google_docs(
                         docx_data, f"Translation - {client_name or 'Document'}"
                     )

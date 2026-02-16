@@ -32,6 +32,11 @@ def save_draft(
     paragraphs: list[dict],
     notes: str = "",
     include_original: bool = True,
+    export_format: str = "Translation only",
+    certificate_type: str = "None",
+    translator_info: dict | None = None,
+    client_pronoun: str = "they",
+    show_disclaimer: bool = True,
 ) -> dict:
     """Save or update a draft.  Returns the saved draft dict."""
     _ensure_dir()
@@ -55,6 +60,11 @@ def save_draft(
         "paragraphs": paragraphs,
         "notes": notes,
         "include_original": include_original,
+        "export_format": export_format,
+        "certificate_type": certificate_type,
+        "translator_info": translator_info or {"name": "", "address": "", "phone": ""},
+        "client_pronoun": client_pronoun,
+        "show_disclaimer": show_disclaimer,
         "created_at": created_at,
         "updated_at": now,
     }

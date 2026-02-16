@@ -1,8 +1,13 @@
 """O'Brien Immigration Law — Staff Tools Dashboard."""
 
+import html as html_mod
+import sys
 from pathlib import Path
 
 import streamlit as st
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from shared.salesforce_client import get_client, load_active_client, save_active_client
 
 st.set_page_config(
     page_title="Staff Tools — O'Brien Immigration Law",
@@ -198,6 +203,49 @@ div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
                 0 6px 24px rgba(0,0,0,0.04);
 }
 
+/* Client lookup bar */
+.client-bar {
+    max-width: 1000px;
+    margin: 0 auto 2rem;
+    padding: 0 1rem;
+}
+
+.client-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(160%) blur(20px);
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 16px;
+    padding: 20px 28px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03),
+                0 6px 24px rgba(0,0,0,0.04);
+}
+
+.client-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 32px;
+    margin-top: 8px;
+}
+
+.client-field {
+    font-size: 0.82rem;
+    color: #86868b;
+}
+
+.client-field strong {
+    color: #1d1d1f;
+    font-weight: 600;
+}
+
+.client-name-big {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin: 4px 0 0;
+}
+
 /* Footer */
 .dash-footer {
     text-align: center;
@@ -230,6 +278,12 @@ div[data-testid="stExpander"] > details > summary {
     unsafe_allow_html=True,
 )
 
+# ── Load active client from shared file on startup ──
+_saved_client = load_active_client()
+if _saved_client and not st.session_state.get("sf_client"):
+    st.session_state.sf_client = _saved_client
+    st.session_state.sf_customer_id = _saved_client.get("Customer_ID__c", "")
+
 # ── Hero ──
 st.markdown(
     """
@@ -242,6 +296,67 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+# ── Client lookup ──
+_cl_left, _cl_center, _cl_right = st.columns([1, 8, 1])
+with _cl_center:
+    cl_cols = st.columns([3, 2, 2])
+    with cl_cols[0]:
+        customer_id = st.text_input(
+            "Client #",
+            key="inp_customer_id",
+            placeholder="Enter client number",
+            label_visibility="collapsed",
+        )
+    with cl_cols[1]:
+        sf_pull = st.button("Pull from Salesforce", use_container_width=True, type="primary")
+    with cl_cols[2]:
+        _cid = st.session_state.get("sf_customer_id", "")
+        if _cid:
+            st.link_button(
+                "Edit Client Info",
+                url=f"http://localhost:8512?client_id={_cid}",
+                use_container_width=True,
+            )
+
+    if sf_pull and customer_id:
+        try:
+            record = get_client(customer_id.strip())
+            if record:
+                st.session_state.sf_client = record
+                st.session_state.sf_customer_id = customer_id.strip()
+                save_active_client(record)
+                st.rerun()
+            else:
+                st.warning(f"No client found for #{customer_id}")
+        except Exception as e:
+            st.error(f"Salesforce error: {e}")
+
+    if st.session_state.get("sf_client"):
+        sf = st.session_state.sf_client
+        fields_html = []
+        if sf.get("A_Number__c"):
+            fields_html.append(f'<span class="client-field"><strong>A#:</strong> {html_mod.escape(str(sf["A_Number__c"]))}</span>')
+        if sf.get("Country__c"):
+            fields_html.append(f'<span class="client-field"><strong>Country:</strong> {html_mod.escape(str(sf["Country__c"]))}</span>')
+        if sf.get("Best_Language__c"):
+            fields_html.append(f'<span class="client-field"><strong>Language:</strong> {html_mod.escape(str(sf["Best_Language__c"]))}</span>')
+        if sf.get("Birthdate"):
+            fields_html.append(f'<span class="client-field"><strong>DOB:</strong> {html_mod.escape(str(sf["Birthdate"]))}</span>')
+        if sf.get("Immigration_Status__c"):
+            fields_html.append(f'<span class="client-field"><strong>Status:</strong> {html_mod.escape(str(sf["Immigration_Status__c"]))}</span>')
+        if sf.get("MobilePhone"):
+            fields_html.append(f'<span class="client-field"><strong>Phone:</strong> {html_mod.escape(str(sf["MobilePhone"]))}</span>')
+        if sf.get("Email"):
+            fields_html.append(f'<span class="client-field"><strong>Email:</strong> {html_mod.escape(str(sf["Email"]))}</span>')
+
+        card_html = f"""
+        <div class="client-bar"><div class="client-card">
+            <div class="client-name-big">{html_mod.escape(sf.get("Name", ""))}</div>
+            <div class="client-info">{"".join(fields_html)}</div>
+        </div></div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
 
 # ── Tool definitions ──
 tools = [
@@ -325,15 +440,28 @@ tools = [
         "status_label": "Live",
         "url": "http://localhost:8511",
     },
+    {
+        "icon": "&#x1F464;",  # bust silhouette
+        "name": "Client Info",
+        "desc": "View and edit Salesforce contact data. Pull client details and push updates back.",
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8512",
+    },
 ]
 
 # ── Render tool cards ──
+_active_cid = st.session_state.get("sf_customer_id", "")
+
 cards_html = '<div class="tool-grid">'
 for tool in tools:
     status_class = f"status-{tool['status']}"
-    if tool["url"]:
+    url = tool["url"]
+    if url and _active_cid:
+        url = f"{url}?client_id={_active_cid}"
+    if url:
         cards_html += f"""
-        <a href="{tool['url']}" target="_blank" class="tool-card" style="text-decoration:none;">
+        <a href="{url}" target="_blank" class="tool-card" style="text-decoration:none;">
             <span class="tool-icon">{tool['icon']}</span>
             <div class="tool-name">{tool['name']}</div>
             <div class="tool-desc">{tool['desc']}</div>
