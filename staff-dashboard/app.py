@@ -317,6 +317,14 @@ tools = [
         "status_label": "Live",
         "url": "http://localhost:8510",
     },
+    {
+        "icon": "&#x1F310;",  # globe with meridians
+        "name": "Document Translator",
+        "desc": "Upload documents in any language, auto-translate to English, and export to Google Docs.",
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8511",
+    },
 ]
 
 # ── Render tool cards ──

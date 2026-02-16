@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[project]
+name = "document-translator"
+version = "0.1.0"
+description = "Document Translator - Upload documents, auto-detect language, translate to English, and export"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "streamlit>=1.41.0",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "pymupdf>=1.25.0",
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0.0",
+    "google-cloud-translate>=3.0.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+]
