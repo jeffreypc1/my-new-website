@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[project]
+name = "cover-letters"
+version = "0.1.0"
+description = "Cover Letter Generator - Generate formatted cover letters for immigration filings"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "streamlit>=1.41.0",
+    "python-docx>=1.2.0",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+]

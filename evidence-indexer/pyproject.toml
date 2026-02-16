@@ -1,0 +1,20 @@
+[project]
+name = "evidence-indexer"
+version = "0.1.0"
+description = "Evidence package indexer and exhibit compiler for O'Brien Immigration Law"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "streamlit",
+    "python-docx",
+    "pymupdf",
+    "pydantic-settings",
+    "python-dotenv",
+    "requests",
+    "boxsdk",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

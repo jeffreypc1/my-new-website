@@ -1,0 +1,18 @@
+[project]
+name = "legal-research"
+version = "0.1.0"
+description = "Immigration case law research tool for O'Brien Immigration Law"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "streamlit",
+    "chromadb",
+    "pydantic-settings",
+    "python-dotenv",
+    "requests",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
