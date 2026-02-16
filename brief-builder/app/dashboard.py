@@ -666,12 +666,6 @@ with st.sidebar:
         placeholder="e.g. March 15, 2026",
     )
 
-    st.divider()
-    try:
-        from shared.box_documents import render_box_sidebar
-        render_box_sidebar()
-    except ImportError:
-        pass
 
 
 # -- Handle save (after sidebar renders) --------------------------------------
