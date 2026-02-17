@@ -20,6 +20,21 @@ import streamlit as st
 import streamlit.components.v1 as _components
 
 
+_BANNER_FIELD_DEFAULTS = [
+    "A_Number__c", "Country__c", "Best_Language__c", "Immigration_Status__c",
+]
+
+
+def _get_banner_fields() -> list[str]:
+    """Load the list of enabled banner fields from global settings."""
+    try:
+        from shared.config_store import load_config
+        settings = load_config("global-settings") or {}
+        return settings.get("banner_fields", _BANNER_FIELD_DEFAULTS)
+    except Exception:
+        return _BANNER_FIELD_DEFAULTS
+
+
 _BANNER_CSS = """
 <style>
 .sf-banner {
@@ -311,16 +326,49 @@ def render_client_banner() -> dict | None:
         parts = [f'<span class="sf-banner-name">{html_mod.escape(active.get("Name", ""))}</span>']
         parts.append('<span class="sf-banner-sep">|</span>')
 
+        # Customer ID is always shown
         if active.get("Customer_ID__c"):
             parts.append(f'<span class="sf-banner-field"><strong>#</strong>{html_mod.escape(str(active["Customer_ID__c"]))}</span>')
-        if active.get("A_Number__c"):
-            parts.append(f'<span class="sf-banner-field"><strong>A#</strong> {html_mod.escape(str(active["A_Number__c"]))}</span>')
-        if active.get("Country__c"):
-            parts.append(f'<span class="sf-banner-field">{html_mod.escape(str(active["Country__c"]))}</span>')
-        if active.get("Best_Language__c"):
-            parts.append(f'<span class="sf-banner-field">{html_mod.escape(str(active["Best_Language__c"]))}</span>')
-        if active.get("Immigration_Status__c"):
-            parts.append(f'<span class="sf-banner-field">{html_mod.escape(str(active["Immigration_Status__c"]))}</span>')
+
+        # Load configurable fields from global settings
+        _banner_fields = _get_banner_fields()
+
+        # Display labels for nicer rendering
+        _FIELD_LABELS = {
+            "A_Number__c": "A#",
+            "Birthdate": "DOB",
+            "Gender__c": "Gender",
+            "Pronoun__c": "Pronouns",
+            "Marital_status__c": "Marital",
+            "Email": "Email",
+            "Phone": "Phone",
+            "MobilePhone": "Mobile",
+            "Country__c": None,  # show value only (no label prefix)
+            "City_of_Birth__c": "Born in",
+            "Best_Language__c": None,
+            "Immigration_Status__c": None,
+            "Immigration_Court__c": "Court",
+            "Legal_Case_Type__c": "Case Type",
+            "Client_Status__c": "Status",
+            "CaseNumber__c": "Case #",
+            "Nexus__c": "Nexus",
+            "PSG__c": "PSG",
+            "Date_of_First_Entry_to_US__c": "First Entry",
+            "Date_of_Most_Recent_US_Entry__c": "Last Entry",
+            "Status_of_Last_Arrival__c": "Arrival Status",
+            "Place_of_Last_Arrival__c": "Arrival Place",
+            "Spouse_Name__c": "Spouse",
+        }
+
+        for field_key in _banner_fields:
+            val = active.get(field_key)
+            if val:
+                label = _FIELD_LABELS.get(field_key)
+                escaped = html_mod.escape(str(val))
+                if label:
+                    parts.append(f'<span class="sf-banner-field"><strong>{label}</strong> {escaped}</span>')
+                else:
+                    parts.append(f'<span class="sf-banner-field">{escaped}</span>')
 
         st.markdown(f'<div class="sf-banner">{"".join(parts)}</div>', unsafe_allow_html=True)
 

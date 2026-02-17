@@ -1464,6 +1464,94 @@ def _editor_components():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Client Banner Fields
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# All available fields for the client banner, grouped logically.
+# Name and Customer_ID__c are always shown (not toggleable).
+_BANNER_FIELD_OPTIONS = [
+    ("Identity", [
+        ("A_Number__c", "A Number"),
+        ("Birthdate", "Date of Birth"),
+        ("Gender__c", "Gender"),
+        ("Pronoun__c", "Pronouns"),
+        ("Marital_status__c", "Marital Status"),
+    ]),
+    ("Contact", [
+        ("Email", "Email"),
+        ("Phone", "Phone"),
+        ("MobilePhone", "Mobile Phone"),
+    ]),
+    ("Immigration", [
+        ("Country__c", "Country of Origin"),
+        ("City_of_Birth__c", "City of Birth"),
+        ("Best_Language__c", "Language"),
+        ("Immigration_Status__c", "Immigration Status"),
+        ("Immigration_Court__c", "Immigration Court"),
+        ("Legal_Case_Type__c", "Case Type"),
+        ("Client_Status__c", "Client Status"),
+    ]),
+    ("Case", [
+        ("CaseNumber__c", "Case Number"),
+        ("Nexus__c", "Nexus"),
+        ("PSG__c", "Particular Social Group"),
+    ]),
+    ("Dates", [
+        ("Date_of_First_Entry_to_US__c", "First US Entry"),
+        ("Date_of_Most_Recent_US_Entry__c", "Last US Entry"),
+        ("Status_of_Last_Arrival__c", "Arrival Status"),
+        ("Place_of_Last_Arrival__c", "Arrival Place"),
+    ]),
+    ("Family", [
+        ("Spouse_Name__c", "Spouse Name"),
+    ]),
+]
+
+# Default fields shown (matches the original hardcoded banner)
+_BANNER_DEFAULTS = [
+    "A_Number__c", "Country__c", "Best_Language__c", "Immigration_Status__c",
+]
+
+
+def _editor_client_banner():
+    """Configure which fields appear in the client info banner across all tools."""
+    st.subheader("Client Banner Fields")
+    st.caption(
+        "Choose which client fields appear in the blue info bar at the top of every tool page. "
+        "Name and Client # are always shown."
+    )
+
+    _global = load_config("global-settings") or {}
+    current_fields: list[str] = _global.get("banner_fields", _BANNER_DEFAULTS)
+
+    st.info("Client name and Customer ID are always displayed.")
+
+    updated_fields: list[str] = []
+
+    for group_name, fields in _BANNER_FIELD_OPTIONS:
+        st.markdown(f"**{group_name}**")
+        for api_name, label in fields:
+            is_on = api_name in current_fields
+            toggled = st.toggle(
+                f"{label}  `{api_name}`",
+                value=is_on,
+                key=f"_banner_fld_{api_name}",
+            )
+            if toggled:
+                updated_fields.append(api_name)
+        st.markdown("")
+
+    if updated_fields != current_fields:
+        if st.button("Save Banner Fields", type="primary", key="_banner_fields_save"):
+            _global["banner_fields"] = updated_fields
+            save_config("global-settings", _global)
+            st.toast("Banner fields saved! Restart tools to see changes.")
+            st.rerun()
+    else:
+        st.caption("No changes to save.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Staff Directory
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1800,7 +1888,7 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Staff Directory", "Salesforce Fields", "Components (Draft Box)"],
+        ["Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
@@ -1808,6 +1896,8 @@ with tab_integrations:
     st.divider()
     if int_sub == "Staff Directory":
         _editor_staff_directory()
+    elif int_sub == "Client Banner":
+        _editor_client_banner()
     elif int_sub == "Salesforce Fields":
         _editor_salesforce_fields()
     else:
