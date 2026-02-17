@@ -25,7 +25,7 @@ st.set_page_config(
     page_title="Staff Tools — O'Brien Immigration Law",
     page_icon="<img src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#9878;</text></svg>' />",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── Load mission doc ──
@@ -45,9 +45,16 @@ st.markdown(
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* Hide Streamlit chrome */
-#MainMenu, header[data-testid="stHeader"], footer,
+#MainMenu, footer,
 div[data-testid="stToolbar"] { display: none !important; }
-div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+
+/* Blue glow on client ID input */
+input[placeholder*="client number"],
+input[placeholder*="Client #"] {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35), 0 0 12px rgba(59, 130, 246, 0.2) !important;
+    border: 2px solid rgba(59, 130, 246, 0.6) !important;
+    border-radius: 8px !important;
+}
 
 /* Root */
 .stApp {
@@ -302,8 +309,6 @@ st.markdown(
 <div class="hero-container">
     <div class="hero-badge">Internal Tools</div>
     <h1 class="hero-title">O'Brien Immigration Law</h1>
-    <p class="hero-sub">Staff toolkit for research, document assembly, and case preparation.</p>
-    <p class="hero-sub" style="margin-top:0.5rem;font-size:0.85rem;">All tools export to <strong style="color:#1d1d1f;">.txt</strong>, <strong style="color:#1d1d1f;">.docx</strong>, and <strong style="color:#1d1d1f;">Google Docs</strong></p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -546,6 +551,13 @@ with col_center:
         if st.button("Edit Mission Document", type="secondary"):
             st.session_state.editing_mission = True
             st.rerun()
+
+with st.sidebar:
+    try:
+        from shared.tool_notes import render_tool_notes
+        render_tool_notes("staff-dashboard")
+    except Exception:
+        pass
 
 # ── Footer ──
 st.markdown(

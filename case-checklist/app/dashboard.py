@@ -37,6 +37,7 @@ from app.checklists import (
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
+from shared.tool_notes import render_tool_notes
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ st.markdown(
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* Hide Streamlit chrome */
-#MainMenu, header[data-testid="stHeader"], footer,
+#MainMenu, footer,
 div[data-testid="stToolbar"] { display: none !important; }
 
 .stApp {
@@ -627,6 +628,8 @@ with st.sidebar:
                 delete_case(st.session_state.selected_case_id)
                 st.session_state.selected_case_id = None
                 st.rerun()
+
+    render_tool_notes("case-checklist")
 
 
 # ── Load cases ───────────────────────────────────────────────────────────────

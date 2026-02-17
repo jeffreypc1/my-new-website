@@ -17,6 +17,7 @@ import html as html_mod
 import time
 
 import streamlit as st
+import streamlit.components.v1 as _components
 
 
 _BANNER_CSS = """
@@ -49,7 +50,36 @@ _BANNER_CSS = """
     color: #1a2744;
     font-weight: 600;
 }
+/* Blue glow on client ID input */
+input[placeholder*="client number"],
+input[placeholder*="Client #"] {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35), 0 0 12px rgba(59, 130, 246, 0.2) !important;
+    border: 2px solid rgba(59, 130, 246, 0.6) !important;
+    border-radius: 8px !important;
+}
 </style>
+"""
+
+_SIDEBAR_TOGGLE_HTML = """
+<style>
+  body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  a {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #0066CC;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  a:hover { text-decoration: underline; }
+</style>
+<a onclick="
+    var doc = window.parent.document;
+    var expand = doc.querySelector('[data-testid=\\'stExpandSidebarButton\\']');
+    var collapse = doc.querySelector('[data-testid=\\'stSidebarCollapseButton\\']');
+    if (expand) { expand.click(); }
+    else if (collapse) { collapse.click(); }
+">&#9776; Toggle Sidebar</a>
 """
 
 
@@ -221,6 +251,7 @@ def render_client_banner() -> dict | None:
 
     # 5. Render pull bar + banner
     st.markdown(_BANNER_CSS, unsafe_allow_html=True)
+    _components.html(_SIDEBAR_TOGGLE_HTML, height=28)
 
     if not _sf_available:
         st.caption("Salesforce unavailable — showing cached data.")

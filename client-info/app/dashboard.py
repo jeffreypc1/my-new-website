@@ -42,7 +42,8 @@ st.markdown(
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-#MainMenu, header[data-testid="stHeader"], footer,
+/* Hide Streamlit chrome */
+#MainMenu, footer,
 div[data-testid="stToolbar"] { display: none !important; }
 
 .stApp {
@@ -114,6 +115,11 @@ with st.sidebar:
     st.caption("Scroll to view field groups:")
     for gn in ["Identity", "Contact Information", "Immigration Details", "Family", "Case Information"]:
         st.markdown(f"- {gn}")
+    try:
+        from shared.tool_notes import render_tool_notes
+        render_tool_notes("client-info")
+    except Exception:
+        pass
 
 # -- Pull client --------------------------------------------------------------
 

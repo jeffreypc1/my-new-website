@@ -31,7 +31,8 @@ st.markdown(
     """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-#MainMenu, header[data-testid="stHeader"], footer,
+/* Hide Streamlit chrome */
+#MainMenu, footer,
 div[data-testid="stToolbar"] { display: none !important; }
 .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 .nav-bar {
@@ -86,6 +87,43 @@ with st.sidebar:
     st.markdown("[Client Info](http://localhost:8512)")
     st.markdown("---")
     st.caption("Configure templates, lists, and settings for all office tools.")
+    st.markdown("---")
+    st.markdown("#### Sidebar Visibility")
+    _global = load_config("global-settings") or {}
+    _sidebars = _global.get("sidebars", {})
+    _TOOLS = [
+        ("country-reports", "Country Reports"),
+        ("cover-letters", "Cover Letters"),
+        ("brief-builder", "Brief Builder"),
+        ("declaration-drafter", "Declaration Drafter"),
+        ("timeline-builder", "Timeline Builder"),
+        ("legal-research", "Legal Research"),
+        ("forms-assistant", "Forms Assistant"),
+        ("case-checklist", "Case Checklist"),
+        ("evidence-indexer", "Evidence Indexer"),
+        ("document-translator", "Document Translator"),
+        ("client-info", "Client Info"),
+    ]
+    _changed = False
+    for _tool_key, _tool_label in _TOOLS:
+        _val = st.checkbox(
+            _tool_label,
+            value=_sidebars.get(_tool_key, True),
+            key=f"_adm_sb_{_tool_key}",
+        )
+        if _val != _sidebars.get(_tool_key, True):
+            _sidebars[_tool_key] = _val
+            _changed = True
+    if _changed:
+        _global["sidebars"] = _sidebars
+        save_config("global-settings", _global)
+        st.toast("Sidebar settings saved!")
+        st.rerun()
+    try:
+        from shared.tool_notes import render_tool_notes
+        render_tool_notes("admin-panel")
+    except Exception:
+        pass
 
 st.caption("Changes take effect on tool restart.")
 
