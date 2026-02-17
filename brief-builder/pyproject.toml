@@ -23,4 +23,5 @@ dependencies = [
     "google-auth-oauthlib>=1.2.0",
     "boxsdk>=3.12.0",
     "simple-salesforce>=1.12.0",
+    "anthropic>=0.42.0",
 ]

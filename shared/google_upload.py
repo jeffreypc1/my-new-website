@@ -66,4 +66,19 @@ def upload_to_google_docs(
         .create(body=file_metadata, media_body=media, fields="id")
         .execute()
     )
-    return f"https://docs.google.com/document/d/{created['id']}/edit"
+    url = f"https://docs.google.com/document/d/{created['id']}/edit"
+
+    # Log usage
+    try:
+        from shared.usage_tracker import log_api_call
+
+        log_api_call(
+            service="google_docs",
+            tool="",
+            operation="upload",
+            details=title,
+        )
+    except Exception:
+        pass
+
+    return url

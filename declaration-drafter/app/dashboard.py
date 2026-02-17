@@ -30,6 +30,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
+try:
+    from shared.draft_box import render_draft_box
+except ImportError:
+    render_draft_box = None
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -640,6 +644,25 @@ with preview_col:
                 f'<div class="preview-panel">{preview_html}</div>',
                 unsafe_allow_html=True,
             )
+
+        # Draft Box
+        if render_draft_box is not None:
+            from app.prompts import build_declaration_text as _build_decl_text
+            draft_content = ""
+            if paragraphs:
+                draft_content = _build_decl_text(
+                    answers=answers,
+                    declaration_type=declaration_type,
+                    declarant_name=declarant_name,
+                    language=language,
+                    interpreter_name=interpreter_name,
+                )
+            render_draft_box("declaration-drafter", {
+                "document_type": "declaration",
+                "client_name": declarant_name,
+                "case_id": st.session_state.get("draft_id", ""),
+                "content": draft_content,
+            })
 
         # Export controls
         st.markdown("---")

@@ -141,6 +141,8 @@ TOOLS = [
     "Document Translator",
     "Salesforce Fields",
     "Feature Registry",
+    "Components",
+    "API Usage",
 ]
 
 selected_tool = st.radio("Select tool to configure", TOOLS, index=0, horizontal=True)
@@ -1408,6 +1410,313 @@ def _editor_feature_registry():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Components (shared UI components like Draft Box)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _editor_components():
+    """Edit shared component configuration — currently Draft Box prompts."""
+    st.subheader("Components")
+    st.caption("Configure shared UI components that appear across multiple tools.")
+
+    config = load_config("components") or {}
+    draft_box = config.get("draft-box", {})
+
+    st.markdown("### Draft Box")
+    st.markdown(
+        "AI-powered document drafting assistant using Claude. "
+        "Appears on Cover Letters, Brief Builder, Declaration Drafter, and Timeline Builder."
+    )
+
+    st.markdown("---")
+
+    # Global prompt
+    st.markdown("#### Global System Prompt")
+    st.caption("Applied to all Draft Box requests across all tools.")
+    _DEFAULT_GLOBAL = (
+        "You are a legal drafting assistant for O'Brien Immigration Law. "
+        "Draft professional, well-structured legal documents. Use formal legal "
+        "language appropriate for USCIS filings and immigration court proceedings. "
+        "Be thorough but concise. Do not include placeholder text — use the "
+        "provided case details to produce a complete, ready-to-review draft."
+    )
+    global_prompt = st.text_area(
+        "Global prompt",
+        value=draft_box.get("global_prompt", _DEFAULT_GLOBAL),
+        height=150,
+        key="_comp_global_prompt",
+        label_visibility="collapsed",
+    )
+
+    st.markdown("---")
+    st.markdown("#### Per-Tool Prompt Overrides")
+    st.caption("These are appended to the global prompt for each specific tool.")
+
+    _TOOL_DEFAULTS = {
+        "cover-letters": (
+            "Draft a professional cover letter addressed to USCIS or the "
+            "immigration court. Include attorney information, client identification, "
+            "case type, enclosed documents, and a formal closing."
+        ),
+        "brief-builder": (
+            "Draft a legal brief section for immigration proceedings. Use proper "
+            "legal citation format, reference relevant INA sections and case law, "
+            "and present arguments persuasively with clear headings."
+        ),
+        "declaration-drafter": (
+            "Draft a declaration in the first person based on the provided answers. "
+            "Use clear, specific language. Organize chronologically. Include standard "
+            "declaration preamble and signature block."
+        ),
+        "timeline-builder": (
+            "Draft a narrative summary connecting the timeline events. Highlight key "
+            "dates, patterns, and cumulative impact. Use transitional language that "
+            "tells the client's story cohesively."
+        ),
+    }
+
+    tool_prompts = draft_box.get("tool_prompts", {})
+    _TOOL_LABELS = {
+        "cover-letters": "Cover Letters",
+        "brief-builder": "Brief Builder",
+        "declaration-drafter": "Declaration Drafter",
+        "timeline-builder": "Timeline Builder",
+    }
+
+    updated_tool_prompts = {}
+    for tool_key, label in _TOOL_LABELS.items():
+        st.markdown(f"**{label}**")
+        updated_tool_prompts[tool_key] = st.text_area(
+            f"{label} prompt",
+            value=tool_prompts.get(tool_key, _TOOL_DEFAULTS.get(tool_key, "")),
+            height=100,
+            key=f"_comp_tool_prompt_{tool_key}",
+            label_visibility="collapsed",
+        )
+
+    if st.button("Save Component Settings", type="primary", key="_comp_save"):
+        config["draft-box"] = {
+            "description": "AI-powered document drafting assistant using Claude",
+            "global_prompt": global_prompt,
+            "tool_prompts": updated_tool_prompts,
+        }
+        save_config("components", config)
+        st.toast("Component settings saved!")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# API Usage & Budgets
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _editor_api_usage():
+    """Dashboard showing API usage, costs, and budget tracking."""
+    from datetime import datetime
+
+    try:
+        from shared.usage_tracker import (
+            get_daily_breakdown,
+            get_entries_since,
+            get_monthly_summary,
+            get_per_tool_breakdown,
+            load_budgets,
+            save_budgets,
+        )
+    except ImportError:
+        st.error("Usage tracker module not found.")
+        return
+
+    st.subheader("API Usage & Budgets")
+    now = datetime.now()
+    st.caption(f"Current billing period: {now.strftime('%B %Y')}")
+
+    summary = get_monthly_summary()
+    budgets = load_budgets()
+
+    # ── Summary cards ───────────────────────────────────────────────────────
+    st.markdown("### This Month")
+    m1, m2, m3, m4 = st.columns(4)
+
+    anth = summary["anthropic"]
+    with m1:
+        st.metric("Anthropic Calls", f"{anth['calls']}")
+    with m2:
+        total_tokens = anth["input_tokens"] + anth["output_tokens"]
+        if total_tokens >= 1_000_000:
+            st.metric("Tokens Used", f"{total_tokens / 1_000_000:.2f}M")
+        elif total_tokens >= 1_000:
+            st.metric("Tokens Used", f"{total_tokens / 1_000:.1f}K")
+        else:
+            st.metric("Tokens Used", f"{total_tokens}")
+    with m3:
+        st.metric("Estimated Cost", f"${anth['cost_usd']:.2f}")
+    with m4:
+        gdocs = summary["google_docs"]
+        gtrans = summary["google_translate"]
+        google_total = gdocs["calls"] + gtrans["calls"]
+        st.metric("Google API Calls", f"{google_total}")
+
+    # ── Budget tracking ─────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Budget Tracking")
+
+    b1, b2 = st.columns(2)
+
+    with b1:
+        st.markdown("**Anthropic (Claude)**")
+        anth_budget = budgets.get("anthropic_monthly_usd", 50.0)
+        anth_spent = anth["cost_usd"]
+        anth_pct = min(anth_spent / anth_budget, 1.0) if anth_budget > 0 else 0
+        st.progress(anth_pct)
+
+        if anth_pct >= 0.9:
+            st.error(f"${anth_spent:.2f} / ${anth_budget:.2f} — approaching limit!")
+        elif anth_pct >= 0.7:
+            st.warning(f"${anth_spent:.2f} / ${anth_budget:.2f}")
+        else:
+            st.caption(f"${anth_spent:.2f} / ${anth_budget:.2f}")
+
+        remaining = max(anth_budget - anth_spent, 0)
+        days_left = (datetime(now.year, now.month % 12 + 1, 1) - now).days if now.month < 12 else (datetime(now.year + 1, 1, 1) - now).days
+        if days_left > 0 and anth["calls"] > 0:
+            days_elapsed = now.day
+            daily_avg = anth_spent / days_elapsed if days_elapsed > 0 else 0
+            projected = daily_avg * (days_elapsed + days_left)
+            st.caption(f"Daily avg: ${daily_avg:.2f} — Projected month-end: ${projected:.2f}")
+
+    with b2:
+        st.markdown("**Google (Translate + Docs)**")
+        google_budget = budgets.get("google_monthly_usd", 10.0)
+        google_spent = summary["google_translate"]["cost_usd"]
+        google_pct = min(google_spent / google_budget, 1.0) if google_budget > 0 else 0
+        st.progress(google_pct)
+
+        if google_pct >= 0.9:
+            st.error(f"${google_spent:.2f} / ${google_budget:.2f} — approaching limit!")
+        elif google_pct >= 0.7:
+            st.warning(f"${google_spent:.2f} / ${google_budget:.2f}")
+        else:
+            st.caption(f"${google_spent:.2f} / ${google_budget:.2f}")
+
+        st.caption(f"Google Docs uploads: {gdocs['calls']} (free)")
+        if gtrans["calls"] > 0:
+            st.caption(f"Translate calls: {gtrans['calls']} ({gtrans['characters']:,} chars)")
+
+    # ── Budget settings ─────────────────────────────────────────────────────
+    with st.expander("Edit Monthly Budgets"):
+        new_anth = st.number_input(
+            "Anthropic monthly budget (USD)",
+            value=float(budgets.get("anthropic_monthly_usd", 50.0)),
+            min_value=0.0,
+            step=5.0,
+            key="_budget_anthropic",
+        )
+        new_google = st.number_input(
+            "Google monthly budget (USD)",
+            value=float(budgets.get("google_monthly_usd", 10.0)),
+            min_value=0.0,
+            step=5.0,
+            key="_budget_google",
+        )
+        if st.button("Save Budgets", type="primary", key="_budget_save"):
+            save_budgets({
+                "anthropic_monthly_usd": new_anth,
+                "google_monthly_usd": new_google,
+            })
+            st.toast("Budgets saved!")
+            st.rerun()
+
+    # ── Per-tool breakdown ──────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Usage by Tool")
+
+    tool_data = get_per_tool_breakdown()
+    if tool_data:
+        _TOOL_LABELS = {
+            "cover-letters": "Cover Letters",
+            "brief-builder": "Brief Builder",
+            "declaration-drafter": "Declaration Drafter",
+            "timeline-builder": "Timeline Builder",
+            "unknown": "Other",
+        }
+        for row in tool_data:
+            tool_label = _TOOL_LABELS.get(row["tool"], row["tool"])
+            c1, c2, c3 = st.columns([3, 1, 1])
+            with c1:
+                st.markdown(f"**{tool_label}**")
+            with c2:
+                st.caption(f"{row['calls']} calls")
+            with c3:
+                st.caption(f"${row['cost_usd']:.3f}")
+    else:
+        st.info("No API calls recorded this month.")
+
+    # ── Daily trend ─────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Daily Trend (Last 30 Days)")
+
+    daily = get_daily_breakdown(30)
+    if daily:
+        import pandas as pd
+
+        df = pd.DataFrame(daily)
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
+
+        tab_cost, tab_calls, tab_tokens = st.tabs(["Cost", "Calls", "Tokens"])
+        with tab_cost:
+            st.bar_chart(df["cost_usd"], color="#0066CC")
+        with tab_calls:
+            st.bar_chart(df["calls"], color="#34a853")
+        with tab_tokens:
+            st.bar_chart(df["tokens"], color="#ea4335")
+    else:
+        st.info("No usage data yet.")
+
+    # ── Recent activity ─────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Recent Activity")
+
+    recent = get_entries_since(7)[:25]
+    if recent:
+        for entry in recent:
+            ts = entry.get("timestamp", "")[:16].replace("T", " ")
+            svc = entry.get("service", "")
+            tool = entry.get("tool", "")
+            op = entry.get("operation", "")
+            cost = entry.get("estimated_cost_usd", 0)
+            inp = entry.get("input_tokens", 0)
+            out = entry.get("output_tokens", 0)
+
+            if svc == "anthropic":
+                st.markdown(
+                    f"**{ts}** &nbsp; `{svc}` &nbsp; {tool} &nbsp; "
+                    f"{inp:,}+{out:,} tokens &nbsp; **${cost:.4f}**"
+                )
+            else:
+                detail = entry.get("details", op)
+                st.markdown(f"**{ts}** &nbsp; `{svc}` &nbsp; {detail}")
+    else:
+        st.info("No recent API calls.")
+
+    # ── Pricing reference ───────────────────────────────────────────────────
+    st.markdown("---")
+    with st.expander("Pricing Reference"):
+        st.markdown(
+            "| Model | Input | Output |\n"
+            "|-------|-------|--------|\n"
+            "| Claude Sonnet 4.5 | $3.00 / MTok | $15.00 / MTok |\n"
+            "| Claude Haiku 3.5 | $0.80 / MTok | $4.00 / MTok |\n"
+            "| Google Translate v2 | $20.00 / M chars | — |\n"
+            "| Google Docs upload | Free | — |"
+        )
+        st.caption(
+            "Costs are estimated locally based on token counts from API responses. "
+            "Actual billing may differ slightly. Check console.anthropic.com for your real balance."
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Router
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1423,6 +1732,8 @@ _EDITORS = {
     "Document Translator": _editor_document_translator,
     "Salesforce Fields": _editor_salesforce_fields,
     "Feature Registry": _editor_feature_registry,
+    "Components": _editor_components,
+    "API Usage": _editor_api_usage,
 }
 
 _EDITORS[selected_tool]()

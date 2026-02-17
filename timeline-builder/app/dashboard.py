@@ -39,6 +39,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
+try:
+    from shared.draft_box import render_draft_box
+except ImportError:
+    render_draft_box = None
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -778,6 +782,16 @@ if events:
             if st.button("Delete", key=f"del_{event_id}", use_container_width=True):
                 _do_delete_event(event_id)
                 st.rerun()
+
+# Draft Box
+if render_draft_box is not None:
+    plain_text_for_draft = _build_plain_text(tl)
+    render_draft_box("timeline-builder", {
+        "document_type": "timeline narrative",
+        "client_name": client_name,
+        "case_id": st.session_state.get("timeline_id", ""),
+        "content": plain_text_for_draft,
+    })
 
 # Export controls
 st.markdown("---")

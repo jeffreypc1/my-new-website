@@ -27,6 +27,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
+try:
+    from shared.draft_box import render_draft_box
+except ImportError:
+    render_draft_box = None
 
 # -- Page config --------------------------------------------------------------
 
@@ -783,6 +787,16 @@ with preview_col:
             f'<div class="preview-panel">{preview_html}</div>',
             unsafe_allow_html=True,
         )
+
+    # Draft Box
+    if render_draft_box is not None:
+        plain_for_draft = _build_plain_text(brief_type, case_info, sections_content) if has_content else ""
+        render_draft_box("brief-builder", {
+            "document_type": "legal brief",
+            "client_name": case_info["client_name"],
+            "case_id": st.session_state.get("draft_id", ""),
+            "content": plain_for_draft,
+        })
 
     # Export controls
     st.markdown("---")
