@@ -1464,6 +1464,97 @@ def _editor_components():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Staff Directory
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _editor_staff_directory():
+    """Manage office staff members — names, contact info for document generation."""
+    st.subheader("Staff Directory")
+    st.caption(
+        "Add staff members so their info can be pulled into cover letters, briefs, "
+        "and other documents. Changes are saved immediately."
+    )
+
+    staff = load_config("staff-directory") or []
+
+    # --- Add new staff member ---
+    with st.expander("Add New Staff Member", expanded=not staff):
+        c1, c2 = st.columns(2)
+        with c1:
+            new_first = st.text_input("First Name", key="_staff_new_first")
+            new_last = st.text_input("Last Name", key="_staff_new_last")
+            new_email = st.text_input("Email", key="_staff_new_email")
+        with c2:
+            new_phone = st.text_input("Phone", key="_staff_new_phone")
+            new_address = st.text_area("Address", key="_staff_new_address", height=100)
+
+        if st.button("Add Staff Member", type="primary", key="_staff_add"):
+            if not new_first.strip() or not new_last.strip():
+                st.warning("First and last name are required.")
+            else:
+                import time
+                staff.append({
+                    "id": f"staff_{int(time.time() * 1000)}",
+                    "first_name": new_first.strip(),
+                    "last_name": new_last.strip(),
+                    "email": new_email.strip(),
+                    "phone": new_phone.strip(),
+                    "address": new_address.strip(),
+                })
+                save_config("staff-directory", staff)
+                st.toast(f"Added {new_first.strip()} {new_last.strip()}")
+                st.rerun()
+
+    # --- List existing staff ---
+    if not staff:
+        st.info("No staff members yet. Add one above.")
+        return
+
+    st.markdown(f"**{len(staff)} staff member{'s' if len(staff) != 1 else ''}**")
+
+    staff_to_delete = []
+    staff_changed = False
+
+    for idx, member in enumerate(staff):
+        display_name = f"{member.get('first_name', '')} {member.get('last_name', '')}".strip() or "Unnamed"
+        with st.expander(f"{display_name} — {member.get('email', '')}"):
+            c1, c2 = st.columns(2)
+            with c1:
+                first = st.text_input("First Name", value=member.get("first_name", ""), key=f"_staff_f_{idx}")
+                last = st.text_input("Last Name", value=member.get("last_name", ""), key=f"_staff_l_{idx}")
+                email = st.text_input("Email", value=member.get("email", ""), key=f"_staff_e_{idx}")
+            with c2:
+                phone = st.text_input("Phone", value=member.get("phone", ""), key=f"_staff_p_{idx}")
+                address = st.text_area("Address", value=member.get("address", ""), key=f"_staff_a_{idx}", height=100)
+
+            if (first != member.get("first_name", "") or last != member.get("last_name", "") or
+                    email != member.get("email", "") or phone != member.get("phone", "") or
+                    address != member.get("address", "")):
+                member["first_name"] = first
+                member["last_name"] = last
+                member["email"] = email
+                member["phone"] = phone
+                member["address"] = address
+                staff_changed = True
+
+            if st.button("Delete", key=f"_staff_del_{idx}"):
+                staff_to_delete.append(idx)
+
+    if staff_to_delete:
+        for idx in sorted(staff_to_delete, reverse=True):
+            removed = staff.pop(idx)
+            st.toast(f"Removed {removed.get('first_name', '')} {removed.get('last_name', '')}")
+        save_config("staff-directory", staff)
+        st.rerun()
+
+    if staff_changed:
+        if st.button("Save Changes", type="primary", key="_staff_save"):
+            save_config("staff-directory", staff)
+            st.toast("Staff directory saved!")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # API Usage & Budgets
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1706,16 +1797,18 @@ with tab_tools:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 with tab_integrations:
-    st.caption("Configure external service connections and shared AI components.")
+    st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Salesforce Fields", "Components (Draft Box)"],
+        ["Staff Directory", "Salesforce Fields", "Components (Draft Box)"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
     )
     st.divider()
-    if int_sub == "Salesforce Fields":
+    if int_sub == "Staff Directory":
+        _editor_staff_directory()
+    elif int_sub == "Salesforce Fields":
         _editor_salesforce_fields()
     else:
         _editor_components()
