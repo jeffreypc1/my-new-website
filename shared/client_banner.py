@@ -4,7 +4,8 @@ Renders a compact client info bar at the top of each tool page.
 Loads the active client from the shared JSON file, with inline
 option to pull a new client or refresh. Includes a "Files" button
 that opens a Box folder browser dialog when the client has a
-Box_Folder_ID__c.
+Box_Folder_ID__c, and an "Email" button that opens a compose
+dialog to send emails via Salesforce.
 
 Usage in any tool's dashboard.py:
     from shared.client_banner import render_client_banner
@@ -214,6 +215,99 @@ def _show_box_files(folder_id: str, client_name: str):
     )
 
 
+# -- Email compose dialog -----------------------------------------------------
+
+@st.dialog("Send Email", width="large")
+def _show_email_compose(client_record: dict, sf_available: bool):
+    """Dialog for composing and sending an email via Salesforce."""
+    from shared.config_store import load_config
+
+    client_name = client_record.get("Name", "Client")
+    client_email = client_record.get("Email", "")
+
+    st.markdown(f"**To:** {client_name} ({client_email})")
+
+    # Load staff directory for sender selection
+    staff = load_config("staff-directory") or []
+    staff_options = []
+    for member in staff:
+        first = member.get("first_name", "")
+        last = member.get("last_name", "")
+        email = member.get("email", "")
+        display = f"{first} {last}".strip()
+        if email:
+            display += f" ({email})"
+        staff_options.append(display)
+
+    if staff_options:
+        sender_idx = st.selectbox(
+            "From (sender)",
+            range(len(staff_options)),
+            format_func=lambda i: staff_options[i],
+            key="_email_sender",
+        )
+        sender_name = f"{staff[sender_idx].get('first_name', '')} {staff[sender_idx].get('last_name', '')}".strip()
+    else:
+        st.warning("No staff members configured. Add staff in Admin Panel > Integrations > Staff Directory.")
+        sender_name = ""
+
+    # Load email templates
+    templates = load_config("email-templates") or []
+    template_names = ["(none)"] + [t.get("name", f"Template {i}") for i, t in enumerate(templates)]
+
+    selected_tpl = st.selectbox("Template", template_names, key="_email_template")
+
+    # Determine initial subject/body from template
+    init_subject = ""
+    init_body = ""
+    if selected_tpl != "(none)":
+        tpl_idx = template_names.index(selected_tpl) - 1  # offset for "(none)"
+        if 0 <= tpl_idx < len(templates):
+            tpl = templates[tpl_idx]
+            try:
+                from shared.email_service import merge_template
+                init_subject, init_body = merge_template(
+                    tpl.get("subject", ""),
+                    tpl.get("body", ""),
+                    client_record,
+                )
+            except ImportError:
+                init_subject = tpl.get("subject", "")
+                init_body = tpl.get("body", "")
+
+    # Use session state to handle template switching
+    if "_email_last_tpl" not in st.session_state or st.session_state._email_last_tpl != selected_tpl:
+        st.session_state._email_last_tpl = selected_tpl
+        st.session_state._email_subj_val = init_subject
+        st.session_state._email_body_val = init_body
+        st.rerun()
+
+    subject = st.text_input("Subject", value=st.session_state.get("_email_subj_val", init_subject), key="_email_subject")
+    body = st.text_area("Body", value=st.session_state.get("_email_body_val", init_body), key="_email_body", height=250)
+
+    # Send button
+    can_send = bool(subject.strip() and body.strip() and sender_name and sf_available)
+    if st.button("Send Email", type="primary", key="_email_send", disabled=not can_send):
+        try:
+            from shared.email_service import send_email
+            from shared.salesforce_client import _sf_conn
+            sf = _sf_conn()
+            contact_id = client_record.get("Id", "")
+            result = send_email(sf, contact_id, client_email, subject, body, sender_name)
+            if result.get("success"):
+                st.success(result.get("message", "Email sent!"))
+                # Clean up session state
+                for key in ("_email_last_tpl", "_email_subj_val", "_email_body_val"):
+                    st.session_state.pop(key, None)
+            else:
+                st.error(f"Failed to send: {result.get('error', 'Unknown error')}")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    if not sf_available:
+        st.caption("Salesforce is unavailable. Email cannot be sent.")
+
+
 # -- Main banner function ----------------------------------------------------
 
 def render_client_banner() -> dict | None:
@@ -272,8 +366,9 @@ def render_client_banner() -> dict | None:
         st.caption("Salesforce unavailable — showing cached data.")
 
     has_box = bool(active and (active.get("Box_Folder_ID__c") or ""))
+    has_email = bool(active and (active.get("Email") or ""))
 
-    banner_cols = st.columns([3, 1, 1, 1])
+    banner_cols = st.columns([3, 1, 1, 1, 1])
     with banner_cols[0]:
         new_cid = st.text_input(
             "Client #",
@@ -291,6 +386,9 @@ def render_client_banner() -> dict | None:
     with banner_cols[3]:
         do_files = st.button("Files", use_container_width=True, key="_banner_files",
                              disabled=not has_box)
+    with banner_cols[4]:
+        do_email = st.button("Email", use_container_width=True, key="_banner_email",
+                             disabled=not has_email or not _sf_available)
 
     if do_pull and new_cid and _sf_available:
         try:
@@ -320,6 +418,9 @@ def render_client_banner() -> dict | None:
         folder_id = active.get("Box_Folder_ID__c", "")
         client_name = active.get("Name", "Client")
         _show_box_files(folder_id, client_name)
+
+    if do_email and active:
+        _show_email_compose(active, _sf_available)
 
     # Render info bar
     if active:

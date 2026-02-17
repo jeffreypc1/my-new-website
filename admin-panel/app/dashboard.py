@@ -1855,6 +1855,167 @@ def _editor_api_usage():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# EMAIL TEMPLATES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_DEFAULT_EMAIL_TEMPLATES = [
+    {
+        "id": "blank",
+        "name": "Blank",
+        "subject": "",
+        "body": "",
+    },
+    {
+        "id": "appointment_reminder",
+        "name": "Appointment Reminder",
+        "subject": "Appointment Reminder — {first_name} {last_name}",
+        "body": (
+            "Dear {first_name},\n\n"
+            "This is a reminder about your upcoming appointment with our office. "
+            "Please bring all relevant documents, including your photo ID and any "
+            "correspondence from USCIS or the immigration court.\n\n"
+            "If you need to reschedule, please call our office as soon as possible.\n\n"
+            "Thank you,\n"
+            "O'Brien Immigration Law"
+        ),
+    },
+    {
+        "id": "document_request",
+        "name": "Document Request",
+        "subject": "Documents Needed — {first_name} {last_name} (#{customer_id})",
+        "body": (
+            "Dear {first_name},\n\n"
+            "We are writing to request the following documents for your case:\n\n"
+            "1. \n"
+            "2. \n"
+            "3. \n\n"
+            "Please provide these documents at your earliest convenience. You may "
+            "email scanned copies to our office or bring the originals to your next "
+            "appointment.\n\n"
+            "If you have any questions, please do not hesitate to contact us.\n\n"
+            "Thank you,\n"
+            "O'Brien Immigration Law"
+        ),
+    },
+    {
+        "id": "case_status_update",
+        "name": "Case Status Update",
+        "subject": "Case Update — {first_name} {last_name}",
+        "body": (
+            "Dear {first_name},\n\n"
+            "We are writing to provide an update on your {case_type} case.\n\n"
+            "[Update details here]\n\n"
+            "Please do not hesitate to contact our office if you have any questions.\n\n"
+            "Thank you,\n"
+            "O'Brien Immigration Law"
+        ),
+    },
+    {
+        "id": "welcome_new_client",
+        "name": "Welcome New Client",
+        "subject": "Welcome to O'Brien Immigration Law — {first_name} {last_name}",
+        "body": (
+            "Dear {first_name},\n\n"
+            "Welcome to O'Brien Immigration Law. We are pleased to represent you in "
+            "your immigration matter.\n\n"
+            "Your client number is #{customer_id}. Please reference this number in "
+            "all communications with our office.\n\n"
+            "We will be in touch soon to schedule your initial consultation and discuss "
+            "next steps. In the meantime, please gather any documents related to your "
+            "immigration history.\n\n"
+            "Thank you for choosing our firm.\n\n"
+            "Sincerely,\n"
+            "O'Brien Immigration Law"
+        ),
+    },
+]
+
+
+def _editor_email_templates():
+    """Manage reusable email templates with merge field placeholders."""
+    st.subheader("Email Templates")
+    st.caption(
+        "Create and edit email templates. Use {field_name} placeholders that will "
+        "be filled with client data when composing. Templates are available in the "
+        "Email button on every tool."
+    )
+
+    templates = load_config("email-templates")
+    if templates is None:
+        templates = copy.deepcopy(_DEFAULT_EMAIL_TEMPLATES)
+
+    # Merge field reference
+    with st.expander("Available merge fields"):
+        st.markdown(
+            "| Placeholder | Description |\n"
+            "|---|---|\n"
+            "| `{first_name}` | Client first name |\n"
+            "| `{last_name}` | Client last name |\n"
+            "| `{name}` | Full name |\n"
+            "| `{customer_id}` | Client number |\n"
+            "| `{a_number}` | Alien registration number |\n"
+            "| `{email}` | Client email |\n"
+            "| `{phone}` | Phone number |\n"
+            "| `{country}` | Country of origin |\n"
+            "| `{language}` | Preferred language |\n"
+            "| `{immigration_status}` | Immigration status |\n"
+            "| `{case_type}` | Legal case type |\n"
+            "| `{case_number}` | Case number |\n"
+            "| `{court}` | Immigration court |\n"
+            "| `{dob}` | Date of birth |\n"
+            "| `{spouse}` | Spouse name |\n"
+        )
+
+    # Add new template
+    with st.expander("Add New Template"):
+        new_name = st.text_input("Template Name", key="_et_new_name", placeholder="e.g. Hearing Reminder")
+        new_subject = st.text_input("Subject", key="_et_new_subject")
+        new_body = st.text_area("Body", key="_et_new_body", height=150)
+        if st.button("Add Template", type="primary", key="_et_add"):
+            if not new_name.strip():
+                st.warning("Template name is required.")
+            else:
+                import time as _time
+                templates.append({
+                    "id": f"custom_{int(_time.time() * 1000)}",
+                    "name": new_name.strip(),
+                    "subject": new_subject,
+                    "body": new_body,
+                })
+                save_config("email-templates", templates)
+                st.toast(f"Added template: {new_name.strip()}")
+                st.rerun()
+
+    # List / edit existing templates
+    if not templates:
+        st.info("No templates. Add one above.")
+        return
+
+    st.markdown(f"**{len(templates)} template{'s' if len(templates) != 1 else ''}**")
+
+    templates_to_delete: list[int] = []
+
+    for idx, tpl in enumerate(templates):
+        with st.expander(tpl.get("name", f"Template {idx + 1}")):
+            tpl["name"] = st.text_input("Name", value=tpl.get("name", ""), key=f"_et_name_{idx}")
+            tpl["subject"] = st.text_input("Subject", value=tpl.get("subject", ""), key=f"_et_subj_{idx}")
+            tpl["body"] = st.text_area("Body", value=tpl.get("body", ""), key=f"_et_body_{idx}", height=200)
+            if st.button("Delete", key=f"_et_del_{idx}"):
+                templates_to_delete.append(idx)
+
+    if templates_to_delete:
+        for idx in sorted(templates_to_delete, reverse=True):
+            removed = templates.pop(idx)
+            st.toast(f"Removed template: {removed.get('name', '')}")
+        save_config("email-templates", templates)
+        st.rerun()
+
+    if st.button("Save Email Templates", type="primary", key="_et_save"):
+        save_config("email-templates", templates)
+        st.toast("Email templates saved!")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Tab 1: Tool Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1888,7 +2049,7 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)"],
+        ["Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)", "Email Templates"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
@@ -1900,6 +2061,8 @@ with tab_integrations:
         _editor_client_banner()
     elif int_sub == "Salesforce Fields":
         _editor_salesforce_fields()
+    elif int_sub == "Email Templates":
+        _editor_email_templates()
     else:
         _editor_components()
 
