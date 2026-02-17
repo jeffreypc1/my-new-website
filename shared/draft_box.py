@@ -2,7 +2,8 @@
 
 Renders a text area for instructions + Generate Draft button. Sends the
 page's current content + instructions to Claude, which drafts a document.
-The draft is downloadable as .docx and uploadable to Google Docs.
+Export as .txt, .docx, .pdf, or upload to Google Docs — with optional
+page numbers (bottom-right).
 
 Draft history is kept per case/draft ID so users don't see unrelated
 drafts from other cases.
@@ -11,12 +12,14 @@ drafts from other cases.
 from __future__ import annotations
 
 import io
-import json
 from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
 from shared.config_store import load_config, save_config
@@ -86,7 +89,41 @@ def _save_history_entry(tool_name: str, case_id: str, entry: dict) -> None:
     save_config(_HISTORY_CONFIG, all_history)
 
 
-def _build_draft_docx(text: str, title: str) -> bytes:
+# ── Document builders ───────────────────────────────────────────────────────
+
+
+def _add_docx_page_number(section) -> None:
+    """Add a right-aligned page number field to the section footer."""
+    footer = section.footer
+    footer.is_linked_to_previous = False
+    para = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+    para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    # PAGE field: begin
+    run1 = para.add_run()
+    fld_begin = OxmlElement("w:fldChar")
+    fld_begin.set(qn("w:fldCharType"), "begin")
+    run1._r.append(fld_begin)
+
+    # PAGE field: instruction
+    run2 = para.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = " PAGE "
+    run2._r.append(instr)
+
+    # PAGE field: end
+    run3 = para.add_run()
+    fld_end = OxmlElement("w:fldChar")
+    fld_end.set(qn("w:fldCharType"), "end")
+    run3._r.append(fld_end)
+
+    for run in (run1, run2, run3):
+        run.font.name = "Times New Roman"
+        run.font.size = Pt(10)
+
+
+def _build_draft_docx(text: str, title: str, page_numbers: bool = False) -> bytes:
     """Build a .docx from draft text with standard formatting."""
     doc = Document()
     for section in doc.sections:
@@ -94,6 +131,8 @@ def _build_draft_docx(text: str, title: str) -> bytes:
         section.bottom_margin = Inches(1)
         section.left_margin = Inches(1)
         section.right_margin = Inches(1)
+        if page_numbers:
+            _add_docx_page_number(section)
 
     style = doc.styles["Normal"]
     font = style.font
@@ -120,6 +159,43 @@ def _build_draft_docx(text: str, title: str) -> bytes:
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+def _build_draft_pdf(text: str, title: str, page_numbers: bool = False) -> bytes:
+    """Build a PDF from draft text using fpdf2."""
+    from fpdf import FPDF
+
+    class _PDF(FPDF):
+        _show_page_numbers = page_numbers
+
+        def footer(self):
+            if self._show_page_numbers:
+                self.set_y(-15)
+                self.set_font("Times", "", 10)
+                self.cell(0, 10, str(self.page_no()), 0, 0, "R")
+
+    pdf = _PDF()
+    pdf.set_auto_page_break(auto=True, margin=25 if page_numbers else 15)
+    pdf.add_page()
+    pdf.set_margins(25.4, 25.4, 25.4)  # 1-inch margins
+
+    # Title
+    pdf.set_font("Times", "B", 14)
+    pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    # Body
+    pdf.set_font("Times", "", 12)
+    for para_text in text.split("\n\n"):
+        stripped = para_text.strip()
+        if stripped:
+            pdf.multi_cell(0, 6, stripped)
+            pdf.ln(3)
+
+    return bytes(pdf.output())
+
+
+# ── Main component ──────────────────────────────────────────────────────────
 
 
 def render_draft_box(tool_name: str, context: dict) -> None:
@@ -200,30 +276,68 @@ def render_draft_box(tool_name: str, context: dict) -> None:
             safe_name = (client_name or "Draft").replace(" ", "_")
             title = f"{document_type.title()} Draft — {client_name}" if client_name else f"{document_type.title()} Draft"
 
-            dl_cols = st.columns(2)
-            with dl_cols[0]:
-                docx_bytes = _build_draft_docx(latest, title)
-                st.download_button(
-                    "Download .docx",
-                    data=docx_bytes,
-                    file_name=f"Draft_{safe_name}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True,
-                    key=f"_draft_box_dl_{tool_name}",
+            # Export options
+            st.markdown("---")
+            opt_cols = st.columns([3, 2])
+            with opt_cols[0]:
+                fmt = st.radio(
+                    "Format",
+                    options=["Google Docs", "Word (.docx)", "PDF (.pdf)", "Text (.txt)"],
+                    key=f"_draft_box_fmt_{tool_name}",
+                    horizontal=True,
+                    label_visibility="collapsed",
                 )
-            with dl_cols[1]:
-                if st.button("Upload to Google Docs", use_container_width=True, key=f"_draft_box_gdocs_{tool_name}"):
+            with opt_cols[1]:
+                page_nums = st.checkbox(
+                    "Page numbers",
+                    key=f"_draft_box_pn_{tool_name}",
+                )
+
+            if fmt == "Google Docs":
+                if st.button("Upload to Google Docs", use_container_width=True, key=f"_draft_box_action_{tool_name}"):
                     with st.spinner("Uploading to Google Docs..."):
                         try:
                             from shared.google_upload import upload_to_google_docs
 
-                            docx_bytes = _build_draft_docx(latest, title)
+                            docx_bytes = _build_draft_docx(latest, title, page_numbers=page_nums)
                             url = upload_to_google_docs(docx_bytes, title)
                             st.session_state[f"_draft_box_gdoc_url_{tool_name}"] = url
                         except Exception as e:
                             st.error(f"Upload failed: {e}")
                 if st.session_state.get(f"_draft_box_gdoc_url_{tool_name}"):
                     st.markdown(f"[Open Google Doc]({st.session_state[f'_draft_box_gdoc_url_{tool_name}']})")
+
+            elif fmt == "Word (.docx)":
+                docx_bytes = _build_draft_docx(latest, title, page_numbers=page_nums)
+                st.download_button(
+                    "Download .docx",
+                    data=docx_bytes,
+                    file_name=f"Draft_{safe_name}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    use_container_width=True,
+                    key=f"_draft_box_action_{tool_name}",
+                )
+
+            elif fmt == "PDF (.pdf)":
+                pdf_bytes = _build_draft_pdf(latest, title, page_numbers=page_nums)
+                st.download_button(
+                    "Download .pdf",
+                    data=pdf_bytes,
+                    file_name=f"Draft_{safe_name}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key=f"_draft_box_action_{tool_name}",
+                )
+
+            else:  # Text (.txt)
+                st.download_button(
+                    "Download .txt",
+                    data=latest,
+                    file_name=f"Draft_{safe_name}.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                    key=f"_draft_box_action_{tool_name}",
+                )
 
     # Draft history
     history = _load_history(tool_name, case_id)

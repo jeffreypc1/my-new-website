@@ -25,4 +25,5 @@ dependencies = [
     "boxsdk>=3.12.0",
     "simple-salesforce>=1.12.0",
     "anthropic>=0.42.0",
+    "fpdf2>=2.8.0",
 ]
