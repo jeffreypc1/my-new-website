@@ -32,7 +32,7 @@ from shared.salesforce_client import (
 st.set_page_config(
     page_title="Client Info — O'Brien Immigration Law",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # -- CSS ----------------------------------------------------------------------
@@ -93,6 +93,27 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+# -- Client banner (shared) ---------------------------------------------------
+try:
+    from shared.client_banner import render_client_banner
+    render_client_banner()
+except Exception:
+    pass
+
+# -- Sidebar ------------------------------------------------------------------
+with st.sidebar:
+    st.markdown("### Client Info")
+    active = load_active_client()
+    if active:
+        st.caption(f"**{active.get('Name', '')}** #{active.get('Customer_ID__c', '')}")
+        box_fid = active.get("Box_Folder_ID__c", "")
+        if box_fid:
+            st.markdown(f"[Open Box Folder](https://app.box.com/folder/{box_fid})")
+    st.markdown("---")
+    st.caption("Scroll to view field groups:")
+    for gn in ["Identity", "Contact Information", "Immigration Details", "Family", "Case Information"]:
+        st.markdown(f"- {gn}")
 
 # -- Pull client --------------------------------------------------------------
 

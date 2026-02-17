@@ -180,11 +180,23 @@ def render_client_banner() -> dict | None:
 
     Returns the active client SF record dict, or None.
     """
-    from shared.salesforce_client import (
-        get_client,
-        load_active_client,
-        save_active_client,
-    )
+    _sf_available = True
+    try:
+        from shared.salesforce_client import (
+            get_client,
+            load_active_client,
+            save_active_client,
+        )
+    except Exception:
+        _sf_available = False
+        import json as _json
+        from pathlib import Path as _Path
+        _FB = _Path(__file__).resolve().parent.parent / "data" / "active_client.json"
+        def load_active_client():
+            try: return _json.loads(_FB.read_text()) if _FB.exists() else None
+            except Exception: return None
+        def save_active_client(r): pass
+        def get_client(c): return None
 
     # 1. Check query param (takes priority)
     params = st.query_params
@@ -194,7 +206,7 @@ def render_client_banner() -> dict | None:
     active = load_active_client()
 
     # 3. If query param has a different client, pull it
-    if qp_cid and (not active or active.get("Customer_ID__c") != qp_cid):
+    if _sf_available and qp_cid and (not active or active.get("Customer_ID__c") != qp_cid):
         try:
             record = get_client(qp_cid.strip())
             if record:
@@ -210,6 +222,9 @@ def render_client_banner() -> dict | None:
     # 5. Render pull bar + banner
     st.markdown(_BANNER_CSS, unsafe_allow_html=True)
 
+    if not _sf_available:
+        st.caption("Salesforce unavailable — showing cached data.")
+
     has_box = bool(active and (active.get("Box_Folder_ID__c") or ""))
 
     banner_cols = st.columns([3, 1, 1, 1])
@@ -222,15 +237,16 @@ def render_client_banner() -> dict | None:
             key="_banner_client_id",
         )
     with banner_cols[1]:
-        do_pull = st.button("Pull", use_container_width=True, type="primary", key="_banner_pull")
+        do_pull = st.button("Pull", use_container_width=True, type="primary", key="_banner_pull",
+                            disabled=not _sf_available)
     with banner_cols[2]:
         do_refresh = st.button("Refresh", use_container_width=True, key="_banner_refresh",
-                               disabled=not active)
+                               disabled=not active or not _sf_available)
     with banner_cols[3]:
         do_files = st.button("Files", use_container_width=True, key="_banner_files",
                              disabled=not has_box)
 
-    if do_pull and new_cid:
+    if do_pull and new_cid and _sf_available:
         try:
             record = get_client(new_cid.strip())
             if record:
@@ -242,7 +258,7 @@ def render_client_banner() -> dict | None:
         except Exception as e:
             st.error(f"Salesforce error: {e}")
 
-    if do_refresh and active:
+    if do_refresh and active and _sf_available:
         cid = active.get("Customer_ID__c", "")
         if cid:
             try:

@@ -23,7 +23,7 @@ st.set_page_config(
     page_title="Admin Panel — O'Brien Immigration Law",
     page_icon="&#x2699;&#xFE0F;",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── CSS (matches other tools) ────────────────────────────────────────────────
@@ -34,6 +34,27 @@ st.markdown(
 #MainMenu, header[data-testid="stHeader"], footer,
 div[data-testid="stToolbar"] { display: none !important; }
 .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+.nav-bar {
+    display: flex;
+    align-items: center;
+    padding: 10px 4px;
+    margin: -1rem 0 1.2rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.nav-back {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'Inter', sans-serif; font-size: 0.85rem;
+    font-weight: 500; color: #0066CC; text-decoration: none;
+    min-width: 150px;
+}
+.nav-back:hover { color: #004499; text-decoration: underline; }
+.nav-title {
+    flex: 1; text-align: center;
+    font-family: 'Inter', sans-serif; font-size: 1.15rem;
+    font-weight: 700; color: #1a2744; letter-spacing: -0.02em;
+}
+.nav-firm { font-weight: 400; color: #86868b; font-size: 0.85rem; margin-left: 8px; }
+.nav-spacer { min-width: 150px; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -41,15 +62,32 @@ div[data-testid="stToolbar"] { display: none !important; }
 
 # ── Nav bar ──────────────────────────────────────────────────────────────────
 st.markdown(
-    '<div style="text-align:right;padding:4px 12px;">'
-    '<a href="http://localhost:8502" target="_self" '
-    'style="font-size:0.8rem;color:#0066CC;text-decoration:none;">'
-    "&#x2190; Staff Dashboard</a></div>",
+    """
+<div class="nav-bar">
+    <a href="http://localhost:8502" class="nav-back">&#8592; Staff Dashboard</a>
+    <div class="nav-title">Admin Panel<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
+    <div class="nav-spacer"></div>
+</div>
+""",
     unsafe_allow_html=True,
 )
 
-st.title("Admin Panel")
-st.caption("Configure templates, lists, and settings for all office tools. Changes take effect on tool restart.")
+# ── Client banner ────────────────────────────────────────────────────────────
+try:
+    from shared.client_banner import render_client_banner
+    render_client_banner()
+except Exception:
+    pass
+
+# ── Sidebar ──────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### Admin Panel")
+    st.markdown("[Staff Dashboard](http://localhost:8502)")
+    st.markdown("[Client Info](http://localhost:8512)")
+    st.markdown("---")
+    st.caption("Configure templates, lists, and settings for all office tools.")
+
+st.caption("Changes take effect on tool restart.")
 
 
 # ── Tool navigation (main area) ──────────────────────────────────────────────

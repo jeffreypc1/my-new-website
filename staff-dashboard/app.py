@@ -7,7 +7,19 @@ from pathlib import Path
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from shared.salesforce_client import get_client, load_active_client, save_active_client
+
+_sf_available = True
+try:
+    from shared.salesforce_client import get_client, load_active_client, save_active_client
+except Exception:
+    _sf_available = False
+    import json as _json
+    _FB = Path(__file__).resolve().parent.parent / "data" / "active_client.json"
+    def load_active_client():
+        try: return _json.loads(_FB.read_text()) if _FB.exists() else None
+        except Exception: return None
+    def save_active_client(r): pass
+    def get_client(c): return None
 
 st.set_page_config(
     page_title="Staff Tools — O'Brien Immigration Law",
@@ -309,7 +321,8 @@ with _cl_center:
             label_visibility="collapsed",
         )
     with cl_cols[1]:
-        sf_pull = st.button("Pull from Salesforce", use_container_width=True, type="primary")
+        sf_pull = st.button("Pull from Salesforce", use_container_width=True, type="primary",
+                            disabled=not _sf_available)
     with cl_cols[2]:
         _cid = st.session_state.get("sf_customer_id", "")
         if _cid:
@@ -319,7 +332,7 @@ with _cl_center:
                 use_container_width=True,
             )
 
-    if sf_pull and customer_id:
+    if sf_pull and customer_id and _sf_available:
         try:
             record = get_client(customer_id.strip())
             if record:
