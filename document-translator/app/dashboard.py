@@ -38,6 +38,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
+try:
+    from shared.tool_help import render_tool_help
+except ImportError:
+    render_tool_help = None
 
 # -- Page config --------------------------------------------------------------
 
@@ -219,6 +223,8 @@ st.markdown(
 )
 
 sf_record = render_client_banner()
+if render_tool_help:
+    render_tool_help("document-translator")
 if sf_record and not st.session_state.get("inp_client_name"):
     st.session_state.inp_client_name = sf_record.get("Name", "")
 

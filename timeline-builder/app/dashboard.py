@@ -43,6 +43,10 @@ try:
     from shared.draft_box import render_draft_box
 except ImportError:
     render_draft_box = None
+try:
+    from shared.tool_help import render_tool_help
+except ImportError:
+    render_tool_help = None
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -321,6 +325,8 @@ st.markdown(
 )
 
 render_client_banner()
+if render_tool_help:
+    render_tool_help("timeline-builder")
 
 # ── Session state defaults ───────────────────────────────────────────────────
 

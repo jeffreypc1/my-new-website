@@ -26,6 +26,10 @@ from shared.salesforce_client import (
     save_active_client,
     update_client,
 )
+try:
+    from shared.tool_help import render_tool_help
+except ImportError:
+    render_tool_help = None
 
 # -- Page config --------------------------------------------------------------
 
@@ -99,6 +103,8 @@ st.markdown(
 try:
     from shared.client_banner import render_client_banner
     render_client_banner()
+    if render_tool_help:
+        render_tool_help("client-info")
 except Exception:
     pass
 

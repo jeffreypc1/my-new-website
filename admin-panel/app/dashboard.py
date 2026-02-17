@@ -18,6 +18,10 @@ import streamlit as st
 # ── Shared imports ───────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.config_store import load_config, save_config
+try:
+    from shared.tool_help import render_tool_help
+except ImportError:
+    render_tool_help = None
 
 st.set_page_config(
     page_title="Admin Panel — O'Brien Immigration Law",
@@ -77,6 +81,8 @@ st.markdown(
 try:
     from shared.client_banner import render_client_banner
     render_client_banner()
+    if render_tool_help:
+        render_tool_help("admin-panel")
 except Exception:
     pass
 
@@ -87,66 +93,19 @@ with st.sidebar:
     st.markdown("[Client Info](http://localhost:8512)")
     st.markdown("---")
     st.caption("Configure templates, lists, and settings for all office tools.")
-    st.markdown("---")
-    st.markdown("#### Sidebar Visibility")
-    _global = load_config("global-settings") or {}
-    _sidebars = _global.get("sidebars", {})
-    _TOOLS = [
-        ("country-reports", "Country Reports"),
-        ("cover-letters", "Cover Letters"),
-        ("brief-builder", "Brief Builder"),
-        ("declaration-drafter", "Declaration Drafter"),
-        ("timeline-builder", "Timeline Builder"),
-        ("legal-research", "Legal Research"),
-        ("forms-assistant", "Forms Assistant"),
-        ("case-checklist", "Case Checklist"),
-        ("evidence-indexer", "Evidence Indexer"),
-        ("document-translator", "Document Translator"),
-        ("client-info", "Client Info"),
-    ]
-    _changed = False
-    for _tool_key, _tool_label in _TOOLS:
-        _val = st.checkbox(
-            _tool_label,
-            value=_sidebars.get(_tool_key, True),
-            key=f"_adm_sb_{_tool_key}",
-        )
-        if _val != _sidebars.get(_tool_key, True):
-            _sidebars[_tool_key] = _val
-            _changed = True
-    if _changed:
-        _global["sidebars"] = _sidebars
-        save_config("global-settings", _global)
-        st.toast("Sidebar settings saved!")
-        st.rerun()
     try:
         from shared.tool_notes import render_tool_notes
         render_tool_notes("admin-panel")
     except Exception:
         pass
 
-st.caption("Changes take effect on tool restart.")
-
-
-# ── Tool navigation (main area) ──────────────────────────────────────────────
-TOOLS = [
-    "Case Checklist",
-    "Brief Builder",
-    "Cover Letters",
-    "Declaration Drafter",
-    "Legal Research",
-    "Forms Assistant",
-    "Evidence Indexer",
-    "Timeline Builder",
-    "Document Translator",
-    "Salesforce Fields",
-    "Feature Registry",
-    "Components",
-    "API Usage",
-]
-
-selected_tool = st.radio("Select tool to configure", TOOLS, index=0, horizontal=True)
-st.divider()
+# ── Tab navigation (main area) ───────────────────────────────────────────────
+tab_tools, tab_integrations, tab_governance, tab_usage = st.tabs([
+    "Tool Configuration",
+    "Integrations",
+    "Governance",
+    "Usage & Billing",
+])
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1717,10 +1676,10 @@ def _editor_api_usage():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Router
+# Tab 1: Tool Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_EDITORS = {
+_TOOL_EDITORS = {
     "Case Checklist": _editor_case_checklist,
     "Brief Builder": _editor_brief_builder,
     "Cover Letters": _editor_cover_letters,
@@ -1730,10 +1689,95 @@ _EDITORS = {
     "Evidence Indexer": _editor_evidence_indexer,
     "Timeline Builder": _editor_timeline_builder,
     "Document Translator": _editor_document_translator,
-    "Salesforce Fields": _editor_salesforce_fields,
-    "Feature Registry": _editor_feature_registry,
-    "Components": _editor_components,
-    "API Usage": _editor_api_usage,
 }
 
-_EDITORS[selected_tool]()
+with tab_tools:
+    st.caption("Edit templates, lists, and settings for individual tools.")
+    selected_tool = st.selectbox(
+        "Select tool to configure",
+        list(_TOOL_EDITORS.keys()),
+        key="_tab_tools_select",
+    )
+    st.divider()
+    _TOOL_EDITORS[selected_tool]()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tab 2: Integrations
+# ═══════════════════════════════════════════════════════════════════════════════
+
+with tab_integrations:
+    st.caption("Configure external service connections and shared AI components.")
+    int_sub = st.radio(
+        "Section",
+        ["Salesforce Fields", "Components (Draft Box)"],
+        horizontal=True,
+        key="_tab_int_radio",
+        label_visibility="collapsed",
+    )
+    st.divider()
+    if int_sub == "Salesforce Fields":
+        _editor_salesforce_fields()
+    else:
+        _editor_components()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tab 3: Governance
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_SIDEBAR_TOOLS = [
+    ("country-reports", "Country Reports"),
+    ("cover-letters", "Cover Letters"),
+    ("brief-builder", "Brief Builder"),
+    ("declaration-drafter", "Declaration Drafter"),
+    ("timeline-builder", "Timeline Builder"),
+    ("legal-research", "Legal Research"),
+    ("forms-assistant", "Forms Assistant"),
+    ("case-checklist", "Case Checklist"),
+    ("evidence-indexer", "Evidence Indexer"),
+    ("document-translator", "Document Translator"),
+    ("client-info", "Client Info"),
+]
+
+with tab_governance:
+    st.caption("Feature locking, sidebar visibility, and tool governance.")
+    gov_sub = st.radio(
+        "Section",
+        ["Feature Registry", "Sidebar Visibility"],
+        horizontal=True,
+        key="_tab_gov_radio",
+        label_visibility="collapsed",
+    )
+    st.divider()
+
+    if gov_sub == "Feature Registry":
+        _editor_feature_registry()
+    else:
+        st.subheader("Sidebar Visibility")
+        st.caption(
+            "Toggle which tools show their sidebar panel. "
+            "Changes take effect on tool restart."
+        )
+        _global = load_config("global-settings") or {}
+        _sidebars = _global.get("sidebars", {})
+        _changed = False
+        for _tool_key, _tool_label in _SIDEBAR_TOOLS:
+            _val = st.toggle(
+                _tool_label,
+                value=_sidebars.get(_tool_key, True),
+                key=f"_adm_sb_{_tool_key}",
+            )
+            if _val != _sidebars.get(_tool_key, True):
+                _sidebars[_tool_key] = _val
+                _changed = True
+        if _changed:
+            _global["sidebars"] = _sidebars
+            save_config("global-settings", _global)
+            st.toast("Sidebar settings saved!")
+            st.rerun()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tab 4: Usage & Billing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+with tab_usage:
+    _editor_api_usage()
