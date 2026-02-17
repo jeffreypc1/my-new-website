@@ -645,25 +645,6 @@ with preview_col:
                 unsafe_allow_html=True,
             )
 
-        # Draft Box
-        if render_draft_box is not None:
-            from app.prompts import build_declaration_text as _build_decl_text
-            draft_content = ""
-            if paragraphs:
-                draft_content = _build_decl_text(
-                    answers=answers,
-                    declaration_type=declaration_type,
-                    declarant_name=declarant_name,
-                    language=language,
-                    interpreter_name=interpreter_name,
-                )
-            render_draft_box("declaration-drafter", {
-                "document_type": "declaration",
-                "client_name": declarant_name,
-                "case_id": st.session_state.get("draft_id", ""),
-                "content": draft_content,
-            })
-
         # Export controls
         st.markdown("---")
         st.markdown("**Export**")
@@ -720,3 +701,24 @@ with preview_col:
                     st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
             else:
                 st.button("Download .docx", disabled=True, use_container_width=True)
+
+    # Draft Box (always visible — uses whatever data is on the page)
+    if render_draft_box is not None:
+        _answers = _collect_answers(declaration_type)
+        _paras = format_numbered_paragraphs(_answers, declaration_type)
+        _draft_content = ""
+        if _paras:
+            from app.prompts import build_declaration_text as _build_decl_text
+            _draft_content = _build_decl_text(
+                answers=_answers,
+                declaration_type=declaration_type,
+                declarant_name=declarant_name or "Declarant",
+                language=language,
+                interpreter_name=interpreter_name,
+            )
+        render_draft_box("declaration-drafter", {
+            "document_type": "declaration",
+            "client_name": declarant_name,
+            "case_id": st.session_state.get("draft_id", ""),
+            "content": _draft_content,
+        })

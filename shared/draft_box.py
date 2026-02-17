@@ -230,9 +230,7 @@ def render_draft_box(tool_name: str, context: dict) -> None:
     )
 
     if st.button("Generate Draft", type="primary", key=f"_draft_box_generate_{tool_name}", use_container_width=True):
-        if not content.strip():
-            st.warning("Add some content to the page first — the Draft Box uses it as context.")
-        elif not instructions.strip():
+        if not instructions.strip():
             st.warning("Enter instructions describing what you'd like drafted.")
         else:
             with st.spinner("Drafting with Claude..."):
@@ -244,10 +242,16 @@ def render_draft_box(tool_name: str, context: dict) -> None:
                     if tool_prompt:
                         system_prompt += "\n\n" + tool_prompt
 
-                    user_message = (
-                        f"## Current {document_type} content\n\n{content}\n\n"
-                        f"## Instructions\n\n{instructions}"
-                    )
+                    if content.strip():
+                        user_message = (
+                            f"## Current {document_type} content\n\n{content}\n\n"
+                            f"## Instructions\n\n{instructions}"
+                        )
+                    else:
+                        user_message = (
+                            f"## Instructions\n\n{instructions}\n\n"
+                            f"(No content on the page yet — draft from scratch based on the instructions.)"
+                        )
 
                     draft_text = draft_with_claude(system_prompt, user_message, tool_name=tool_name)
 

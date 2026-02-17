@@ -651,7 +651,6 @@ with doc_col:
 
 with preview_col:
     st.markdown('<div class="section-label">Cover Letter Preview</div>', unsafe_allow_html=True)
-
     if not client_name:
         st.info("Enter the client's name in the sidebar to see the live preview.")
     else:
@@ -678,15 +677,6 @@ with preview_col:
             f'<div class="preview-panel">{preview_html}</div>',
             unsafe_allow_html=True,
         )
-
-        # Draft Box
-        if render_draft_box is not None:
-            render_draft_box("cover-letters", {
-                "document_type": "cover letter",
-                "client_name": client_name,
-                "case_id": st.session_state.get("draft_id", ""),
-                "content": letter_text,
-            })
 
         # Export controls
         st.markdown("---")
@@ -719,3 +709,23 @@ with preview_col:
                         st.error(f"Upload failed: {e}")
             if st.session_state.get("google_doc_url"):
                 st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
+
+    # Draft Box (always visible)
+    # Draft Box (always visible — uses whatever data is on the page)
+    if render_draft_box is not None:
+        _draft_content = ""
+        if client_name:
+            _all_enc = _build_enclosed_docs_list()
+            _draft_content = render_cover_letter(
+                case_type=case_type, client_name=client_name,
+                a_number=a_number, receipt_number=receipt_number,
+                filing_office=filing_office, enclosed_docs=_all_enc,
+                attorney_name=attorney_name, bar_number=bar_number,
+                firm_name=firm_name, firm_address=firm_address,
+            )
+        render_draft_box("cover-letters", {
+            "document_type": "cover letter",
+            "client_name": client_name,
+            "case_id": st.session_state.get("draft_id", ""),
+            "content": _draft_content,
+        })
