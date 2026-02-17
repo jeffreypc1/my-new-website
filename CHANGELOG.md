@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.16.7 — 2026-02-17
+
+### Navigation & Footer Font Color Controls
+
+- **`style.css` — `--nav-font-color` and `--footer-font-color` CSS variables** — New variables in `:root` (default `#ffffff`). `.nav-links a`, `.nav-more-trigger` use `var(--nav-font-color)`. `.footer` and `.footer-links a` use `var(--footer-font-color)`.
+- **`admin.html` — Font color pickers** — Two new color pickers in Design > Appearance: "Navigation Font Color" and "Footer Font Color" (default white). Values saved to `siteDesignSettings` and `siteSettings` as CSS variables, applied site-wide via the existing `applySiteSettings()` loop in main.js.
+
 ## v3.16.6 — 2026-02-15
 
 ### Primary Action Color & Apple-Style Button System
