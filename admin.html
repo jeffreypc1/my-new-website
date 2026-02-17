@@ -1501,6 +1501,7 @@
           <a class="sidebar-link" data-section="salesforcebox"><span>Salesforce & Box</span></a>
           <a class="sidebar-link" data-section="design"><span>Design</span></a>
           <a class="sidebar-link" data-section="layoutpreview"><span>Layout Preview</span></a>
+          <a class="sidebar-link" data-section="cloudsync"><span>Cloud Sync</span></a>
         </div>
       </div>
     </nav>
@@ -2767,6 +2768,38 @@
       </div>
     </div>
 
+    <div id="cloudsync" class="section">
+      <h1>Cloud Sync</h1>
+      <p class="subtitle">Persist site settings to a Cloudflare Worker so they survive browser data clears and work across devices.</p>
+
+      <div class="panel">
+        <h2>Connection</h2>
+        <div class="form-group">
+          <label for="cloudSyncUrl">Worker URL</label>
+          <input type="text" id="cloudSyncUrl" placeholder="https://site-settings-sync.your-account.workers.dev">
+        </div>
+        <div class="form-group">
+          <label for="cloudSyncToken">Admin Token</label>
+          <input type="password" id="cloudSyncToken" placeholder="Bearer token for write access">
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+          <button class="btn btn-primary btn-sm" id="btnCloudSyncSaveConfig">Save Config</button>
+          <button class="btn btn-secondary btn-sm" id="btnCloudSyncTest">Test Connection</button>
+          <span id="cloudSyncStatus" style="font-size:0.85rem"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Sync Actions</h2>
+        <p style="margin-bottom:16px;color:var(--mid-gray);font-size:0.9rem">Push all 18 setting keys to the cloud, or pull the latest cloud values into this browser.</p>
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="btn btn-primary btn-sm" id="btnCloudSyncPush">Push All Settings</button>
+          <button class="btn btn-secondary btn-sm" id="btnCloudSyncPull">Pull from Cloud</button>
+          <span id="cloudSyncActionStatus" style="font-size:0.85rem"></span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <div class="toast" id="toast"></div>
@@ -2792,6 +2825,25 @@
       const div = document.createElement("div");
       div.textContent = str;
       return div.innerHTML;
+    }
+
+    /* ── Cloud Sync push helper (fire-and-forget) ── */
+    const CLOUD_SYNC_KEYS = [
+      "siteSettings","siteNavFooterSettings","siteDesignSettings","sitePageToggles",
+      "siteBusinessHours","siteContactConfig","siteClockSettings","siteTranslation",
+      "siteSuccessRibbon","siteOfficeLocations","bentoTiles","sitePages","sitePosts",
+      "siteStaff","siteTestimonials","siteLocations","siteCareers","sitePathFinder"
+    ];
+
+    function cloudSyncPush(key, value) {
+      const url = localStorage.getItem("cloudSyncUrl");
+      const token = localStorage.getItem("cloudSyncToken");
+      if (!url || !token) return;
+      fetch(url + "/settings/" + encodeURIComponent(key), {
+        method: "PUT",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: typeof value === "string" ? value : JSON.stringify(value),
+      }).catch(function(e) { console.warn("Cloud sync push failed for " + key, e); });
     }
 
     /* ══════════════════════════════════════════════
@@ -2842,6 +2894,7 @@
 
     function savePages(pages) {
       localStorage.setItem("sitePages", JSON.stringify(pages));
+      cloudSyncPush("sitePages", pages);
     }
 
     /* ══════════════════════════════════════════════
@@ -2854,6 +2907,7 @@
 
     function savePosts(posts) {
       localStorage.setItem("sitePosts", JSON.stringify(posts));
+      cloudSyncPush("sitePosts", posts);
     }
 
     /* ══════════════════════════════════════════════
@@ -2866,6 +2920,7 @@
 
     function saveStaff(staff) {
       localStorage.setItem("siteStaff", JSON.stringify(staff));
+      cloudSyncPush("siteStaff", staff);
     }
 
     /* ══════════════════════════════════════════════
@@ -3166,6 +3221,7 @@
       };
 
       localStorage.setItem("siteSettings", JSON.stringify(settings));
+      cloudSyncPush("siteSettings", settings);
       console.log("Site settings saved:", settings);
 
       const preview = document.getElementById("previewFrame");
@@ -3269,6 +3325,7 @@
         ribbon.bgColor = bgColorInput.value;
         ribbon.bgOpacity = parseInt(bgOpacitySlider.value, 10);
         localStorage.setItem("siteSuccessRibbon", JSON.stringify(ribbon));
+        cloudSyncPush("siteSuccessRibbon", ribbon);
         showToast("Ribbon settings saved");
       });
 
@@ -3398,6 +3455,7 @@
           let tiles = loadBentoTiles();
           tiles = tiles.filter((t) => t.id !== tileId);
           localStorage.setItem("bentoTiles", JSON.stringify(tiles));
+          cloudSyncPush("bentoTiles", tiles);
           renderBentoEditors();
           showToast("Tile removed");
         });
@@ -3492,6 +3550,7 @@
       if (tiles.length >= MAX_TILES) { showToast("Maximum of " + MAX_TILES + " tiles"); return; }
       tiles.push({ id: generateId(), title: "", description: "", icon: "scale", layout: "medium", displayMode: "icon", bgImage: "", modalImage: "", fullDescription: "" });
       localStorage.setItem("bentoTiles", JSON.stringify(tiles));
+      cloudSyncPush("bentoTiles", tiles);
       renderBentoEditors();
       showToast("Tile added");
     });
@@ -3499,6 +3558,7 @@
     document.getElementById("saveBentoTiles").addEventListener("click", () => {
       const tiles = collectTilesFromEditors();
       localStorage.setItem("bentoTiles", JSON.stringify(tiles));
+      cloudSyncPush("bentoTiles", tiles);
       console.log("Bento tiles saved:", tiles);
       showToast("Homepage layout saved");
     });
@@ -3874,6 +3934,7 @@
 
     function saveOfficeLocations(data) {
       localStorage.setItem("siteOfficeLocations", JSON.stringify(data));
+      cloudSyncPush("siteOfficeLocations", data);
     }
 
     function populateStaffOfficeDropdown() {
@@ -3964,6 +4025,7 @@
 
     function saveTestimonialsData(data) {
       localStorage.setItem("siteTestimonials", JSON.stringify(data));
+      cloudSyncPush("siteTestimonials", data);
     }
 
     function renderTestimonialList() {
@@ -4130,6 +4192,7 @@
 
     function saveLocationsData(data) {
       localStorage.setItem("siteLocations", JSON.stringify(data));
+      cloudSyncPush("siteLocations", data);
     }
 
     function renderLocationList() {
@@ -4809,6 +4872,7 @@
         };
       });
       localStorage.setItem("siteBusinessHours", JSON.stringify(data));
+      cloudSyncPush("siteBusinessHours", data);
       showToast("Business hours saved");
     });
 
@@ -4842,6 +4906,7 @@
           var d = getBusinessHoursAdmin() || getDefaultBusinessHoursAdmin();
           d.closures.splice(idx, 1);
           localStorage.setItem("siteBusinessHours", JSON.stringify(d));
+          cloudSyncPush("siteBusinessHours", d);
           renderClosureList();
           showToast("Closure removed");
         });
@@ -4867,6 +4932,7 @@
       if (!data.closures) data.closures = [];
       data.closures.push({ date: dateVal, label: label || "Closure" });
       localStorage.setItem("siteBusinessHours", JSON.stringify(data));
+      cloudSyncPush("siteBusinessHours", data);
 
       document.getElementById("closureForm").style.display = "none";
       renderClosureList();
@@ -5004,6 +5070,7 @@
         };
 
         localStorage.setItem("siteNavFooterSettings", JSON.stringify(data));
+        cloudSyncPush("siteNavFooterSettings", data);
 
         // Backward-compatible write to sitePageToggles so enforcePageToggles() keeps working
         var backcompat = {
@@ -5014,6 +5081,7 @@
           maxNavItems: data.maxNavItems
         };
         localStorage.setItem("sitePageToggles", JSON.stringify(backcompat));
+        cloudSyncPush("sitePageToggles", backcompat);
 
         showToast("Navigation & Footer settings saved");
       });
@@ -5035,6 +5103,7 @@
           formspreeUrl: document.getElementById("formspreeUrlInput").value.trim()
         };
         localStorage.setItem("siteContactConfig", JSON.stringify(data));
+        cloudSyncPush("siteContactConfig", data);
         showToast("Contact config saved");
       });
 
@@ -5087,6 +5156,7 @@
           label: document.getElementById("clockLabelInput").value.trim() || "San Francisco"
         };
         localStorage.setItem("siteClockSettings", JSON.stringify(data));
+        cloudSyncPush("siteClockSettings", data);
         showToast("Clock settings saved");
       });
     })();
@@ -5107,6 +5177,7 @@
           disclaimer: document.getElementById("translationDisclaimerInput").value
         };
         localStorage.setItem("siteTranslation", JSON.stringify(data));
+        cloudSyncPush("siteTranslation", data);
         showToast("Translation settings saved");
       });
     })();
@@ -5159,6 +5230,7 @@
 
     function savePathFinderDataAdmin(data) {
       localStorage.setItem("sitePathFinder", JSON.stringify(data));
+      cloudSyncPush("sitePathFinder", data);
     }
 
     var eduSelectedStatusId = null;
@@ -5985,6 +6057,7 @@
           bentoGrayscale: grayscaleCheck.checked
         };
         localStorage.setItem("siteDesignSettings", JSON.stringify(ds));
+        cloudSyncPush("siteDesignSettings", ds);
 
         // Save CSS variables to siteSettings so applySiteSettings picks them up on all pages
         var siteSettings = {};
@@ -5993,6 +6066,7 @@
         siteSettings["--nav-font-color"] = navFontColorInput.value;
         siteSettings["--footer-font-color"] = footerFontColorInput.value;
         localStorage.setItem("siteSettings", JSON.stringify(siteSettings));
+        cloudSyncPush("siteSettings", siteSettings);
 
         showToast("Design settings saved");
       });
@@ -6069,6 +6143,7 @@
       }
       function saveCareers(data) {
         localStorage.setItem("siteCareers", JSON.stringify(data));
+        cloudSyncPush("siteCareers", data);
       }
 
       var listPanel = document.getElementById("careersListPanel");
@@ -6258,8 +6333,108 @@
         });
 
         localStorage.setItem("siteNavFooterSettings", JSON.stringify(s));
+        cloudSyncPush("siteNavFooterSettings", s);
         showToast("Built-in page settings saved");
         load();
+      });
+    })();
+
+    /* ══════════════════════════════════════════════
+       Cloud Sync admin section
+       ══════════════════════════════════════════════ */
+    (function initCloudSync() {
+      var urlInput = document.getElementById("cloudSyncUrl");
+      var tokenInput = document.getElementById("cloudSyncToken");
+      var statusEl = document.getElementById("cloudSyncStatus");
+      var actionStatusEl = document.getElementById("cloudSyncActionStatus");
+
+      // Load saved config
+      urlInput.value = localStorage.getItem("cloudSyncUrl") || "";
+      tokenInput.value = localStorage.getItem("cloudSyncToken") || "";
+
+      // Save Config
+      document.getElementById("btnCloudSyncSaveConfig").addEventListener("click", function() {
+        localStorage.setItem("cloudSyncUrl", urlInput.value.trim().replace(/\/+$/, ""));
+        localStorage.setItem("cloudSyncToken", tokenInput.value.trim());
+        showToast("Cloud Sync config saved");
+      });
+
+      // Test Connection
+      document.getElementById("btnCloudSyncTest").addEventListener("click", function() {
+        var url = urlInput.value.trim().replace(/\/+$/, "");
+        if (!url) { statusEl.textContent = "Enter a Worker URL first"; statusEl.style.color = "#e74c3c"; return; }
+        statusEl.textContent = "Testing...";
+        statusEl.style.color = "var(--mid-gray)";
+        fetch(url + "/settings", { signal: AbortSignal.timeout(5000) })
+          .then(function(res) {
+            if (res.ok) {
+              statusEl.innerHTML = "&#10003; Connected";
+              statusEl.style.color = "#27ae60";
+            } else {
+              statusEl.textContent = "Error: HTTP " + res.status;
+              statusEl.style.color = "#e74c3c";
+            }
+          })
+          .catch(function(e) {
+            statusEl.textContent = "Failed: " + e.message;
+            statusEl.style.color = "#e74c3c";
+          });
+      });
+
+      // Push All Settings
+      document.getElementById("btnCloudSyncPush").addEventListener("click", function() {
+        var url = urlInput.value.trim().replace(/\/+$/, "");
+        var token = tokenInput.value.trim();
+        if (!url || !token) { actionStatusEl.textContent = "Configure URL and token first"; actionStatusEl.style.color = "#e74c3c"; return; }
+
+        var payload = {};
+        CLOUD_SYNC_KEYS.forEach(function(key) {
+          var val = localStorage.getItem(key);
+          if (val !== null) payload[key] = val;
+        });
+
+        actionStatusEl.textContent = "Pushing...";
+        actionStatusEl.style.color = "var(--mid-gray)";
+        fetch(url + "/settings", {
+          method: "PUT",
+          headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            actionStatusEl.innerHTML = "&#10003; Pushed " + (data.written ? data.written.length : 0) + " keys";
+            actionStatusEl.style.color = "#27ae60";
+          })
+          .catch(function(e) {
+            actionStatusEl.textContent = "Push failed: " + e.message;
+            actionStatusEl.style.color = "#e74c3c";
+          });
+      });
+
+      // Pull from Cloud
+      document.getElementById("btnCloudSyncPull").addEventListener("click", function() {
+        var url = urlInput.value.trim().replace(/\/+$/, "");
+        if (!url) { actionStatusEl.textContent = "Enter a Worker URL first"; actionStatusEl.style.color = "#e74c3c"; return; }
+
+        actionStatusEl.textContent = "Pulling...";
+        actionStatusEl.style.color = "var(--mid-gray)";
+        fetch(url + "/settings", { signal: AbortSignal.timeout(5000) })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            var count = 0;
+            for (var key in data) {
+              if (CLOUD_SYNC_KEYS.indexOf(key) !== -1) {
+                localStorage.setItem(key, data[key]);
+                count++;
+              }
+            }
+            actionStatusEl.innerHTML = "&#10003; Pulled " + count + " keys — reload to see changes";
+            actionStatusEl.style.color = "#27ae60";
+          })
+          .catch(function(e) {
+            actionStatusEl.textContent = "Pull failed: " + e.message;
+            actionStatusEl.style.color = "#e74c3c";
+          });
       });
     })();
   </script>

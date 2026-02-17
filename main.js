@@ -1,4 +1,7 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  /* ── Cloud Sync bootstrap (load settings from Worker before rendering) ── */
+  await cloudSyncBootstrap();
+
   /* ── Global navigation (must run first) ── */
   renderGlobalNav();
 
@@ -119,6 +122,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+/* ══════════════════════════════════════════════
+   Cloud Sync Bootstrap
+   ══════════════════════════════════════════════ */
+async function cloudSyncBootstrap() {
+  const url = localStorage.getItem("cloudSyncUrl");
+  if (!url) return;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(url + "/settings", { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const [key, value] of Object.entries(data)) {
+      localStorage.setItem(key, value);
+    }
+  } catch (e) {
+    console.warn("Cloud Sync: could not reach worker, using localStorage.", e);
+  }
+}
 
 /* ══════════════════════════════════════════════
    Page Data (localStorage)
