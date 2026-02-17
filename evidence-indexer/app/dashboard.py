@@ -717,6 +717,40 @@ else:
 
         st.markdown("")
 
+        # -- ICPM compliance checklist --
+        if all_documents:
+            categories_present = {d.get("category") for d in all_documents}
+            icpm_checks = []
+            if "Application / Petition" in categories_present:
+                icpm_checks.append(("Application / forms included", True))
+            else:
+                icpm_checks.append(("Application / forms included", False))
+            if "Declaration / Affidavit" in categories_present:
+                icpm_checks.append(("Personal declaration included", True))
+            else:
+                icpm_checks.append(("Personal declaration included", False))
+            if "Identity Documents" in categories_present:
+                icpm_checks.append(("Identity documents included", True))
+            else:
+                icpm_checks.append(("Identity documents included", False))
+
+            # Check if any foreign-language docs likely need translation
+            has_translation = "Translation & Certification" in categories_present
+            icpm_checks.append(("Translation certifications", has_translation))
+
+            has_witness_list = "Witness List" in categories_present
+            icpm_checks.append(("Witness list (ICPM 4.18)", has_witness_list))
+
+            check_html = '<div style="margin-top:12px;"><strong style="font-size:0.85rem;color:#1a2744;">ICPM Compliance</strong>'
+            for label, ok in icpm_checks:
+                icon = "&#9745;" if ok else "&#9744;"
+                color = "#166534" if ok else "#92400e"
+                check_html += f'<div style="font-size:0.82rem;color:{color};padding:2px 0;">{icon} {label}</div>'
+            check_html += "</div>"
+            st.markdown(check_html, unsafe_allow_html=True)
+
+        st.markdown("")
+
         # -- Export buttons --
         if display_documents:
             st.markdown('<div class="section-label">Export</div>', unsafe_allow_html=True)

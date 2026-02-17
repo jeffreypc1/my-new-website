@@ -125,6 +125,117 @@ _DEFAULT_SUPPORTED_FORMS: dict[str, dict] = {
             "Part 4: Processing Information",
         ],
     },
+    "N-400": {
+        "title": "Application for Naturalization",
+        "agency": "USCIS",
+        "filing_fee": "$710",
+        "processing_time": "6-12 months",
+        "sections": [
+            "Part 1: Information About Your Eligibility",
+            "Part 2: Information About You",
+            "Part 3: Accommodations for Individuals with Disabilities",
+            "Part 4: Information About Your Residence",
+            "Part 5: Information About Your Parents",
+            "Part 6: Information About Your Marital History",
+            "Part 7: Information About Your Children",
+            "Part 8: Additional Information",
+        ],
+    },
+    "I-140": {
+        "title": "Immigrant Petition for Alien Workers",
+        "agency": "USCIS",
+        "filing_fee": "$700",
+        "processing_time": "6-18 months (premium processing available)",
+        "sections": [
+            "Part 1: Information About the Petitioner",
+            "Part 2: Petition Type",
+            "Part 3: Information About the Beneficiary",
+            "Part 4: Processing Information",
+            "Part 5: Additional Information",
+        ],
+    },
+    "I-129": {
+        "title": "Petition for Nonimmigrant Worker",
+        "agency": "USCIS",
+        "filing_fee": "$460",
+        "processing_time": "2-6 months (premium processing available)",
+        "sections": [
+            "Part 1: Information About the Petitioner",
+            "Part 2: Information About the Request",
+            "Part 3: Information About the Beneficiary",
+            "Part 4: Processing Information",
+        ],
+    },
+    "I-539": {
+        "title": "Application to Extend/Change Nonimmigrant Status",
+        "agency": "USCIS",
+        "filing_fee": "$370",
+        "processing_time": "3-12 months",
+        "sections": [
+            "Part 1: Information About You",
+            "Part 2: Application Type",
+            "Part 3: Processing Information",
+            "Part 4: Additional Information",
+        ],
+    },
+    "I-90": {
+        "title": "Application to Replace Permanent Resident Card",
+        "agency": "USCIS",
+        "filing_fee": "$455",
+        "processing_time": "6-12 months",
+        "sections": [
+            "Part 1: Information About You",
+            "Part 2: Reason for Application",
+            "Part 3: Processing Information",
+        ],
+    },
+    "I-751": {
+        "title": "Petition to Remove Conditions on Residence",
+        "agency": "USCIS",
+        "filing_fee": "$595",
+        "processing_time": "12-24 months",
+        "sections": [
+            "Part 1: Information About You",
+            "Part 2: Information About the Joint Petition (or Waiver)",
+            "Part 3: Additional Information",
+        ],
+    },
+    "I-864": {
+        "title": "Affidavit of Support Under Section 213A of the INA",
+        "agency": "USCIS",
+        "filing_fee": "None (filed with I-485 or visa application)",
+        "processing_time": "N/A (adjudicated with underlying petition)",
+        "sections": [
+            "Part 1: Basis for Filing",
+            "Part 2: Information About the Sponsor",
+            "Part 3: Information About the Immigrant",
+            "Part 4: Sponsor's Household Size",
+            "Part 5: Sponsor's Income and Employment",
+            "Part 6: Sponsor's Assets",
+        ],
+    },
+    "I-821D": {
+        "title": "Consideration of Deferred Action for Childhood Arrivals (DACA)",
+        "agency": "USCIS",
+        "filing_fee": "$495 (with I-765 and biometrics)",
+        "processing_time": "3-6 months",
+        "sections": [
+            "Part 1: Information About You",
+            "Part 2: Basis for DACA Request",
+            "Part 3: Additional Information",
+        ],
+    },
+    "G-28": {
+        "title": "Notice of Entry of Appearance as Attorney or Accredited Representative",
+        "agency": "USCIS / EOIR / CBP",
+        "filing_fee": "None",
+        "processing_time": "N/A (filed with substantive applications)",
+        "sections": [
+            "Part 1: Information About Attorney/Representative",
+            "Part 2: Information About the Client",
+            "Part 3: Consent and Signature",
+        ],
+    },
 }
 
 # ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
@@ -789,6 +900,800 @@ I360_FIELDS: dict[str, list[FormField]] = {
 
 
 # ---------------------------------------------------------------------------
+# N-400 detailed field definitions
+# ---------------------------------------------------------------------------
+
+N400_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About Your Eligibility": [
+        FormField(
+            name="eligibility_basis",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select the basis for your eligibility to naturalize.",
+            options=[
+                "5 years as LPR",
+                "3 years as LPR married to USC",
+                "Military service",
+                "Other (specify)",
+            ],
+        ),
+    ],
+    "Part 2: Information About You": [
+        FormField(
+            name="full_name",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Your full legal name as it appears on your permanent resident card.",
+        ),
+        FormField(
+            name="date_of_birth",
+            field_type="date",
+            required=True,
+            section="Part 2",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Your Alien Registration Number (9 digits).",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="country_of_nationality",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Your country of nationality.",
+        ),
+        FormField(
+            name="date_of_lpr",
+            field_type="date",
+            required=True,
+            section="Part 2",
+            help_text="Date you became a lawful permanent resident (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="ssn",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Your Social Security Number.",
+            validation_rules={"pattern": r"^\d{3}-?\d{2}-?\d{4}$"},
+        ),
+        FormField(
+            name="gender",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select your gender.",
+            options=["Male", "Female"],
+        ),
+        FormField(
+            name="marital_status",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Your current marital status.",
+            options=["Single", "Married", "Divorced", "Widowed", "Annulled", "Separated"],
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 2",
+            help_text="Your current physical address.",
+        ),
+        FormField(
+            name="phone_number",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Your daytime telephone number.",
+        ),
+        FormField(
+            name="email",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Your email address.",
+        ),
+    ],
+    "Part 3: Accommodations for Individuals with Disabilities": [],
+    "Part 4: Information About Your Residence": [],
+    "Part 5: Information About Your Parents": [],
+    "Part 6: Information About Your Marital History": [],
+    "Part 7: Information About Your Children": [],
+    "Part 8: Additional Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-140 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I140_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About the Petitioner": [
+        FormField(
+            name="petitioner_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Full legal name of the petitioning employer or self-petitioner.",
+        ),
+        FormField(
+            name="petitioner_ein",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Employer Identification Number (EIN).",
+        ),
+        FormField(
+            name="petitioner_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Petitioner's business address.",
+        ),
+        FormField(
+            name="petitioner_phone",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Petitioner's phone number.",
+        ),
+    ],
+    "Part 2: Petition Type": [
+        FormField(
+            name="classification",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select the immigrant classification sought.",
+            options=[
+                "EB-1A: Extraordinary Ability",
+                "EB-1B: Outstanding Professor/Researcher",
+                "EB-1C: Multinational Manager/Executive",
+                "EB-2: Advanced Degree / Exceptional Ability",
+                "EB-2 NIW: National Interest Waiver",
+                "EB-3: Skilled Worker / Professional",
+                "EB-3: Other (Unskilled) Worker",
+            ],
+        ),
+        FormField(
+            name="job_title",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="The offered job title.",
+        ),
+        FormField(
+            name="salary",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Annual salary or wage offered.",
+        ),
+    ],
+    "Part 3: Information About the Beneficiary": [
+        FormField(
+            name="beneficiary_name",
+            field_type="text",
+            required=True,
+            section="Part 3",
+            help_text="Full legal name of the beneficiary.",
+        ),
+        FormField(
+            name="beneficiary_dob",
+            field_type="date",
+            required=True,
+            section="Part 3",
+            help_text="Beneficiary's date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="beneficiary_country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 3",
+            help_text="Beneficiary's country of birth.",
+        ),
+        FormField(
+            name="beneficiary_a_number",
+            field_type="text",
+            required=False,
+            section="Part 3",
+            help_text="Beneficiary's A-Number, if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+    ],
+    "Part 4: Processing Information": [],
+    "Part 5: Additional Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-864 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I864_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Basis for Filing": [
+        FormField(
+            name="filing_basis",
+            field_type="select",
+            required=True,
+            section="Part 1",
+            help_text="Select the basis for filing this affidavit.",
+            options=[
+                "Petitioner filing for spouse/relative",
+                "Joint sponsor",
+                "Substitute sponsor",
+                "5% owner of petitioning entity",
+            ],
+        ),
+    ],
+    "Part 2: Information About the Sponsor": [
+        FormField(
+            name="sponsor_name",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Full legal name of the financial sponsor.",
+        ),
+        FormField(
+            name="sponsor_dob",
+            field_type="date",
+            required=True,
+            section="Part 2",
+            help_text="Sponsor's date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="sponsor_address",
+            field_type="textarea",
+            required=True,
+            section="Part 2",
+            help_text="Sponsor's current address.",
+        ),
+        FormField(
+            name="sponsor_ssn",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Sponsor's Social Security Number.",
+            validation_rules={"pattern": r"^\d{3}-?\d{2}-?\d{4}$"},
+        ),
+        FormField(
+            name="sponsor_citizenship",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Sponsor's citizenship status.",
+            options=["U.S. Citizen", "Lawful Permanent Resident"],
+        ),
+    ],
+    "Part 3: Information About the Immigrant": [
+        FormField(
+            name="immigrant_name",
+            field_type="text",
+            required=True,
+            section="Part 3",
+            help_text="Full legal name of the immigrant being sponsored.",
+        ),
+        FormField(
+            name="immigrant_a_number",
+            field_type="text",
+            required=False,
+            section="Part 3",
+            help_text="Immigrant's A-Number, if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+    ],
+    "Part 4: Sponsor's Household Size": [
+        FormField(
+            name="household_size",
+            field_type="text",
+            required=True,
+            section="Part 4",
+            help_text="Total number of persons in the sponsor's household (including sponsor, immigrants, dependents).",
+        ),
+    ],
+    "Part 5: Sponsor's Income and Employment": [
+        FormField(
+            name="current_employer",
+            field_type="text",
+            required=False,
+            section="Part 5",
+            help_text="Sponsor's current employer name.",
+        ),
+        FormField(
+            name="annual_income",
+            field_type="text",
+            required=True,
+            section="Part 5",
+            help_text="Sponsor's current annual income.",
+        ),
+    ],
+    "Part 6: Sponsor's Assets": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-821D detailed field definitions
+# ---------------------------------------------------------------------------
+
+I821D_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="full_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your full legal name.",
+        ),
+        FormField(
+            name="date_of_birth",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="country_of_citizenship",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your country of citizenship.",
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your A-Number, if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Your current address in the United States.",
+        ),
+    ],
+    "Part 2: Basis for DACA Request": [
+        FormField(
+            name="request_type",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select whether this is an initial request or renewal.",
+            options=["Initial Request", "Renewal"],
+        ),
+        FormField(
+            name="date_first_entry",
+            field_type="date",
+            required=True,
+            section="Part 2",
+            help_text="Date of your first entry into the United States (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="manner_of_entry",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="How you entered the U.S. (e.g., EWI, B-2, F-1).",
+        ),
+        FormField(
+            name="education_status",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Your current education status.",
+            options=[
+                "Currently in school",
+                "High school diploma",
+                "GED",
+                "Honorable discharge from military",
+            ],
+        ),
+    ],
+    "Part 3: Additional Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# G-28 detailed field definitions
+# ---------------------------------------------------------------------------
+
+G28_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About Attorney/Representative": [
+        FormField(
+            name="attorney_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Full name of the attorney or accredited representative.",
+        ),
+        FormField(
+            name="attorney_bar_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Attorney's bar number or accreditation number.",
+        ),
+        FormField(
+            name="attorney_firm",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Name of law firm or recognized organization.",
+        ),
+        FormField(
+            name="attorney_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Attorney's business address.",
+        ),
+        FormField(
+            name="attorney_phone",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Attorney's telephone number.",
+        ),
+        FormField(
+            name="attorney_email",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Attorney's email address.",
+        ),
+    ],
+    "Part 2: Information About the Client": [
+        FormField(
+            name="client_name",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="Full legal name of the client.",
+        ),
+        FormField(
+            name="client_a_number",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Client's A-Number, if any.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="client_address",
+            field_type="textarea",
+            required=False,
+            section="Part 2",
+            help_text="Client's current address.",
+        ),
+    ],
+    "Part 3: Consent and Signature": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-129 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I129_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About the Petitioner": [
+        FormField(
+            name="petitioner_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Full legal name of the petitioning employer.",
+        ),
+        FormField(
+            name="petitioner_ein",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Employer Identification Number (FEIN).",
+        ),
+        FormField(
+            name="petitioner_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Petitioner's business address.",
+        ),
+    ],
+    "Part 2: Information About the Request": [
+        FormField(
+            name="classification",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Nonimmigrant classification sought.",
+            options=[
+                "H-1B: Specialty Occupation",
+                "H-2A: Temporary Agricultural Worker",
+                "H-2B: Temporary Non-Agricultural Worker",
+                "L-1A: Intracompany Transferee (Manager/Executive)",
+                "L-1B: Intracompany Transferee (Specialized Knowledge)",
+                "O-1A: Extraordinary Ability (Sciences/Business/Education/Athletics)",
+                "O-1B: Extraordinary Ability (Arts)",
+                "P-1: Internationally Recognized Athlete/Entertainer",
+                "TN: USMCA Professional",
+            ],
+        ),
+        FormField(
+            name="request_type",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Type of request.",
+            options=["New petition", "Extension", "Change of employer", "Amendment"],
+        ),
+    ],
+    "Part 3: Information About the Beneficiary": [
+        FormField(
+            name="beneficiary_name",
+            field_type="text",
+            required=True,
+            section="Part 3",
+            help_text="Full legal name of the beneficiary.",
+        ),
+        FormField(
+            name="beneficiary_dob",
+            field_type="date",
+            required=True,
+            section="Part 3",
+            help_text="Beneficiary's date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="beneficiary_country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 3",
+            help_text="Beneficiary's country of birth.",
+        ),
+    ],
+    "Part 4: Processing Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-539 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I539_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="applicant_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your full legal name.",
+        ),
+        FormField(
+            name="date_of_birth",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="country_of_birth",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Country where you were born.",
+        ),
+        FormField(
+            name="i94_number",
+            field_type="text",
+            required=False,
+            section="Part 1",
+            help_text="Your I-94 Arrival/Departure Record number.",
+        ),
+        FormField(
+            name="current_status",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your current nonimmigrant status (e.g., B-2, F-1, H-4).",
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Your current address in the United States.",
+        ),
+    ],
+    "Part 2: Application Type": [
+        FormField(
+            name="request_type",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select whether you are requesting an extension or change of status.",
+            options=["Extension of Stay", "Change of Status"],
+        ),
+        FormField(
+            name="requested_status",
+            field_type="text",
+            required=True,
+            section="Part 2",
+            help_text="The nonimmigrant classification you are requesting (e.g., B-2, F-1).",
+        ),
+        FormField(
+            name="requested_until",
+            field_type="date",
+            required=False,
+            section="Part 2",
+            help_text="Requested extension date (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+    ],
+    "Part 3: Processing Information": [],
+    "Part 4: Additional Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-90 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I90_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="full_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your full legal name as it appears on your permanent resident card.",
+        ),
+        FormField(
+            name="date_of_birth",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your Alien Registration Number (A-Number).",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Your current mailing address.",
+        ),
+    ],
+    "Part 2: Reason for Application": [
+        FormField(
+            name="reason",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select the reason for applying.",
+            options=[
+                "Card expired or will expire within 6 months",
+                "Card was lost, stolen, or destroyed",
+                "Name or other biographic info changed",
+                "Commuter status conversion",
+                "Card contains incorrect data",
+                "Never received card",
+            ],
+        ),
+    ],
+    "Part 3: Processing Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
+# I-751 detailed field definitions
+# ---------------------------------------------------------------------------
+
+I751_FIELDS: dict[str, list[FormField]] = {
+    "Part 1: Information About You": [
+        FormField(
+            name="full_name",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your full legal name.",
+        ),
+        FormField(
+            name="date_of_birth",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Your date of birth (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="a_number",
+            field_type="text",
+            required=True,
+            section="Part 1",
+            help_text="Your Alien Registration Number.",
+            validation_rules={"pattern": r"^A?\d{9}$"},
+        ),
+        FormField(
+            name="date_of_marriage",
+            field_type="date",
+            required=True,
+            section="Part 1",
+            help_text="Date of your marriage (mm/dd/yyyy).",
+            validation_rules={"format": "mm/dd/yyyy"},
+        ),
+        FormField(
+            name="current_address",
+            field_type="textarea",
+            required=True,
+            section="Part 1",
+            help_text="Your current address.",
+        ),
+    ],
+    "Part 2: Information About the Joint Petition (or Waiver)": [
+        FormField(
+            name="petition_type",
+            field_type="select",
+            required=True,
+            section="Part 2",
+            help_text="Select the type of petition.",
+            options=[
+                "Joint petition with spouse",
+                "Waiver: marriage entered in good faith but terminated",
+                "Waiver: extreme cruelty / battering",
+                "Waiver: extreme hardship upon removal",
+            ],
+        ),
+        FormField(
+            name="spouse_name",
+            field_type="text",
+            required=False,
+            section="Part 2",
+            help_text="Full name of your U.S. citizen or LPR spouse.",
+        ),
+    ],
+    "Part 3: Additional Information": [],
+}
+
+
+# ---------------------------------------------------------------------------
 # Field lookup: form_id -> fields dict
 # ---------------------------------------------------------------------------
 
@@ -800,6 +1705,15 @@ FIELD_DEFINITIONS: dict[str, dict[str, list[FormField]]] = {
     "I-131": I131_FIELDS,
     "I-290B": I290B_FIELDS,
     "I-360": I360_FIELDS,
+    "N-400": N400_FIELDS,
+    "I-140": I140_FIELDS,
+    "I-129": I129_FIELDS,
+    "I-539": I539_FIELDS,
+    "I-90": I90_FIELDS,
+    "I-751": I751_FIELDS,
+    "I-864": I864_FIELDS,
+    "I-821D": I821D_FIELDS,
+    "G-28": G28_FIELDS,
 }
 
 

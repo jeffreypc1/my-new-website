@@ -14,6 +14,7 @@ from shared.config_store import get_config_value, load_config
 from app.form_definitions import (
     FIELD_DEFINITIONS,
     SUPPORTED_FORMS,
+    _DEFAULT_SUPPORTED_FORMS,
     FormField,
 )
 
@@ -33,10 +34,14 @@ def get_all_forms() -> dict[str, dict]:
     """
     deleted = get_config_value("forms-assistant", "deleted_forms", [])
 
-    # Start with hardcoded forms
+    # Start with hardcoded forms (merge config-loaded + defaults for new forms)
     result: dict[str, dict] = {}
     for fid, meta in SUPPORTED_FORMS.items():
         if fid not in deleted:
+            result[fid] = dict(meta)
+    # Also include any forms in _DEFAULT_SUPPORTED_FORMS not yet in config
+    for fid, meta in _DEFAULT_SUPPORTED_FORMS.items():
+        if fid not in deleted and fid not in result:
             result[fid] = dict(meta)
 
     # Add uploaded forms from config

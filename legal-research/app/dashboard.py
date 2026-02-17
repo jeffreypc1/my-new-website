@@ -121,6 +121,38 @@ div[data-testid="stToolbar"] { display: none !important; }
     margin-right: 8px;
 }
 
+/* Resource type badges */
+.type-statute {
+    display: inline-block;
+    background: #1e40af;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 6px;
+}
+.type-regulation {
+    display: inline-block;
+    background: #7c3aed;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 6px;
+}
+.type-decision {
+    display: inline-block;
+    background: #475569;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 6px;
+}
+
 /* Topic tags */
 .topic-tag {
     display: inline-block;
@@ -484,6 +516,18 @@ with st.sidebar:
 
     st.divider()
 
+    # Resource type filter
+    st.markdown("#### Resource Type")
+    selected_types = st.multiselect(
+        "Filter by type",
+        options=["Decision", "Statute", "Regulation"],
+        default=[],
+        label_visibility="collapsed",
+        help="Filter by type of legal authority.",
+    )
+
+    st.divider()
+
     # Topic filters
     st.markdown("#### Topic Filters")
     selected_topics = st.multiselect(
@@ -533,6 +577,12 @@ with search_col:
     else:
         results = []
 
+    # Apply resource type filter
+    if selected_types and results:
+        type_map = {"Decision": "decision", "Statute": "statute", "Regulation": "regulation"}
+        allowed = {type_map[t] for t in selected_types if t in type_map}
+        results = [r for r in results if getattr(r, "resource_type", "decision") in allowed]
+
     if query or selected_topics:
         if results:
             st.markdown(f"**{len(results)} result(s)**")
@@ -550,12 +600,20 @@ with search_col:
                     for t in decision.topics
                 )
 
+                # Resource type badge
+                res_type = getattr(decision, "resource_type", "decision")
+                type_cls = {"statute": "type-statute", "regulation": "type-regulation"}.get(res_type, "type-decision")
+                type_label = {"statute": "STATUTE", "regulation": "REGULATION"}.get(res_type, "DECISION")
+
+                date_str = f' &nbsp; {_esc(decision.date)}' if decision.date else ''
+
                 st.markdown(
                     f'<div class="case-card">'
+                    f'<span class="{type_cls}">{type_label}</span>'
                     f'<span class="court-badge">{_esc(decision.court)}</span>'
                     f'<strong>{_esc(decision.name)}</strong><br>'
                     f'<span class="citation">{_esc(decision.citation)}</span>'
-                    f' &nbsp; {_esc(decision.date)}<br>'
+                    f'{date_str}<br>'
                     f'{tags_html}'
                     f'<div class="holding-text">{_esc(decision.holding)}</div>'
                     f'</div>',
@@ -580,6 +638,7 @@ with search_col:
                                 "date": decision.date,
                                 "holding": decision.holding,
                                 "topics": decision.topics,
+                                "resource_type": getattr(decision, "resource_type", "decision"),
                             })
                             st.rerun()
                 with btn_cols[1]:
@@ -591,14 +650,15 @@ with search_col:
                             "date": decision.date,
                             "holding": decision.holding,
                             "topics": decision.topics,
+                            "resource_type": getattr(decision, "resource_type", "decision"),
                         }
                         st.rerun()
         else:
             st.info("No results found. Try different search terms or broaden your topic filters.")
     else:
         st.info(
-            "Enter a search term above to find relevant case law, BIA decisions, "
-            "and federal court holdings. You can also filter by topic in the sidebar."
+            "Search across BIA decisions, federal court opinions, INA statutes, "
+            "and CFR regulations. Filter by resource type or topic in the sidebar."
         )
 
 

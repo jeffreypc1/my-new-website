@@ -45,6 +45,7 @@ class CaseLaw:
     holding: str
     full_text: str = ""
     topics: list[str] = field(default_factory=list)
+    resource_type: str = "decision"  # decision, statute, regulation, agency_guidance
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +291,381 @@ _DEFAULT_KEY_DECISIONS: dict[str, CaseLaw] = {
         ),
         topics=["cancellation of removal", "hardship", "USC children"],
     ),
+    # -------------------------------------------------------------------
+    # Additional BIA decisions
+    # -------------------------------------------------------------------
+    "matter-of-c-y-z": CaseLaw(
+        name="Matter of C-Y-Z-",
+        citation="21 I&N Dec. 915 (BIA 1997)",
+        court="BIA",
+        date="1997-07-09",
+        holding=(
+            "Held that a spouse of a person who was forcibly sterilized or forced "
+            "to have an abortion under China's coercive family planning policy "
+            "is a 'refugee' under INA 101(a)(42). Each spouse is equally affected "
+            "by forced sterilization and both qualify as persecuted."
+        ),
+        topics=["asylum", "persecution", "coercive population control"],
+    ),
+    "matter-of-j-b-n-and-s-m": CaseLaw(
+        name="Matter of J-B-N- & S-M-",
+        citation="24 I&N Dec. 208 (BIA 2007)",
+        court="BIA",
+        date="2007-05-11",
+        holding=(
+            "Clarified that for past persecution, the applicant must show "
+            "(1) an incident or incidents that rise to the level of persecution; "
+            "(2) on account of a protected ground; (3) committed by the government "
+            "or forces the government is unable or unwilling to control."
+        ),
+        topics=["asylum", "past persecution", "nexus"],
+    ),
+    "matter-of-a-r-c-g": CaseLaw(
+        name="Matter of A-R-C-G-",
+        citation="26 I&N Dec. 388 (BIA 2014)",
+        court="BIA",
+        date="2014-08-26",
+        holding=(
+            "Held that 'married women in Guatemala who are unable to leave "
+            "their relationship' can constitute a cognizable particular social "
+            "group for asylum purposes. First BIA precedent recognizing a "
+            "domestic violence-based PSG. Later vacated by Matter of A-B- (2018) "
+            "and partially revived after the 2021 vacatur of A-B-."
+        ),
+        topics=["particular social group", "domestic violence", "gender", "asylum"],
+    ),
+    "matter-of-d-v": CaseLaw(
+        name="Matter of D-V-",
+        citation="25 I&N Dec. 131 (BIA 2009)",
+        court="BIA",
+        date="2009-10-30",
+        holding=(
+            "Addressed the framework for analyzing claims under the Convention "
+            "Against Torture. Held that the applicant must show it is more likely "
+            "than not that he would be tortured by or at the acquiescence of a "
+            "government official. All evidence of torture must be assessed, "
+            "including patterns of violence in the country."
+        ),
+        topics=["CAT", "torture", "acquiescence"],
+    ),
+    "matter-of-silva-trevino": CaseLaw(
+        name="Matter of Silva-Trevino",
+        citation="26 I&N Dec. 826 (BIA 2016)",
+        court="BIA",
+        date="2016-11-07",
+        holding=(
+            "Established the categorical approach and modified categorical approach "
+            "for determining whether a conviction constitutes a 'crime involving "
+            "moral turpitude' (CIMT). Applied the Supreme Court's framework from "
+            "Descamps and Mathis to immigration proceedings."
+        ),
+        topics=["CIMT", "criminal grounds", "categorical approach"],
+    ),
+    "matter-of-leal": CaseLaw(
+        name="Matter of Leal",
+        citation="27 I&N Dec. 652 (BIA 2019)",
+        court="BIA",
+        date="2019-10-18",
+        holding=(
+            "Held that DUI offenses are categorically crimes involving moral "
+            "turpitude (CIMTs) when the statute of conviction requires a mens rea "
+            "of at least recklessness. Addressed the persistent circuit split "
+            "on whether DUIs constitute CIMTs."
+        ),
+        topics=["CIMT", "DUI", "criminal grounds", "moral turpitude"],
+    ),
+    # -------------------------------------------------------------------
+    # Federal court decisions
+    # -------------------------------------------------------------------
+    "perez-funez-v-ins": CaseLaw(
+        name="Perez-Funez v. INS",
+        citation="619 F.Supp. 656 (C.D. Cal. 1985)",
+        court="C.D. California",
+        date="1985-08-12",
+        holding=(
+            "Landmark case addressing due process rights of unaccompanied minors "
+            "in immigration proceedings. The court established requirements for "
+            "ensuring that minors understand their rights before signing voluntary "
+            "departure forms."
+        ),
+        topics=["due process", "minors", "voluntary departure"],
+    ),
+    "gonzales-v-thomas": CaseLaw(
+        name="Gonzales v. Thomas",
+        citation="547 U.S. 183 (2006)",
+        court="Supreme Court",
+        date="2006-04-17",
+        holding=(
+            "Per curiam reversal holding that the Ninth Circuit erred in making "
+            "its own particular social group determination rather than remanding "
+            "to the BIA. Courts must allow the BIA to apply its expertise in "
+            "the first instance for PSG determinations."
+        ),
+        topics=["particular social group", "judicial review", "remand"],
+    ),
+    "henriquez-rivas-v-holder": CaseLaw(
+        name="Henriquez-Rivas v. Holder",
+        citation="707 F.3d 1081 (9th Cir. 2013)",
+        court="9th Circuit",
+        date="2013-02-06",
+        holding=(
+            "Held that witnesses who testify against gang members in court "
+            "proceedings may constitute a particular social group. Found "
+            "that the BIA erred in not applying the immutability and social "
+            "distinction analysis to the proposed group of Salvadoran witnesses."
+        ),
+        topics=["particular social group", "witnesses", "gang", "asylum"],
+    ),
+    "santos-v-lynch": CaseLaw(
+        name="Ticas-Santos v. INS",
+        citation="487 F.3d 1024 (7th Cir. 2007)",
+        court="7th Circuit",
+        date="2007-05-22",
+        holding=(
+            "Addressed asylum claims based on gang-related violence in Central "
+            "America. Discussed the nexus requirement and held that generalized "
+            "violence and gang threats, while terrible, do not necessarily establish "
+            "persecution on account of a protected ground without more."
+        ),
+        topics=["asylum", "gang", "nexus", "Central America"],
+    ),
+    "perdomo-v-holder": CaseLaw(
+        name="Perdomo v. Holder",
+        citation="611 F.3d 662 (9th Cir. 2010)",
+        court="9th Circuit",
+        date="2010-07-08",
+        holding=(
+            "Held that 'all women in Guatemala' could potentially constitute "
+            "a particular social group. Remanded for the BIA to properly analyze "
+            "whether Guatemalan women who are targeted for violence satisfy "
+            "the social visibility and particularity requirements."
+        ),
+        topics=["particular social group", "gender", "Guatemala", "asylum"],
+    ),
+    "guerrero-lasprilla-v-barr": CaseLaw(
+        name="Guerrero-Lasprilla v. Barr",
+        citation="589 U.S. 221 (2020)",
+        court="Supreme Court",
+        date="2020-03-23",
+        holding=(
+            "Held that federal courts of appeals have jurisdiction to review "
+            "mixed questions of law and fact arising in the application of a "
+            "legal standard to undisputed facts in removal proceedings. "
+            "Broadened judicial review of BIA decisions under INA 242(a)(2)(D)."
+        ),
+        topics=["judicial review", "mixed questions", "removal"],
+    ),
+    "nken-v-holder": CaseLaw(
+        name="Nken v. Holder",
+        citation="556 U.S. 418 (2009)",
+        court="Supreme Court",
+        date="2009-04-22",
+        holding=(
+            "Established the standard for stays of removal pending judicial "
+            "review. The traditional four-factor test applies: (1) likelihood "
+            "of success on the merits, (2) irreparable injury, (3) balance "
+            "of hardships, and (4) public interest."
+        ),
+        topics=["stay of removal", "judicial review", "standard of review"],
+    ),
+    # -------------------------------------------------------------------
+    # INA (Immigration and Nationality Act) Statutory Sections
+    # -------------------------------------------------------------------
+    "ina-101-a-42": CaseLaw(
+        name="INA 101(a)(42) -- Definition of Refugee",
+        citation="8 U.S.C. 1101(a)(42)",
+        court="Statute",
+        date="",
+        holding=(
+            "Defines 'refugee' as any person who is outside their country of "
+            "nationality and is unable or unwilling to return because of "
+            "persecution or a well-founded fear of persecution on account of "
+            "race, religion, nationality, membership in a particular social "
+            "group, or political opinion."
+        ),
+        topics=["asylum", "refugee definition", "persecution"],
+        resource_type="statute",
+    ),
+    "ina-208": CaseLaw(
+        name="INA 208 -- Asylum",
+        citation="8 U.S.C. 1158",
+        court="Statute",
+        date="",
+        holding=(
+            "Authorizes the granting of asylum to refugees. Establishes the "
+            "one-year filing deadline, bars to asylum (persecution of others, "
+            "particularly serious crime, firm resettlement, danger to security), "
+            "and the burden of proof. Asylum is discretionary even if eligibility "
+            "is established."
+        ),
+        topics=["asylum", "one-year bar", "bars to asylum", "discretion"],
+        resource_type="statute",
+    ),
+    "ina-240a-b": CaseLaw(
+        name="INA 240A(b) -- Cancellation of Removal (Non-LPR)",
+        citation="8 U.S.C. 1229b(b)",
+        court="Statute",
+        date="",
+        holding=(
+            "Provides for cancellation of removal for certain non-permanent "
+            "residents who (1) have been physically present for 10+ years, "
+            "(2) have good moral character, (3) have not been convicted of "
+            "certain offenses, and (4) whose removal would result in exceptional "
+            "and extremely unusual hardship to a USC or LPR spouse, parent, "
+            "or child."
+        ),
+        topics=["cancellation of removal", "hardship", "physical presence", "good moral character"],
+        resource_type="statute",
+    ),
+    "ina-241-b-3": CaseLaw(
+        name="INA 241(b)(3) -- Withholding of Removal",
+        citation="8 U.S.C. 1231(b)(3)",
+        court="Statute",
+        date="",
+        holding=(
+            "Mandatory relief: prohibits removal to a country where the alien's "
+            "life or freedom would be threatened on account of race, religion, "
+            "nationality, membership in a particular social group, or political "
+            "opinion. Higher 'clear probability' standard than asylum. No "
+            "discretionary denial but subject to criminal bars."
+        ),
+        topics=["withholding", "persecution", "mandatory relief"],
+        resource_type="statute",
+    ),
+    "ina-212-a": CaseLaw(
+        name="INA 212(a) -- Grounds of Inadmissibility",
+        citation="8 U.S.C. 1182(a)",
+        court="Statute",
+        date="",
+        holding=(
+            "Lists all grounds of inadmissibility including: health-related, "
+            "criminal, security, public charge, labor certification, illegal "
+            "entrants and immigration violators, documentation requirements, "
+            "ineligible for citizenship, and miscellaneous grounds. Many grounds "
+            "have waiver provisions."
+        ),
+        topics=["inadmissibility", "grounds of removal", "waivers"],
+        resource_type="statute",
+    ),
+    "ina-237-a": CaseLaw(
+        name="INA 237(a) -- Grounds of Deportability",
+        citation="8 U.S.C. 1227(a)",
+        court="Statute",
+        date="",
+        holding=(
+            "Lists all grounds of deportability for aliens within the United "
+            "States including: inadmissible at entry, criminal offenses, failure "
+            "to register, document fraud, security grounds, public charge, "
+            "and unlawful voting. Aliens in removal proceedings may be charged "
+            "under these provisions."
+        ),
+        topics=["deportability", "grounds of removal", "criminal grounds"],
+        resource_type="statute",
+    ),
+    "ina-245": CaseLaw(
+        name="INA 245 -- Adjustment of Status",
+        citation="8 U.S.C. 1255",
+        court="Statute",
+        date="",
+        holding=(
+            "Authorizes adjustment of status to permanent residence for aliens "
+            "physically present in the U.S. who were inspected and admitted or "
+            "paroled, are eligible for an immigrant visa, and whose visa is "
+            "immediately available. Section 245(i) provides a limited exception "
+            "for those who entered without inspection."
+        ),
+        topics=["adjustment of status", "green card", "immigrant visa"],
+        resource_type="statute",
+    ),
+    "ina-240-a-a": CaseLaw(
+        name="INA 240A(a) -- Cancellation of Removal (LPR)",
+        citation="8 U.S.C. 1229b(a)",
+        court="Statute",
+        date="",
+        holding=(
+            "Provides for cancellation of removal for lawful permanent residents "
+            "who (1) have been LPRs for at least 5 years, (2) have resided "
+            "continuously in the U.S. for 7 years after admission, and (3) have "
+            "not been convicted of an aggravated felony."
+        ),
+        topics=["cancellation of removal", "LPR", "aggravated felony"],
+        resource_type="statute",
+    ),
+    # -------------------------------------------------------------------
+    # CFR (Code of Federal Regulations) Key Provisions
+    # -------------------------------------------------------------------
+    "8-cfr-208-13": CaseLaw(
+        name="8 CFR 208.13 -- Establishing Asylum Eligibility",
+        citation="8 C.F.R. 208.13",
+        court="Regulation",
+        date="",
+        holding=(
+            "Implements asylum standards: burden of proof, standard of proof, "
+            "well-founded fear analysis, past persecution presumption, "
+            "changed country conditions rebuttal, internal relocation analysis, "
+            "and discretionary factors. Central regulation for asylum adjudication."
+        ),
+        topics=["asylum", "burden of proof", "well-founded fear", "internal relocation"],
+        resource_type="regulation",
+    ),
+    "8-cfr-1003-29": CaseLaw(
+        name="8 CFR 1003.29 -- Continuances",
+        citation="8 C.F.R. 1003.29",
+        court="Regulation",
+        date="",
+        holding=(
+            "Governs the grant or denial of continuances in immigration court. "
+            "An immigration judge may grant a continuance for good cause shown. "
+            "Factors include the DHS response, the length of the delay, "
+            "and the number of prior continuances."
+        ),
+        topics=["continuances", "immigration court", "good cause"],
+        resource_type="regulation",
+    ),
+    "8-cfr-1208-4": CaseLaw(
+        name="8 CFR 1208.4 -- Filing the Asylum Application (One-Year Deadline)",
+        citation="8 C.F.R. 1208.4",
+        court="Regulation",
+        date="",
+        holding=(
+            "Implements the one-year filing deadline for asylum applications. "
+            "Must be filed within one year of arrival in the U.S. unless "
+            "extraordinary circumstances (changed country conditions, changed "
+            "personal circumstances, ineffective assistance of counsel, "
+            "legal disability) caused the delay."
+        ),
+        topics=["asylum", "one-year bar", "extraordinary circumstances", "filing deadline"],
+        resource_type="regulation",
+    ),
+    "8-cfr-1003-47": CaseLaw(
+        name="8 CFR 1003.47 -- Identity, Law Enforcement, and Security Checks",
+        citation="8 C.F.R. 1003.47",
+        court="Regulation",
+        date="",
+        holding=(
+            "Requires completion of identity, law enforcement, and security "
+            "checks before any immigration judge may grant relief from removal. "
+            "Outlines the specific checks DHS must complete and the procedures "
+            "for updating stale checks."
+        ),
+        topics=["background checks", "security checks", "relief from removal"],
+        resource_type="regulation",
+    ),
+    "8-cfr-208-16": CaseLaw(
+        name="8 CFR 208.16 -- Withholding of Removal and CAT",
+        citation="8 C.F.R. 208.16",
+        court="Regulation",
+        date="",
+        holding=(
+            "Implements withholding of removal under INA 241(b)(3) and "
+            "protection under the Convention Against Torture. Sets forth the "
+            "clear probability standard for withholding, and the 'more likely "
+            "than not' standard for CAT claims, including the definitions of "
+            "torture and government acquiescence."
+        ),
+        topics=["withholding", "CAT", "torture", "acquiescence", "standard of proof"],
+        resource_type="regulation",
+    ),
 }
 
 
@@ -298,26 +674,57 @@ _DEFAULT_KEY_DECISIONS: dict[str, CaseLaw] = {
 # ---------------------------------------------------------------------------
 
 _DEFAULT_LEGAL_TOPICS: list[str] = [
+    # Relief types
     "asylum",
     "withholding",
     "CAT",
+    "cancellation of removal",
+    "adjustment of status",
+    "stay of removal",
+    # Substantive legal concepts
     "particular social group",
     "nexus",
+    "persecution",
+    "well-founded fear",
     "credibility",
     "corroboration",
     "firm resettlement",
     "one-year bar",
     "political opinion",
+    "internal relocation",
+    # Protected grounds and claim types
     "gender",
     "sexual orientation",
     "domestic violence",
     "gang",
-    "cancellation of removal",
-    "hardship",
-    "persecution",
-    "acquiescence",
     "forced recruitment",
     "family",
+    "coercive population control",
+    # Removal defense
+    "inadmissibility",
+    "deportability",
+    "grounds of removal",
+    "criminal grounds",
+    "CIMT",
+    "aggravated felony",
+    "moral turpitude",
+    # Procedural
+    "hardship",
+    "due process",
+    "judicial review",
+    "burden of proof",
+    "standard of review",
+    "continuances",
+    "acquiescence",
+    # Special populations
+    "minors",
+    "USC children",
+    "LPR",
+    # Additional
+    "torture",
+    "waivers",
+    "good moral character",
+    "physical presence",
 ]
 
 
@@ -340,6 +747,7 @@ def _load_decisions() -> dict[str, CaseLaw]:
                 holding=v.get("holding", ""),
                 full_text=v.get("full_text", ""),
                 topics=v.get("topics", []),
+                resource_type=v.get("resource_type", "decision"),
             )
     return result
 

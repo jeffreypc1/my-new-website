@@ -54,17 +54,25 @@ class EvidenceItem:
 # ---------------------------------------------------------------------------
 
 _DEFAULT_DOCUMENT_CATEGORIES: list[str] = [
-    "Identity Documents",
-    "Country Conditions",
-    "Medical/Psychological",
-    "Expert Reports",
-    "Declarations",
-    "Photographs",
-    "Government Documents",
-    "Correspondence",
-    "Employment Records",
-    "Financial Records",
-    "Legal Documents",
+    # Core ICPM evidence categories (Immigration Court Practice Manual Ch. 3-4)
+    "Identity Documents",           # Passport, birth certificate, national ID
+    "Application / Petition",       # I-589, I-130, EOIR-42B, etc.
+    "Declaration / Affidavit",      # Personal declaration, witness affidavits
+    "Country Conditions",           # State Dept reports, HRW, expert COI
+    "Expert Declaration",           # Expert witness declarations
+    "Medical / Psychological",      # Evaluations, treatment records, diagnoses
+    "Legal Brief / Memo",           # Legal arguments, pre-hearing briefs
+    "Government Documents",         # DHS filings, NTA, I-862, prior orders
+    "Court Documents",              # Prior IJ decisions, BIA decisions, motions
+    "Correspondence",               # Letters, emails, notices from agencies
+    "Employment Records",           # Pay stubs, employer letters, tax returns
+    "Financial Records",            # Bank statements, I-864 support docs
+    "Photographs / Media",          # Photos, screenshots, video stills
+    "Translation & Certification",  # Certified translations per ICPM 3.3(b)
+    "Witness List",                 # ICPM 4.18 — witness list with summaries
+    "News Articles / Reports",      # Published reports, media coverage
+    "Police / Incident Reports",    # Police reports, restraining orders
+    "Education Records",            # Diplomas, transcripts, enrollment letters
     "Other",
 ]
 
