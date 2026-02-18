@@ -388,8 +388,11 @@ def render_client_banner() -> dict | None:
     has_box = bool(active and (active.get("Box_Folder_ID__c") or ""))
     has_email = bool(active and (active.get("Email") or ""))
 
-    # Track last-pulled ID so we can detect when the user enters a new one
+    # Track last-pulled ID so we can detect when the user enters a new one.
+    # Clear the input field before the widget renders (can't modify after).
     _prev_cid = st.session_state.get("_banner_last_pulled", "")
+    if st.session_state.pop("_banner_clear_input", False):
+        st.session_state["_banner_client_id"] = ""
 
     banner_cols = st.columns([3, 1, 1, 1])
     with banner_cols[0]:
@@ -423,7 +426,7 @@ def render_client_banner() -> dict | None:
                     save_active_client(record)
                     st.session_state.sf_client = record
                     st.session_state._banner_last_pulled = cid_to_pull
-                    st.session_state._banner_client_id = ""
+                    st.session_state._banner_clear_input = True
                     st.rerun()
                 else:
                     st.warning(f"No client found for #{cid_to_pull}")
