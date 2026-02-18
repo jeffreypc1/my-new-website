@@ -244,6 +244,7 @@ _DEFAULTS: dict = {
     "last_saved_msg": "",
     "enclosed_docs": [],
     "custom_docs": [],
+    "sf_task_docs": [],
     "doc_descriptions": {},
     "prev_case_type": None,
 }
@@ -260,6 +261,9 @@ if st.session_state.draft_id is None:
 def _build_enclosed_docs_list() -> list[dict[str, str]]:
     """Collect the currently selected enclosed documents with descriptions."""
     docs: list[dict[str, str]] = []
+    # SF tasks that are checked
+    for doc_name in st.session_state.get("sf_task_docs", []):
+        docs.append({"name": doc_name, "description": ""})
     # Standard docs that are checked
     for doc_name in st.session_state.get("enclosed_docs", []):
         desc = st.session_state.get("doc_descriptions", {}).get(doc_name, "")
@@ -347,6 +351,7 @@ def _do_new() -> None:
     st.session_state.last_saved_msg = ""
     st.session_state.enclosed_docs = []
     st.session_state.custom_docs = []
+    st.session_state.sf_task_docs = []
     st.session_state.doc_descriptions = {}
     st.session_state.prev_case_type = None
     for k in (
@@ -551,6 +556,67 @@ doc_col, preview_col = st.columns([3, 2], gap="large")
 with doc_col:
     st.markdown('<div class="section-label">Enclosed Documents</div>', unsafe_allow_html=True)
     st.caption("Check the documents to include in this cover letter. Add descriptions for specificity.")
+
+    # -- Salesforce Tasks (LC_Task__c) ----------------------------------------
+    _active_client = st.session_state.get("sf_client")
+    _sf_contact_id = _active_client.get("Id", "") if _active_client else ""
+    _sf_tasks: list[dict] = []
+
+    if _sf_contact_id:
+        try:
+            from shared.salesforce_client import get_lc_tasks, create_lc_task
+            _sf_tasks = get_lc_tasks(_sf_contact_id)
+        except Exception:
+            _sf_tasks = []
+
+    if _sf_tasks or _sf_contact_id:
+        st.markdown('<div class="section-label" style="margin-top:4px;">Salesforce Tasks</div>', unsafe_allow_html=True)
+
+    if _sf_tasks:
+        _current_sf_checked = list(st.session_state.get("sf_task_docs", []))
+        _new_sf_checked: list[str] = []
+        for _task in _sf_tasks:
+            _task_label = _task.get("For__c") or _task.get("Name") or "Untitled task"
+            _task_is_checked = _task_label in _current_sf_checked
+            _tc = st.columns([0.5, 9])
+            with _tc[0]:
+                _tc_checked = st.checkbox(
+                    _task_label,
+                    value=_task_is_checked,
+                    key=f"chk_sft_{_task.get('Id', '')}",
+                    label_visibility="collapsed",
+                )
+            with _tc[1]:
+                st.markdown(
+                    f'<div class="doc-item">{html_mod.escape(_task_label)}</div>',
+                    unsafe_allow_html=True,
+                )
+            if _tc_checked:
+                _new_sf_checked.append(_task_label)
+        st.session_state.sf_task_docs = _new_sf_checked
+    elif _sf_contact_id:
+        st.caption("No tasks found for this client.")
+
+    if _sf_contact_id:
+        _add_task_cols = st.columns([5, 1])
+        with _add_task_cols[0]:
+            _new_task_desc = st.text_input(
+                "New SF task",
+                key="_inp_new_sf_task",
+                placeholder="Task description...",
+                label_visibility="collapsed",
+            )
+        with _add_task_cols[1]:
+            if st.button("Add to SF", use_container_width=True, key="_btn_add_sf_task") and _new_task_desc:
+                try:
+                    from shared.salesforce_client import create_lc_task
+                    create_lc_task(_sf_contact_id, _new_task_desc.strip())
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to create task: {e}")
+
+    if _sf_tasks or _sf_contact_id:
+        st.markdown('<div class="section-label" style="margin-top:8px;">Standard Documents</div>', unsafe_allow_html=True)
 
     standard_docs = get_standard_docs(case_type)
 

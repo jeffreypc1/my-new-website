@@ -247,7 +247,7 @@ def _build_docx(
     p = doc.add_paragraph()
     _run(p, declarant_name)
     p = doc.add_paragraph()
-    _run(p, f"Date: {date.today().strftime('%B %d, %Y')}")
+    _run(p, f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     # Interpreter certification
     if language != "English" and interpreter_name:
@@ -272,6 +272,6 @@ def _build_docx(
         p = doc.add_paragraph()
         _run(p, interpreter_name)
         p = doc.add_paragraph()
-        _run(p, f"Date: {date.today().strftime('%B %d, %Y')}")
+        _run(p, f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     return doc

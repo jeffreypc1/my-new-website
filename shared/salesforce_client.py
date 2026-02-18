@@ -103,6 +103,46 @@ def get_client(customer_id: str, fields: list[str] | None = None) -> dict | None
     return {k: v for k, v in record.items() if k != "attributes"}
 
 
+def get_lc_tasks(contact_sf_id: str) -> list[dict]:
+    """Fetch LC_Task__c records related to a Contact.
+
+    Args:
+        contact_sf_id: The Salesforce record Id of the Contact.
+
+    Returns:
+        List of dicts with 'Id', 'Name', and 'For__c' fields.
+    """
+    sf = _sf_conn()
+    query = (
+        f"SELECT Id, Name, For__c FROM LC_Task__c "
+        f"WHERE Contact__c = '{contact_sf_id}' ORDER BY Name"
+    )
+    result = sf.query(query)
+    records = result.get("records", [])
+    return [
+        {k: v for k, v in r.items() if k != "attributes"}
+        for r in records
+    ]
+
+
+def create_lc_task(contact_sf_id: str, description: str) -> str:
+    """Create a new LC_Task__c record linked to a Contact.
+
+    Args:
+        contact_sf_id: The Salesforce record Id of the Contact.
+        description: The value for the For__c field.
+
+    Returns:
+        The new record's Salesforce Id.
+    """
+    sf = _sf_conn()
+    result = sf.LC_Task__c.create({
+        "Contact__c": contact_sf_id,
+        "For__c": description,
+    })
+    return result["id"]
+
+
 def update_client(sf_id: str, updates: dict) -> None:
     """Push field updates back to Salesforce for a Contact.
 

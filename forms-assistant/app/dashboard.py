@@ -372,7 +372,7 @@ def _build_docx(form_id: str, form_data: dict) -> bytes:
 
     # Date
     date_para = doc.add_paragraph()
-    date_run = date_para.add_run(f"Generated: {date.today().strftime('%B %d, %Y')}")
+    date_run = date_para.add_run(f"Generated: {date.today().strftime('%m/%d/%Y')}")
     date_run.font.name = "Arial"
     date_run.font.size = Pt(10)
     date_para.paragraph_format.space_after = Pt(12)
@@ -424,7 +424,7 @@ def _build_plain_text(form_id: str, form_data: dict) -> str:
     lines: list[str] = []
 
     lines.append(f"{form_id} -- {form_meta.get('title', '')}")
-    lines.append(f"Generated: {date.today().strftime('%B %d, %Y')}")
+    lines.append(f"Generated: {date.today().strftime('%m/%d/%Y')}")
     lines.append("=" * 60)
     lines.append("")
 

@@ -168,7 +168,7 @@ def _build_docx_from_sections(
     p = doc.add_paragraph()
     _run(p, "Attorney for Respondent")
     p = doc.add_paragraph()
-    _run(p, f"Date: {date.today().strftime('%B %d, %Y')}")
+    _run(p, f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     buf = io.BytesIO()
     doc.save(buf)

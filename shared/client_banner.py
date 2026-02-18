@@ -25,6 +25,26 @@ _BANNER_FIELD_DEFAULTS = [
     "A_Number__c", "Country__c", "Best_Language__c", "Immigration_Status__c",
 ]
 
+# Salesforce date fields that should display as MM/DD/YYYY
+_DATE_FIELDS = {
+    "Birthdate",
+    "Date_of_First_Entry_to_US__c",
+    "Date_of_Most_Recent_US_Entry__c",
+}
+
+
+def _format_date_value(val: str) -> str:
+    """Convert YYYY-MM-DD to MM/DD/YYYY if it matches, otherwise return as-is."""
+    if not val or len(val) != 10:
+        return val
+    try:
+        parts = val.split("-")
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return f"{parts[1]}/{parts[2]}/{parts[0]}"
+    except Exception:
+        pass
+    return val
+
 
 def _get_banner_fields() -> list[str]:
     """Load the list of enabled banner fields from global settings."""
@@ -465,7 +485,8 @@ def render_client_banner() -> dict | None:
             val = active.get(field_key)
             if val:
                 label = _FIELD_LABELS.get(field_key)
-                escaped = html_mod.escape(str(val))
+                display_val = _format_date_value(str(val)) if field_key in _DATE_FIELDS else str(val)
+                escaped = html_mod.escape(display_val)
                 if label:
                     parts.append(f'<span class="sf-banner-field"><strong>{label}</strong> {escaped}</span>')
                 else:

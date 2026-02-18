@@ -357,7 +357,7 @@ def _build_preview_html(
     parts.append(
         f'<div class="doc-sig">'
         f"____________________________<br>{esc(name)}<br>"
-        f"Date: {date.today().strftime('%B %d, %Y')}</div>"
+        f"Date: {date.today().strftime('%m/%d/%Y')}</div>"
     )
 
     if language != "English" and interpreter_name:
@@ -372,7 +372,7 @@ def _build_preview_html(
             f'<div class="doc-para">{esc(cert)}</div>'
             f'<div class="doc-sig">'
             f"____________________________<br>{esc(interpreter_name)}<br>"
-            f"Date: {date.today().strftime('%B %d, %Y')}</div>"
+            f"Date: {date.today().strftime('%m/%d/%Y')}</div>"
             f"</div>"
         )
 
@@ -454,7 +454,7 @@ def _build_docx(
     p = doc.add_paragraph()
     _run(p, name)
     p = doc.add_paragraph()
-    _run(p, f"Date: {date.today().strftime('%B %d, %Y')}")
+    _run(p, f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     # Interpreter certification
     if language != "English" and interpreter_name:
@@ -479,7 +479,7 @@ def _build_docx(
         p = doc.add_paragraph()
         _run(p, interpreter_name)
         p = doc.add_paragraph()
-        _run(p, f"Date: {date.today().strftime('%B %d, %Y')}")
+        _run(p, f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     buf = io.BytesIO()
     doc.save(buf)

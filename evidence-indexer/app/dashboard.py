@@ -412,7 +412,7 @@ def _build_plain_text(documents: list[dict[str, Any]]) -> str:
     if total_pages:
         lines.append(f"Total pages: {total_pages}")
     lines.append("")
-    lines.append(f"Generated: {date.today().strftime('%B %d, %Y')}")
+    lines.append(f"Generated: {date.today().strftime('%m/%d/%Y')}")
     lines.append("O'Brien Immigration Law")
     return "\n".join(lines)
 

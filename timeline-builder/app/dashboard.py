@@ -526,7 +526,7 @@ def _build_docx(timeline: dict) -> bytes:
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p, f"Prepared {date.today().strftime('%B %d, %Y')}", size=9, italic=True)
+    _run(p, f"Prepared {date.today().strftime('%m/%d/%Y')}", size=9, italic=True)
 
     doc.add_paragraph()  # spacer
 
@@ -592,7 +592,7 @@ def _build_plain_text(timeline: dict) -> str:
         lines.append(f"Client: {client}")
     if case:
         lines.append(f"Case:   {case}")
-    lines.append(f"Date:   {date.today().strftime('%B %d, %Y')}")
+    lines.append(f"Date:   {date.today().strftime('%m/%d/%Y')}")
     lines.append("=" * 60)
     lines.append("")
 

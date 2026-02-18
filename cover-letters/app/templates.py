@@ -475,7 +475,7 @@ def render_cover_letter(
     if tpl is None:
         return f"[Error: Unknown case type '{case_type}']"
 
-    today = date.today().strftime("%B %d, %Y")
+    today = date.today().strftime("%m/%d/%Y")
     office_addr = get_filing_office_address(filing_office)
 
     lines: list[str] = []

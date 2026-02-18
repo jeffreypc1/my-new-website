@@ -384,7 +384,7 @@ def _build_preview_html(
         "Respectfully submitted,<br><br>"
         "____________________________<br>"
         "Attorney for Respondent<br>"
-        f"Date: {date.today().strftime('%B %d, %Y')}"
+        f"Date: {date.today().strftime('%m/%d/%Y')}"
         "</div>"
     )
 
@@ -466,7 +466,7 @@ def _build_plain_text(
     lines.append("")
     lines.append("____________________________")
     lines.append("Attorney for Respondent")
-    lines.append(f"Date: {date.today().strftime('%B %d, %Y')}")
+    lines.append(f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     return "\n".join(lines)
 
@@ -596,7 +596,7 @@ def _build_docx(
     p = doc.add_paragraph()
     _run(p, "Attorney for Respondent")
     p = doc.add_paragraph()
-    _run(p, f"Date: {date.today().strftime('%B %d, %Y')}")
+    _run(p, f"Date: {date.today().strftime('%m/%d/%Y')}")
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -686,7 +686,7 @@ with st.sidebar:
     hearing_date = st.text_input(
         "Hearing Date",
         key="inp_hearing_date",
-        placeholder="e.g. March 15, 2026",
+        placeholder="e.g. 03/15/2026",
     )
 
     render_tool_notes("brief-builder")

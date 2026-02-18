@@ -458,7 +458,7 @@ def _build_docx(case_data: dict[str, Any]) -> bytes:
     # Footer
     doc.add_paragraph()
     p = doc.add_paragraph()
-    _run(p, f"Generated: {date.today().strftime('%B %d, %Y')}", size=9, italic=True)
+    _run(p, f"Generated: {date.today().strftime('%m/%d/%Y')}", size=9, italic=True)
     p = doc.add_paragraph()
     _run(p, "O'Brien Immigration Law", size=9, italic=True)
 
@@ -512,7 +512,7 @@ def _build_plain_text(case_data: dict[str, Any]) -> str:
                 lines.append(f"       Notes: {notes}")
         lines.append("")
 
-    lines.append(f"Generated: {date.today().strftime('%B %d, %Y')}")
+    lines.append(f"Generated: {date.today().strftime('%m/%d/%Y')}")
     lines.append("O'Brien Immigration Law")
     return "\n".join(lines)
 

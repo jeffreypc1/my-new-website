@@ -312,7 +312,7 @@ def build_certificate(
     if cert_type == "None" or not cert_type:
         return ""
 
-    today = date.today().strftime("%B %d, %Y")
+    today = date.today().strftime("%m/%d/%Y")
 
     # Pronoun forms for interpretation cert
     pronoun_map = {

@@ -208,7 +208,7 @@ def api_export_docx(timeline_id: str):
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _run(p, f"Prepared {date.today().strftime('%B %d, %Y')}", size=9, italic=True)
+    _run(p, f"Prepared {date.today().strftime('%m/%d/%Y')}", size=9, italic=True)
 
     doc.add_paragraph()
 

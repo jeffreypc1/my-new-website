@@ -247,7 +247,7 @@ def generate_index_docx(items: list[EvidenceItem], case_name: str = "") -> bytes
         doc.add_paragraph()
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        _run(p, f"Generated: {date.today().strftime('%B %d, %Y')}", size=9, italic=True)
+        _run(p, f"Generated: {date.today().strftime('%m/%d/%Y')}", size=9, italic=True)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         _run(p, "O'Brien Immigration Law", size=9, italic=True)
