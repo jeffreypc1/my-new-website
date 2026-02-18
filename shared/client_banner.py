@@ -388,7 +388,7 @@ def render_client_banner() -> dict | None:
     has_box = bool(active and (active.get("Box_Folder_ID__c") or ""))
     has_email = bool(active and (active.get("Email") or ""))
 
-    banner_cols = st.columns([3, 1, 1, 1, 1])
+    banner_cols = st.columns([3, 1, 1, 1])
     with banner_cols[0]:
         new_cid = st.text_input(
             "Client #",
@@ -401,38 +401,28 @@ def render_client_banner() -> dict | None:
         do_pull = st.button("Pull", use_container_width=True, type="primary", key="_banner_pull",
                             disabled=not _sf_available)
     with banner_cols[2]:
-        do_refresh = st.button("Refresh", use_container_width=True, key="_banner_refresh",
-                               disabled=not active or not _sf_available)
-    with banner_cols[3]:
         do_files = st.button("Files", use_container_width=True, key="_banner_files",
                              disabled=not has_box)
-    with banner_cols[4]:
+    with banner_cols[3]:
         do_email = st.button("Email", use_container_width=True, key="_banner_email",
                              disabled=not has_email or not _sf_available)
 
-    if do_pull and new_cid and _sf_available:
-        try:
-            record = get_client(new_cid.strip())
-            if record:
-                save_active_client(record)
-                st.session_state.sf_client = record
-                st.rerun()
-            else:
-                st.warning(f"No client found for #{new_cid}")
-        except Exception as e:
-            st.error(f"Salesforce error: {e}")
-
-    if do_refresh and active and _sf_available:
-        cid = active.get("Customer_ID__c", "")
-        if cid:
+    if do_pull and _sf_available:
+        # If text entered, pull that client; otherwise refresh current client
+        cid_to_pull = new_cid.strip() if new_cid.strip() else (active.get("Customer_ID__c", "") if active else "")
+        if cid_to_pull:
             try:
-                record = get_client(cid)
+                record = get_client(cid_to_pull)
                 if record:
                     save_active_client(record)
                     st.session_state.sf_client = record
                     st.rerun()
+                else:
+                    st.warning(f"No client found for #{cid_to_pull}")
             except Exception as e:
-                st.error(f"Refresh failed: {e}")
+                st.error(f"Salesforce error: {e}")
+        else:
+            st.info("Enter a client number to pull.")
 
     if do_files and active:
         folder_id = active.get("Box_Folder_ID__c", "")

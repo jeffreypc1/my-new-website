@@ -12,7 +12,9 @@ from datetime import date
 from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
-from shared.config_store import get_config_value
+from shared.config_store import get_config_value, load_config, save_config
+
+import json
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +87,182 @@ _DEFAULT_FILING_OFFICES: dict[str, str] = {
     ),
     "Other": "",
 }
+
+
+# ---------------------------------------------------------------------------
+# Recipient address book (structured entries with categories)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_RECIPIENT_ADDRESSES: list[dict] = [
+    # USCIS Service Centers (5)
+    {
+        "id": "uscis_nebraska",
+        "name": "USCIS Nebraska Service Center",
+        "category": "USCIS Service Center",
+        "address": "USCIS Nebraska Service Center\nP.O. Box 87589\nLincoln, NE 68501-7589",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_texas",
+        "name": "USCIS Texas Service Center",
+        "category": "USCIS Service Center",
+        "address": "USCIS Texas Service Center\n6046 N. Belt Line Road, Suite 172\nIrving, TX 75038-0001",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_vermont",
+        "name": "USCIS Vermont Service Center",
+        "category": "USCIS Service Center",
+        "address": "USCIS Vermont Service Center\n75 Lower Welden Street\nSt. Albans, VT 05479-0001",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_california",
+        "name": "USCIS California Service Center",
+        "category": "USCIS Service Center",
+        "address": "USCIS California Service Center\nP.O. Box 30111\nLaguna Niguel, CA 92607-0111",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_potomac",
+        "name": "USCIS Potomac Service Center",
+        "category": "USCIS Service Center",
+        "address": "USCIS Potomac Service Center\n131 South Dearborn, 3rd Floor\nChicago, IL 60603-5517",
+        "salutation": "Dear Sir or Madam:",
+    },
+    # USCIS Lockboxes (4)
+    {
+        "id": "uscis_chicago_lockbox",
+        "name": "USCIS Chicago Lockbox",
+        "category": "USCIS Lockbox",
+        "address": "USCIS Chicago Lockbox\n131 South Dearborn, 3rd Floor\nChicago, IL 60603-5517",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_dallas_lockbox",
+        "name": "USCIS Dallas Lockbox",
+        "category": "USCIS Lockbox",
+        "address": "USCIS Dallas Lockbox\nP.O. Box 650888\nDallas, TX 75265",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_phoenix_lockbox",
+        "name": "USCIS Phoenix Lockbox",
+        "category": "USCIS Lockbox",
+        "address": "USCIS Phoenix Lockbox\nP.O. Box 21281\nPhoenix, AZ 85036",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "uscis_lewisville_lockbox",
+        "name": "USCIS Lewisville Lockbox",
+        "category": "USCIS Lockbox",
+        "address": "USCIS Lewisville Lockbox\n2501 S. State Hwy 121 Business\nSuite 400\nLewisville, TX 75067",
+        "salutation": "Dear Sir or Madam:",
+    },
+    # EOIR Immigration Court (2)
+    {
+        "id": "immigration_court",
+        "name": "Immigration Court",
+        "category": "EOIR Immigration Court",
+        "address": "[Immigration Court Name]\n[Court Address]\n[City, State ZIP]",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "bia",
+        "name": "Board of Immigration Appeals",
+        "category": "EOIR Immigration Court",
+        "address": "Board of Immigration Appeals\nClerk's Office\n5107 Leesburg Pike, Suite 2000\nFalls Church, VA 22041",
+        "salutation": "Dear Sir or Madam:",
+    },
+    # Other (1)
+    {
+        "id": "uscis_vermont_vawa",
+        "name": "USCIS Vermont Service Center (VAWA Unit)",
+        "category": "Other",
+        "address": "USCIS Vermont Service Center\nVAWA Unit\n75 Lower Welden Street\nSt. Albans, VT 05479-0001",
+        "salutation": "Dear Sir or Madam:",
+    },
+    # Asylum Offices (8)
+    {
+        "id": "asylum_arlington",
+        "name": "Arlington Asylum Office",
+        "category": "Asylum Office",
+        "address": "Arlington Asylum Office\n1525 Wilson Boulevard, Suite 200\nArlington, VA 22209",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_chicago",
+        "name": "Chicago Asylum Office",
+        "category": "Asylum Office",
+        "address": "Chicago Asylum Office\n181 West Madison Street, Suite 3000\nChicago, IL 60602",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_houston",
+        "name": "Houston Asylum Office",
+        "category": "Asylum Office",
+        "address": "Houston Asylum Office\n1919 Smith Street, 7th Floor\nHouston, TX 77002",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_los_angeles",
+        "name": "Los Angeles Asylum Office",
+        "category": "Asylum Office",
+        "address": "Los Angeles Asylum Office\n1585 South Manchester Avenue\nAnaheim, CA 92802",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_miami",
+        "name": "Miami Asylum Office",
+        "category": "Asylum Office",
+        "address": "Miami Asylum Office\n8801 NW 7th Avenue, Suite 100\nMiami, FL 33150",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_newark",
+        "name": "Newark Asylum Office",
+        "category": "Asylum Office",
+        "address": "Newark Asylum Office\n1200 Wall Street West, 4th Floor\nLyndhurst, NJ 07071",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_new_york",
+        "name": "New York Asylum Office",
+        "category": "Asylum Office",
+        "address": "New York Asylum Office\n1065 Stewart Avenue, Suite 200\nBethpage, NY 11714",
+        "salutation": "Dear Sir or Madam:",
+    },
+    {
+        "id": "asylum_san_francisco",
+        "name": "San Francisco Asylum Office",
+        "category": "Asylum Office",
+        "address": "San Francisco Asylum Office\n75 Hawthorne Street, Suite 200\nSan Francisco, CA 94105",
+        "salutation": "Dear Sir or Madam:",
+    },
+]
+
+RECIPIENT_CATEGORIES: list[str] = [
+    "USCIS Service Center",
+    "USCIS Lockbox",
+    "EOIR Immigration Court",
+    "Asylum Office",
+    "Other",
+]
+
+
+def get_recipient_addresses() -> list[dict]:
+    """Load recipient addresses from config, seeding defaults on first call."""
+    config = load_config("recipient-addresses")
+    if config is not None:
+        return config.get("addresses", [])
+    # First call: seed defaults
+    save_recipient_addresses(_DEFAULT_RECIPIENT_ADDRESSES)
+    return list(_DEFAULT_RECIPIENT_ADDRESSES)
+
+
+def save_recipient_addresses(addresses: list[dict]) -> None:
+    """Persist recipient addresses to config."""
+    save_config("recipient-addresses", {"addresses": addresses})
 
 
 # ---------------------------------------------------------------------------
@@ -451,6 +629,8 @@ def render_cover_letter(
     firm_address: str,
     custom_purpose: str = "",
     custom_closing: str = "",
+    recipient_address: str = "",
+    salutation: str = "",
 ) -> str:
     """Render a complete cover letter as plain text.
 
@@ -459,7 +639,7 @@ def render_cover_letter(
         client_name: Full name of the client.
         a_number: Alien registration number.
         receipt_number: USCIS receipt number.
-        filing_office: Name of the filing office.
+        filing_office: Name of the filing office (legacy fallback).
         enclosed_docs: List of dicts with 'name' and optional 'description'.
         attorney_name: Name of the attorney.
         bar_number: Attorney bar number.
@@ -467,6 +647,8 @@ def render_cover_letter(
         firm_address: Firm mailing address.
         custom_purpose: Override for the purpose paragraph.
         custom_closing: Override for the closing paragraph.
+        recipient_address: Full recipient address block (overrides filing_office).
+        salutation: Custom salutation (default: "Dear Sir or Madam:").
 
     Returns:
         The full cover letter as a string.
@@ -476,7 +658,16 @@ def render_cover_letter(
         return f"[Error: Unknown case type '{case_type}']"
 
     today = date.today().strftime("%m/%d/%Y")
-    office_addr = get_filing_office_address(filing_office)
+
+    # Determine address block: prefer recipient_address, fall back to filing_office
+    if recipient_address:
+        addr_block = recipient_address
+    else:
+        office_addr = get_filing_office_address(filing_office)
+        addr_block = office_addr if office_addr else filing_office
+
+    # Determine salutation
+    sal = salutation if salutation else "Dear Sir or Madam:"
 
     lines: list[str] = []
 
@@ -484,11 +675,9 @@ def render_cover_letter(
     lines.append(today)
     lines.append("")
 
-    # Filing office address
-    if office_addr:
-        lines.append(office_addr)
-    else:
-        lines.append(filing_office)
+    # Recipient address
+    if addr_block:
+        lines.append(addr_block)
     lines.append("")
 
     # RE block
@@ -501,7 +690,7 @@ def render_cover_letter(
     lines.append("")
 
     # Salutation
-    lines.append("Dear Sir or Madam:")
+    lines.append(sal)
     lines.append("")
 
     # Confidentiality notice (VAWA)

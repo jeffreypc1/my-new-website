@@ -44,6 +44,8 @@ class GenerateRequest(BaseModel):
     bar_number: str = ""
     firm_name: str = "O'Brien Immigration Law"
     firm_address: str = ""
+    recipient_address: str = ""
+    salutation: str = ""
 
 
 class DraftSaveRequest(BaseModel):
@@ -53,6 +55,9 @@ class DraftSaveRequest(BaseModel):
     attorney: dict
     filing_office: str = ""
     enclosed_docs: list[dict] = []
+    recipient_type: str = "agency"
+    recipient_address: str = ""
+    salutation: str = "Dear Sir or Madam:"
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +118,9 @@ def api_save_draft(req: DraftSaveRequest) -> dict:
         attorney=req.attorney,
         filing_office=req.filing_office,
         enclosed_docs=req.enclosed_docs,
+        recipient_type=req.recipient_type,
+        recipient_address=req.recipient_address,
+        salutation=req.salutation,
     )
 
 
@@ -143,6 +151,8 @@ def api_generate(req: GenerateRequest) -> dict:
         bar_number=req.bar_number,
         firm_name=req.firm_name,
         firm_address=req.firm_address,
+        recipient_address=req.recipient_address,
+        salutation=req.salutation,
     )
     return {"text": text}
 
@@ -166,6 +176,8 @@ def api_export_docx(req: GenerateRequest) -> StreamingResponse:
         bar_number=req.bar_number,
         firm_name=req.firm_name,
         firm_address=req.firm_address,
+        recipient_address=req.recipient_address,
+        salutation=req.salutation,
     )
 
     doc = Document()

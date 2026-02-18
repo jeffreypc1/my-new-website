@@ -30,6 +30,9 @@ def save_draft(
     attorney: dict,
     filing_office: str,
     enclosed_docs: list[dict],
+    recipient_type: str = "agency",
+    recipient_address: str = "",
+    salutation: str = "Dear Sir or Madam:",
 ) -> dict:
     """Save or update a draft.  Returns the saved draft dict."""
     _ensure_dir()
@@ -51,6 +54,9 @@ def save_draft(
         "attorney": attorney,
         "filing_office": filing_office,
         "enclosed_docs": enclosed_docs,
+        "recipient_type": recipient_type,
+        "recipient_address": recipient_address,
+        "salutation": salutation,
         "created_at": created_at,
         "updated_at": now,
     }

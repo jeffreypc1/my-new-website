@@ -10,22 +10,22 @@ from __future__ import annotations
 import html as html_mod
 import io
 import sys
-from datetime import date
 from pathlib import Path
 
 import streamlit as st
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
 from app.drafts import delete_draft, list_drafts, load_draft, new_draft_id, save_draft
 from app.templates import (
     CASE_TYPES,
+    RECIPIENT_CATEGORIES,
     TEMPLATES,
     get_filing_office_address,
     get_filing_offices,
-    get_standard_docs,
+    get_recipient_addresses,
     render_cover_letter,
+    save_recipient_addresses,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -40,6 +40,10 @@ try:
     from shared.tool_help import render_tool_help
 except ImportError:
     render_tool_help = None
+try:
+    from shared.feedback_button import render_feedback_button
+except ImportError:
+    render_feedback_button = None
 
 # -- Page config --------------------------------------------------------------
 
@@ -133,6 +137,48 @@ div[data-testid="stToolbar"] { display: none !important; }
     color: #1a2744;
 }
 
+/* SF task row marked for deletion */
+.sf-task-deleted {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin: 2px 0;
+}
+.sf-task-deleted .doc-item {
+    text-decoration: line-through;
+    color: #991b1b;
+}
+
+/* SF task row — normal */
+.sf-task-row {
+    padding: 4px 10px;
+    margin: 2px 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+}
+.sf-task-row:hover {
+    background: #f8fafc;
+}
+
+/* Pending changes badge */
+.pending-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+.pending-badge.edits {
+    background: #fef3c7;
+    color: #92400e;
+}
+.pending-badge.deletes {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 /* Preview panel (letter style) */
 .preview-panel {
     font-family: 'Times New Roman', Times, serif;
@@ -147,32 +193,6 @@ div[data-testid="stToolbar"] { display: none !important; }
     overflow-y: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
-}
-.preview-panel .letter-date {
-    margin-bottom: 12px;
-}
-.preview-panel .letter-addr {
-    margin-bottom: 12px;
-    line-height: 1.5;
-}
-.preview-panel .letter-re {
-    margin-bottom: 12px;
-    line-height: 1.5;
-}
-.preview-panel .letter-re strong {
-    font-weight: bold;
-}
-.preview-panel .letter-body {
-    margin-bottom: 10px;
-    text-align: justify;
-}
-.preview-panel .letter-docs {
-    margin: 10px 0 10px 20px;
-    line-height: 1.6;
-}
-.preview-panel .letter-sig {
-    margin-top: 20px;
-    line-height: 1.8;
 }
 .preview-panel .letter-cert {
     margin-top: 28px;
@@ -236,17 +256,18 @@ st.markdown(
 render_client_banner()
 if render_tool_help:
     render_tool_help("cover-letters")
+if render_feedback_button:
+    render_feedback_button("cover-letters")
 
 # -- Session state defaults ---------------------------------------------------
 
 _DEFAULTS: dict = {
     "draft_id": None,
     "last_saved_msg": "",
-    "enclosed_docs": [],
     "custom_docs": [],
     "sf_task_docs": [],
     "doc_descriptions": {},
-    "prev_case_type": None,
+    "sf_tasks_pending_delete": [],
 }
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
@@ -264,10 +285,6 @@ def _build_enclosed_docs_list() -> list[dict[str, str]]:
     # SF tasks that are checked
     for doc_name in st.session_state.get("sf_task_docs", []):
         docs.append({"name": doc_name, "description": ""})
-    # Standard docs that are checked
-    for doc_name in st.session_state.get("enclosed_docs", []):
-        desc = st.session_state.get("doc_descriptions", {}).get(doc_name, "")
-        docs.append({"name": doc_name, "description": desc})
     # Custom docs
     for doc_name in st.session_state.get("custom_docs", []):
         desc = st.session_state.get("doc_descriptions", {}).get(doc_name, "")
@@ -290,6 +307,20 @@ def _do_save(case_type: str) -> None:
     }
     filing_office = st.session_state.get("inp_filing_office", "")
     enclosed = _build_enclosed_docs_list()
+
+    # Recipient info
+    _rt = st.session_state.get("inp_recipient_type", "Government Agency")
+    _rtype = "client" if _rt == "Client" else "agency"
+    if _rtype == "agency":
+        _all_addr = get_recipient_addresses()
+        _sel_name = st.session_state.get("inp_recipient_name", "")
+        _entry = next((a for a in _all_addr if a["name"] == _sel_name), None)
+        _raddr = _entry["address"] if _entry else ""
+        _rsal = _entry.get("salutation", "Dear Sir or Madam:") if _entry else "Dear Sir or Madam:"
+    else:
+        _raddr = st.session_state.get("inp_client_address", "")
+        _rsal = st.session_state.get("inp_client_salutation", "Dear Sir or Madam:")
+
     save_draft(
         st.session_state.draft_id,
         case_type,
@@ -297,6 +328,9 @@ def _do_save(case_type: str) -> None:
         attorney,
         filing_office,
         enclosed,
+        recipient_type=_rtype,
+        recipient_address=_raddr,
+        salutation=_rsal,
     )
     name = client["name"] or "draft"
     st.session_state.last_saved_msg = f"Saved -- {name}"
@@ -323,46 +357,94 @@ def _do_load(draft_id: str) -> None:
 
     st.session_state.inp_filing_office = draft.get("filing_office", "")
 
+    # Restore recipient info
+    _rtype = draft.get("recipient_type", "")
+    _raddr = draft.get("recipient_address", "")
+    _rsal = draft.get("salutation", "Dear Sir or Madam:")
+
+    if _rtype == "client":
+        st.session_state.inp_recipient_type = "Client"
+        st.session_state.inp_client_address = _raddr
+        st.session_state.inp_client_salutation = _rsal
+    elif _rtype == "agency" and _raddr:
+        st.session_state.inp_recipient_type = "Government Agency"
+        # Try to find the matching address entry to set category + name
+        _all_addr = get_recipient_addresses()
+        _match = next((a for a in _all_addr if a["address"] == _raddr), None)
+        if _match:
+            st.session_state.inp_recipient_category = _match["category"]
+            st.session_state.inp_recipient_name = _match["name"]
+    elif not _rtype and draft.get("filing_office"):
+        # Old draft: map filing_office to an address entry
+        st.session_state.inp_recipient_type = "Government Agency"
+        _all_addr = get_recipient_addresses()
+        _match = next((a for a in _all_addr if a["name"] == draft["filing_office"]), None)
+        if _match:
+            st.session_state.inp_recipient_category = _match["category"]
+            st.session_state.inp_recipient_name = _match["name"]
+
     # Restore enclosed docs
     enclosed = draft.get("enclosed_docs", [])
-    standard = get_standard_docs(draft.get("case_type", ""))
-    standard_set = set(standard)
-    checked = []
     custom = []
     descs: dict[str, str] = {}
     for doc in enclosed:
         name = doc.get("name", "")
         desc = doc.get("description", "")
-        if name in standard_set:
-            checked.append(name)
-        else:
-            custom.append(name)
+        custom.append(name)
         if desc:
             descs[name] = desc
-    st.session_state.enclosed_docs = checked
     st.session_state.custom_docs = custom
     st.session_state.doc_descriptions = descs
-    st.session_state.prev_case_type = draft.get("case_type", "")
 
 
 def _do_new() -> None:
     """Start a fresh cover letter."""
     st.session_state.draft_id = new_draft_id()
     st.session_state.last_saved_msg = ""
-    st.session_state.enclosed_docs = []
     st.session_state.custom_docs = []
     st.session_state.sf_task_docs = []
     st.session_state.doc_descriptions = {}
-    st.session_state.prev_case_type = None
     for k in (
         "inp_client_name", "inp_a_number", "inp_receipt_number",
         "inp_attorney_name", "inp_bar_number", "inp_firm_address",
         "inp_filing_office", "inp_case_type",
+        "inp_recipient_type", "inp_recipient_category", "inp_recipient_name",
+        "inp_client_address", "inp_client_salutation",
     ):
         if k in st.session_state:
             del st.session_state[k]
     if "inp_firm_name" in st.session_state:
         del st.session_state["inp_firm_name"]
+
+
+@st.dialog("Add New Address")
+def _add_address_dialog():
+    """Dialog for adding a new recipient address."""
+    _new_name = st.text_input("Name", placeholder="e.g. USCIS Field Office - Boston")
+    _new_category = st.selectbox("Category", options=RECIPIENT_CATEGORIES)
+    _new_address = st.text_area(
+        "Address",
+        height=100,
+        placeholder="Organization Name\nStreet Address\nCity, State ZIP",
+    )
+    _new_salutation = st.text_input("Salutation", value="Dear Sir or Madam:")
+
+    if st.button("Save Address", type="primary", use_container_width=True):
+        if not _new_name or not _new_address:
+            st.error("Name and address are required.")
+        else:
+            _addresses = get_recipient_addresses()
+            _new_id = _new_name.lower().replace(" ", "_").replace("(", "").replace(")", "")[:40]
+            _addresses.append({
+                "id": _new_id,
+                "name": _new_name,
+                "category": _new_category,
+                "address": _new_address,
+                "salutation": _new_salutation,
+            })
+            save_recipient_addresses(_addresses)
+            st.session_state["_show_add_address"] = False
+            st.rerun()
 
 
 def _build_preview_html(
@@ -381,7 +463,6 @@ def _build_preview_html(
         notice = tpl["confidentiality_notice"]
         parts.append(f'<div class="conf-notice">{esc(notice)}</div>')
 
-    # Render the plain text directly -- it is already well structured
     for line in lines:
         escaped = esc(line)
         if line.startswith("RE: "):
@@ -479,13 +560,6 @@ with st.sidebar:
         key="inp_case_type",
     )
 
-    # If case type changed, reset enclosed docs to the new defaults
-    if st.session_state.prev_case_type != case_type:
-        st.session_state.enclosed_docs = list(get_standard_docs(case_type))
-        st.session_state.custom_docs = []
-        st.session_state.doc_descriptions = {}
-        st.session_state.prev_case_type = case_type
-
     st.divider()
 
     # Attorney info
@@ -526,19 +600,101 @@ with st.sidebar:
 
     st.divider()
 
-    # Filing office
-    st.markdown("#### Filing Office")
-    office_options = get_filing_offices(case_type)
-    filing_office = st.selectbox(
-        "Filing Office",
-        options=office_options if office_options else ["Other"],
-        key="inp_filing_office",
+    # Recipient
+    st.markdown("#### Recipient")
+    recipient_type = st.radio(
+        "Recipient type",
+        options=["Government Agency", "Client"],
+        key="inp_recipient_type",
+        horizontal=True,
         label_visibility="collapsed",
     )
+
+    if recipient_type == "Government Agency":
+        _all_addresses = get_recipient_addresses()
+
+        _selected_category = st.selectbox(
+            "Category",
+            options=RECIPIENT_CATEGORIES,
+            key="inp_recipient_category",
+        )
+
+        _filtered = [a for a in _all_addresses if a.get("category") == _selected_category]
+        _addr_names = [a["name"] for a in _filtered]
+
+        if _addr_names:
+            _selected_name = st.selectbox(
+                "Address",
+                options=_addr_names,
+                key="inp_recipient_name",
+            )
+            _selected_entry = next((a for a in _filtered if a["name"] == _selected_name), None)
+            if _selected_entry:
+                st.caption(_selected_entry["address"].replace("\n", "  \n"))
+                recipient_address = _selected_entry["address"]
+                salutation = _selected_entry.get("salutation", "Dear Sir or Madam:")
+            else:
+                recipient_address = ""
+                salutation = "Dear Sir or Madam:"
+        else:
+            st.caption("No addresses in this category.")
+            recipient_address = ""
+            salutation = "Dear Sir or Madam:"
+
+        if st.button("+ Add New Address", use_container_width=True):
+            st.session_state["_show_add_address"] = True
+
+        # Legacy fallback for filing_office (used by render_cover_letter if recipient_address empty)
+        filing_office = ""
+
+    else:
+        # Client recipient
+        _sf_client = st.session_state.get("sf_client")
+        _default_addr = ""
+        _default_sal = "Dear Sir or Madam:"
+        if _sf_client:
+            _parts = []
+            _first = _sf_client.get("FirstName", "")
+            _last = _sf_client.get("LastName", "")
+            _full_name = f"{_first} {_last}".strip()
+            if _full_name:
+                _parts.append(_full_name)
+            _street = _sf_client.get("MailingStreet", "")
+            if _street:
+                _parts.append(_street)
+            _city = _sf_client.get("MailingCity", "")
+            _state = _sf_client.get("MailingState", "")
+            _zip = _sf_client.get("MailingPostalCode", "")
+            _csz = ", ".join(filter(None, [_city, _state]))
+            if _zip:
+                _csz = f"{_csz} {_zip}" if _csz else _zip
+            if _csz:
+                _parts.append(_csz)
+            _default_addr = "\n".join(_parts)
+            if _first or _last:
+                _default_sal = f"Dear {_full_name}:"
+
+        recipient_address = st.text_area(
+            "Recipient Address",
+            value=st.session_state.get("inp_client_address", _default_addr),
+            key="inp_client_address",
+            height=100,
+            placeholder="Client name\nStreet address\nCity, State ZIP",
+        )
+        salutation = st.text_input(
+            "Salutation",
+            value=st.session_state.get("inp_client_salutation", _default_sal),
+            key="inp_client_salutation",
+        )
+        filing_office = ""
 
     render_tool_notes("cover-letters")
 
 
+
+# -- Add Address dialog trigger -----------------------------------------------
+if st.session_state.get("_show_add_address"):
+    _add_address_dialog()
 
 # -- Handle save (after sidebar renders) -------------------------------------
 
@@ -551,7 +707,7 @@ if save_clicked:
 
 doc_col, preview_col = st.columns([3, 2], gap="large")
 
-# -- Left column: Enclosed documents checklist --------------------------------
+# -- Left column: Enclosed documents ------------------------------------------
 
 with doc_col:
     st.markdown('<div class="section-label">Enclosed Documents</div>', unsafe_allow_html=True)
@@ -572,42 +728,134 @@ with doc_col:
     if _sf_tasks or _sf_contact_id:
         st.markdown('<div class="section-label" style="margin-top:4px;">Salesforce Tasks</div>', unsafe_allow_html=True)
 
+    _pending_deletes: list[str] = list(st.session_state.get("sf_tasks_pending_delete", []))
+
     if _sf_tasks:
         _current_sf_checked = list(st.session_state.get("sf_task_docs", []))
         _new_sf_checked: list[str] = []
+        _has_edits = False
+
         for _task in _sf_tasks:
+            _task_id = _task.get("Id", "")
             _task_label = _task.get("For__c") or _task.get("Name") or "Untitled task"
-            _task_is_checked = _task_label in _current_sf_checked
-            _tc = st.columns([0.5, 9])
-            with _tc[0]:
-                _tc_checked = st.checkbox(
-                    _task_label,
-                    value=_task_is_checked,
-                    key=f"chk_sft_{_task.get('Id', '')}",
-                    label_visibility="collapsed",
-                )
-            with _tc[1]:
+            _is_pending_delete = _task_id in _pending_deletes
+            _edit_key = f"_sf_task_edit_{_task_id}"
+
+            if _is_pending_delete:
                 st.markdown(
-                    f'<div class="doc-item">{html_mod.escape(_task_label)}</div>',
+                    f'<div class="sf-task-deleted">'
+                    f'<div class="doc-item">{html_mod.escape(_task_label)}</div>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
-            if _tc_checked:
-                _new_sf_checked.append(_task_label)
+                _undo_cols = st.columns([8, 1])
+                with _undo_cols[1]:
+                    if st.button("Undo", key=f"_btn_undo_sft_{_task_id}", use_container_width=True):
+                        _pending_deletes.remove(_task_id)
+                        st.session_state.sf_tasks_pending_delete = _pending_deletes
+                        st.rerun()
+            else:
+                _edited_label = st.session_state.get(_edit_key, _task_label)
+                _was_checked = _edited_label in _current_sf_checked or _task_label in _current_sf_checked
+                _tc = st.columns([0.5, 8, 0.5])
+                with _tc[0]:
+                    _tc_checked = st.checkbox(
+                        _task_label,
+                        value=_was_checked,
+                        key=f"chk_sft_{_task_id}",
+                        label_visibility="collapsed",
+                    )
+                with _tc[1]:
+                    _edited_val = st.text_input(
+                        "Edit document name",
+                        value=_edited_label,
+                        key=_edit_key,
+                        label_visibility="collapsed",
+                    )
+                with _tc[2]:
+                    if st.button("X", key=f"_btn_del_sft_{_task_id}", help="Mark for deletion"):
+                        _pending_deletes.append(_task_id)
+                        st.session_state.sf_tasks_pending_delete = _pending_deletes
+                        st.rerun()
+
+                if _edited_val.strip() != _task_label:
+                    _has_edits = True
+                if _tc_checked and _edited_val.strip():
+                    _new_sf_checked.append(_edited_val.strip())
+
         st.session_state.sf_task_docs = _new_sf_checked
+
+        # ── Save Changes button ──
+        _has_changes = _has_edits or len(_pending_deletes) > 0
+        if _has_changes:
+            _badge_parts: list[str] = []
+            _edit_count = sum(
+                1 for _t in _sf_tasks
+                if _t.get("Id", "") not in _pending_deletes
+                and st.session_state.get(f"_sf_task_edit_{_t.get('Id', '')}", "").strip()
+                   != (_t.get("For__c") or _t.get("Name") or "Untitled task")
+                and st.session_state.get(f"_sf_task_edit_{_t.get('Id', '')}", "") != ""
+            )
+            if _edit_count:
+                _badge_parts.append(f'<span class="pending-badge edits">{_edit_count} edit{"s" if _edit_count != 1 else ""}</span>')
+            if _pending_deletes:
+                _del_count = len(_pending_deletes)
+                _badge_parts.append(f'<span class="pending-badge deletes">{_del_count} deletion{"s" if _del_count != 1 else ""}</span>')
+            st.markdown(f'{"".join(_badge_parts)}', unsafe_allow_html=True)
+
+            if st.button("Save Changes to Salesforce", type="primary", use_container_width=True, key="_btn_save_all_sf"):
+                _save_errors: list[str] = []
+                try:
+                    from shared.salesforce_client import update_lc_task, delete_lc_task
+
+                    for _t in _sf_tasks:
+                        _tid = _t.get("Id", "")
+                        if _tid in _pending_deletes:
+                            continue
+                        _orig = _t.get("For__c") or _t.get("Name") or "Untitled task"
+                        _new_val = st.session_state.get(f"_sf_task_edit_{_tid}", "").strip()
+                        if _new_val and _new_val != _orig:
+                            try:
+                                update_lc_task(_tid, _new_val)
+                            except Exception as e:
+                                _save_errors.append(f"Edit '{_new_val}': {e}")
+
+                    for _tid in _pending_deletes:
+                        try:
+                            delete_lc_task(_tid)
+                        except Exception as e:
+                            _save_errors.append(f"Delete {_tid}: {e}")
+
+                    st.session_state.sf_tasks_pending_delete = []
+                    for _t in _sf_tasks:
+                        _ek = f"_sf_task_edit_{_t.get('Id', '')}"
+                        if _ek in st.session_state:
+                            del st.session_state[_ek]
+
+                    if _save_errors:
+                        st.warning(f"Saved with {len(_save_errors)} error(s): {'; '.join(_save_errors)}")
+                    else:
+                        st.success("Changes saved to Salesforce.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Save failed: {e}")
+
     elif _sf_contact_id:
         st.caption("No tasks found for this client.")
 
     if _sf_contact_id:
+        st.markdown("---")
+
         _add_task_cols = st.columns([5, 1])
         with _add_task_cols[0]:
             _new_task_desc = st.text_input(
                 "New SF task",
                 key="_inp_new_sf_task",
-                placeholder="Task description...",
+                placeholder="Add a document...",
                 label_visibility="collapsed",
             )
         with _add_task_cols[1]:
-            if st.button("Add to SF", use_container_width=True, key="_btn_add_sf_task") and _new_task_desc:
+            if st.button("Add", use_container_width=True, key="_btn_add_sf_task") and _new_task_desc:
                 try:
                     from shared.salesforce_client import create_lc_task
                     create_lc_task(_sf_contact_id, _new_task_desc.strip())
@@ -615,49 +863,39 @@ with doc_col:
                 except Exception as e:
                     st.error(f"Failed to create task: {e}")
 
-    if _sf_tasks or _sf_contact_id:
-        st.markdown('<div class="section-label" style="margin-top:8px;">Standard Documents</div>', unsafe_allow_html=True)
+        with st.expander("Bulk Add Documents"):
+            _mass_input = st.text_area(
+                "Paste comma-separated document names",
+                key="_inp_mass_upload",
+                height=80,
+                placeholder="e.g.: I-589 Application, Passport Copy, Birth Certificate, Country Conditions Report",
+                label_visibility="collapsed",
+            )
+            if st.button("Upload All to Salesforce", use_container_width=True, key="_btn_mass_upload") and _mass_input.strip():
+                _items = [item.strip() for item in _mass_input.split(",") if item.strip()]
+                if not _items:
+                    st.warning("No documents found. Separate items with commas.")
+                else:
+                    _created = 0
+                    _errors = 0
+                    try:
+                        from shared.salesforce_client import create_lc_task
+                        for _item in _items:
+                            try:
+                                create_lc_task(_sf_contact_id, _item)
+                                _created += 1
+                            except Exception:
+                                _errors += 1
+                        if _errors:
+                            st.warning(f"Created {_created} record(s), {_errors} failed.")
+                        else:
+                            st.success(f"Created {_created} record(s) in Salesforce.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to upload: {e}")
 
-    standard_docs = get_standard_docs(case_type)
-
-    # Build checked list from session state
-    current_checked = list(st.session_state.get("enclosed_docs", []))
     descriptions = st.session_state.get("doc_descriptions", {})
-
-    # Standard documents with checkboxes
-    new_checked: list[str] = []
     new_descriptions: dict[str, str] = dict(descriptions)
-
-    for doc_name in standard_docs:
-        is_checked = doc_name in current_checked
-        cols = st.columns([0.5, 5, 4])
-        with cols[0]:
-            checked = st.checkbox(
-                doc_name,
-                value=is_checked,
-                key=f"chk_{hash(doc_name)}",
-                label_visibility="collapsed",
-            )
-        with cols[1]:
-            st.markdown(
-                f'<div class="doc-item">{html_mod.escape(doc_name)}</div>',
-                unsafe_allow_html=True,
-            )
-        with cols[2]:
-            desc_val = descriptions.get(doc_name, "")
-            desc = st.text_input(
-                "Description",
-                value=desc_val,
-                key=f"desc_{hash(doc_name)}",
-                label_visibility="collapsed",
-                placeholder="Optional description...",
-            )
-            if desc:
-                new_descriptions[doc_name] = desc
-            elif doc_name in new_descriptions:
-                new_descriptions.pop(doc_name, None)
-        if checked:
-            new_checked.append(doc_name)
 
     # Custom documents
     custom_docs = list(st.session_state.get("custom_docs", []))
@@ -698,38 +936,18 @@ with doc_col:
                 st.rerun()
         new_custom.append(doc_name)
 
-    # Update session state
-    st.session_state.enclosed_docs = new_checked
     st.session_state.custom_docs = new_custom
     st.session_state.doc_descriptions = new_descriptions
 
-    # Add custom document
-    st.markdown("---")
-    add_cols = st.columns([5, 1])
-    with add_cols[0]:
-        new_doc_name = st.text_input(
-            "Add a custom document",
-            key="inp_new_doc",
-            placeholder="e.g. Medical records from Dr. Smith",
-            label_visibility="collapsed",
-        )
-    with add_cols[1]:
-        if st.button("Add", use_container_width=True) and new_doc_name:
-            st.session_state.custom_docs.append(new_doc_name)
-            st.rerun()
-
-
-# -- Right column: Live preview -----------------------------------------------
+# -- Right column: Cover letter preview + export ------------------------------
 
 with preview_col:
     st.markdown('<div class="section-label">Cover Letter Preview</div>', unsafe_allow_html=True)
     if not client_name:
         st.info("Enter the client's name in the sidebar to see the live preview.")
     else:
-        # Collect enclosed docs
         all_enclosed = _build_enclosed_docs_list()
 
-        # Render the letter text
         letter_text = render_cover_letter(
             case_type=case_type,
             client_name=client_name,
@@ -741,16 +959,16 @@ with preview_col:
             bar_number=bar_number,
             firm_name=firm_name,
             firm_address=firm_address,
+            recipient_address=recipient_address,
+            salutation=salutation,
         )
 
-        # Build and render preview HTML
         preview_html = _build_preview_html(letter_text, case_type)
         st.markdown(
             f'<div class="preview-panel">{preview_html}</div>',
             unsafe_allow_html=True,
         )
 
-        # Export controls
         st.markdown("---")
         st.markdown('<div class="section-label">Export</div>', unsafe_allow_html=True)
 
@@ -782,22 +1000,25 @@ with preview_col:
             if st.session_state.get("google_doc_url"):
                 st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
 
-    # Draft Box (always visible)
-    # Draft Box (always visible — uses whatever data is on the page)
-    if render_draft_box is not None:
-        _draft_content = ""
-        if client_name:
-            _all_enc = _build_enclosed_docs_list()
-            _draft_content = render_cover_letter(
-                case_type=case_type, client_name=client_name,
-                a_number=a_number, receipt_number=receipt_number,
-                filing_office=filing_office, enclosed_docs=_all_enc,
-                attorney_name=attorney_name, bar_number=bar_number,
-                firm_name=firm_name, firm_address=firm_address,
-            )
-        render_draft_box("cover-letters", {
-            "document_type": "cover letter",
-            "client_name": client_name,
-            "case_id": st.session_state.get("draft_id", ""),
-            "content": _draft_content,
-        })
+# -- Draft Box (below both columns) ------------------------------------------
+if render_draft_box is not None:
+    _all_enc = _build_enclosed_docs_list()
+    _draft_content = ""
+    if client_name:
+        _draft_content = render_cover_letter(
+            case_type=case_type, client_name=client_name,
+            a_number=a_number, receipt_number=receipt_number,
+            filing_office=filing_office, enclosed_docs=_all_enc,
+            attorney_name=attorney_name, bar_number=bar_number,
+            firm_name=firm_name, firm_address=firm_address,
+            recipient_address=recipient_address, salutation=salutation,
+        )
+    render_draft_box("cover-letters", {
+        "document_type": "cover letter",
+        "client_name": client_name,
+        "case_id": st.session_state.get("draft_id", ""),
+        "content": _draft_content,
+        "enclosed_docs": [doc["name"] for doc in _all_enc],
+        "recipient_type": recipient_type,
+        "recipient_address": recipient_address,
+    })
