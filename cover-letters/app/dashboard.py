@@ -1,6 +1,6 @@
-"""Cover Letter Generator — Streamlit dashboard.
+"""Cover Pages — Streamlit dashboard.
 
-Production-quality UI for generating immigration cover letters with
+Production-quality UI for generating immigration cover pages with
 live preview, enclosed document management, draft persistence, and
 Word/text export. Works entirely offline without the API server.
 """
@@ -48,7 +48,7 @@ except ImportError:
 # -- Page config --------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Cover Letter Generator — O'Brien Immigration Law",
+    page_title="Cover Pages — O'Brien Immigration Law",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -246,7 +246,7 @@ st.markdown(
     """
 <div class="nav-bar">
     <a href="http://localhost:8502" class="nav-back">&#8592; Staff Dashboard</a>
-    <div class="nav-title">Cover Letter Generator<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
+    <div class="nav-title">Cover Pages<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
     <div class="nav-spacer"></div>
 </div>
 """,

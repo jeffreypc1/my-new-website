@@ -1,4 +1,4 @@
-"""Cover letter templates for the Cover Letter Generator.
+"""Cover letter templates for Cover Pages.
 
 Each case type has a structured template with standard enclosed documents,
 filing offices, required fields, and a render() function that produces
@@ -577,6 +577,19 @@ _DEFAULT_TEMPLATES: dict[str, dict] = {
 # ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
 FILING_OFFICES: dict[str, str] = get_config_value("cover-letters", "filing_offices", _DEFAULT_FILING_OFFICES)
 TEMPLATES: dict[str, dict] = get_config_value("cover-letters", "templates", _DEFAULT_TEMPLATES)
+
+
+def get_govt_cover_letter_templates() -> dict[str, dict]:
+    """Load government cover letter templates from shared config.
+
+    Reads from data/config/govt-cover-letter-templates.json (managed by
+    the Templates tool on port 8510). Falls back to _DEFAULT_TEMPLATES
+    if the config file doesn't exist yet.
+    """
+    config = load_config("govt-cover-letter-templates")
+    if config is not None:
+        return config
+    return dict(_DEFAULT_TEMPLATES)
 
 # Ordered list of case type names for UI selectors
 CASE_TYPES: list[str] = list(TEMPLATES.keys())

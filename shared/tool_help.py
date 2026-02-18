@@ -34,9 +34,9 @@ _DEFAULTS: dict[str, dict] = {
         ],
     },
     "cover-letters": {
-        "title": "Cover Letter Generator",
+        "title": "Cover Pages",
         "icon": "✉️",
-        "description": "Generate and customize professional cover letters for USCIS filings and immigration court correspondence.",
+        "description": "Generate and customize professional cover pages for USCIS filings and immigration court correspondence.",
         "features": [
             "14 case types with pre-configured enclosed document checklists",
             "Live preview with formal letter formatting",
@@ -124,14 +124,15 @@ _DEFAULTS: dict[str, dict] = {
         ],
     },
     "evidence-indexer": {
-        "title": "Evidence Indexer",
-        "icon": "🗂️",
-        "description": "Organize and label supporting documents with auto-generated exhibit lists for court filings.",
+        "title": "Templates",
+        "icon": "📄",
+        "description": "Centralized template management for email, client cover letter, government cover letter, and EOIR templates.",
         "features": [
-            "Configurable document categories",
-            "Drag-and-drop exhibit ordering",
-            "Auto-generated exhibit index with Bates references",
-            "Export index to .txt, .docx, or Google Docs",
+            "Email templates with merge field placeholders (shared with Email button)",
+            "Client cover letter templates for appointment letters, status updates",
+            "Government cover letter templates for USCIS filings (shared with Cover Pages tool)",
+            "EOIR templates for motions, notices, certificates of service",
+            "Add, edit, and delete templates with instant config persistence",
         ],
     },
     "document-translator": {

@@ -382,7 +382,7 @@ def _editor_brief_builder():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# COVER LETTERS
+# COVER PAGES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _editor_cover_letters():
@@ -447,9 +447,9 @@ def _editor_cover_letters():
         # Preserve extra fields (confidentiality_notice, certificate_of_service, etc.)
         templates[sel_ct] = tpl
 
-    if st.button("Save Cover Letters Config", type="primary", key="cl_save"):
+    if st.button("Save Cover Pages Config", type="primary", key="cl_save"):
         save_config("cover-letters", {"filing_offices": filing_offices, "templates": templates})
-        st.toast("Cover Letters config saved!")
+        st.toast("Cover Pages config saved!")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1314,14 +1314,14 @@ def _editor_salesforce_fields():
 # Display names → JSON keys
 _TOOL_KEY_MAP = {
     "Country Reports": "country-reports",
-    "Cover Letters": "cover-letters",
+    "Cover Pages": "cover-letters",
     "Brief Builder": "brief-builder",
     "Declaration Drafter": "declaration-drafter",
     "Timeline Builder": "timeline-builder",
     "Legal Research": "legal-research",
     "Forms Assistant": "forms-assistant",
     "Case Checklist": "case-checklist",
-    "Evidence Indexer": "evidence-indexer",
+    "Templates": "evidence-indexer",
     "Document Translator": "document-translator",
     "Client Info": "client-info",
     "Staff Dashboard": "staff-dashboard",
@@ -1422,7 +1422,7 @@ def _editor_components():
     st.markdown("### Draft Box")
     st.markdown(
         "AI-powered document drafting assistant using Claude. "
-        "Appears on Cover Letters, Brief Builder, Declaration Drafter, and Timeline Builder."
+        "Appears on Cover Pages, Brief Builder, Declaration Drafter, and Timeline Builder."
     )
 
     st.markdown("---")
@@ -1474,7 +1474,7 @@ def _editor_components():
 
     tool_prompts = draft_box.get("tool_prompts", {})
     _TOOL_LABELS = {
-        "cover-letters": "Cover Letters",
+        "cover-letters": "Cover Pages",
         "brief-builder": "Brief Builder",
         "declaration-drafter": "Declaration Drafter",
         "timeline-builder": "Timeline Builder",
@@ -1630,7 +1630,7 @@ def _editor_staff_directory():
     """Manage office staff members — names, contact info for document generation."""
     st.subheader("Staff Directory")
     st.caption(
-        "Add staff members so their info can be pulled into cover letters, briefs, "
+        "Add staff members so their info can be pulled into cover pages, briefs, "
         "and other documents. Changes are saved immediately."
     )
 
@@ -1841,7 +1841,7 @@ def _editor_api_usage():
     tool_data = get_per_tool_breakdown()
     if tool_data:
         _TOOL_LABELS = {
-            "cover-letters": "Cover Letters",
+            "cover-letters": "Cover Pages",
             "brief-builder": "Brief Builder",
             "declaration-drafter": "Declaration Drafter",
             "timeline-builder": "Timeline Builder",
@@ -2092,11 +2092,11 @@ def _editor_email_templates():
 _TOOL_EDITORS = {
     "Case Checklist": _editor_case_checklist,
     "Brief Builder": _editor_brief_builder,
-    "Cover Letters": _editor_cover_letters,
+    "Cover Pages": _editor_cover_letters,
     "Declaration Drafter": _editor_declaration_drafter,
     "Legal Research": _editor_legal_research,
     "Forms Assistant": _editor_forms_assistant,
-    "Evidence Indexer": _editor_evidence_indexer,
+    "Templates": _editor_evidence_indexer,
     "Timeline Builder": _editor_timeline_builder,
     "Document Translator": _editor_document_translator,
 }
@@ -2119,7 +2119,7 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)", "Email Templates"],
+        ["Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
@@ -2131,8 +2131,6 @@ with tab_integrations:
         _editor_client_banner()
     elif int_sub == "Salesforce Fields":
         _editor_salesforce_fields()
-    elif int_sub == "Email Templates":
-        _editor_email_templates()
     else:
         _editor_components()
 
@@ -2142,14 +2140,14 @@ with tab_integrations:
 
 _SIDEBAR_TOOLS = [
     ("country-reports", "Country Reports"),
-    ("cover-letters", "Cover Letters"),
+    ("cover-letters", "Cover Pages"),
     ("brief-builder", "Brief Builder"),
     ("declaration-drafter", "Declaration Drafter"),
     ("timeline-builder", "Timeline Builder"),
     ("legal-research", "Legal Research"),
     ("forms-assistant", "Forms Assistant"),
     ("case-checklist", "Case Checklist"),
-    ("evidence-indexer", "Evidence Indexer"),
+    ("evidence-indexer", "Templates"),
     ("document-translator", "Document Translator"),
     ("client-info", "Client Info"),
 ]

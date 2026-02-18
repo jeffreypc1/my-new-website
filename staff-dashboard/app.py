@@ -21,6 +21,11 @@ except Exception:
     def save_active_client(r): pass
     def get_client(c): return None
 
+try:
+    from shared.feedback_button import render_feedback_button
+except ImportError:
+    render_feedback_button = None
+
 st.set_page_config(
     page_title="Staff Tools — O'Brien Immigration Law",
     page_icon="<img src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#9878;</text></svg>' />",
@@ -297,6 +302,9 @@ div[data-testid="stExpander"] > details > summary {
     unsafe_allow_html=True,
 )
 
+if render_feedback_button:
+    render_feedback_button("staff-dashboard")
+
 # ── Load active client from shared file on startup ──
 _saved_client = load_active_client()
 if _saved_client and not st.session_state.get("sf_client"):
@@ -388,8 +396,8 @@ tools = [
     },
     {
         "icon": "&#x2709;&#xFE0F;",  # envelope
-        "name": "Cover Letters",
-        "desc": "Generate and customize cover letters for filings and correspondence.",
+        "name": "Cover Pages",
+        "desc": "Generate and customize cover pages for filings and correspondence.",
         "status": "live",
         "status_label": "Live",
         "url": "http://localhost:8504",
@@ -443,9 +451,9 @@ tools = [
         "url": "http://localhost:8506",
     },
     {
-        "icon": "&#x1F5C2;&#xFE0F;",  # file folder dividers
-        "name": "Evidence Indexer",
-        "desc": "Organize and label supporting documents with auto-generated exhibit lists.",
+        "icon": "&#x1F4C4;",  # page facing up
+        "name": "Templates",
+        "desc": "Manage email, cover letter, government filing, and EOIR templates.",
         "status": "live",
         "status_label": "Live",
         "url": "http://localhost:8510",
