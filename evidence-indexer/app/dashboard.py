@@ -105,6 +105,9 @@ div[data-testid="stToolbar"] { display: none !important; }
     unsafe_allow_html=True,
 )
 
+from shared.auth import require_auth, render_logout
+require_auth()
+
 # -- Navigation bar -----------------------------------------------------------
 
 st.markdown(
@@ -117,6 +120,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+render_logout()
 
 render_client_banner()
 if render_tool_help:

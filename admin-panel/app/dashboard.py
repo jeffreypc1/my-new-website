@@ -69,6 +69,9 @@ div[data-testid="stToolbar"] { display: none !important; }
     unsafe_allow_html=True,
 )
 
+from shared.auth import require_auth, render_logout
+require_auth()
+
 # ── Nav bar ──────────────────────────────────────────────────────────────────
 st.markdown(
     """
@@ -80,6 +83,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+render_logout()
 
 # ── Client banner ────────────────────────────────────────────────────────────
 try:
@@ -2153,10 +2157,10 @@ _SIDEBAR_TOOLS = [
 ]
 
 with tab_governance:
-    st.caption("Feature locking, sidebar visibility, and tool governance.")
+    st.caption("Feature locking, sidebar visibility, security, and tool governance.")
     gov_sub = st.radio(
         "Section",
-        ["Feature Registry", "Sidebar Visibility"],
+        ["Feature Registry", "Sidebar Visibility", "Security"],
         horizontal=True,
         key="_tab_gov_radio",
         label_visibility="collapsed",
@@ -2165,7 +2169,7 @@ with tab_governance:
 
     if gov_sub == "Feature Registry":
         _editor_feature_registry()
-    else:
+    elif gov_sub == "Sidebar Visibility":
         st.subheader("Sidebar Visibility")
         st.caption(
             "Toggle which tools show their sidebar panel. "
@@ -2187,6 +2191,70 @@ with tab_governance:
             _global["sidebars"] = _sidebars
             save_config("global-settings", _global)
             st.toast("Sidebar settings saved!")
+            st.rerun()
+    else:
+        # ── Security ────────────────────────────────────────────────────
+        from shared.auth import (
+            is_password_set,
+            change_password,
+            invalidate_all_sessions,
+            get_session_hours,
+            set_session_hours,
+            active_session_count,
+        )
+
+        st.subheader("Security")
+
+        # Status indicator
+        if is_password_set():
+            st.success("Password is set")
+        else:
+            st.warning("No password configured. Open any tool to set one.")
+
+        st.caption(f"Active sessions: {active_session_count()}")
+
+        # Change password
+        @st.dialog("Change Password")
+        def _change_password_dialog():
+            current = st.text_input("Current Password", type="password", key="_sec_cur_pw")
+            new_pw = st.text_input("New Password", type="password", key="_sec_new_pw")
+            confirm = st.text_input("Confirm New Password", type="password", key="_sec_conf_pw")
+            if st.button("Change Password", use_container_width=True, key="_sec_change_btn"):
+                if not current or not new_pw:
+                    st.error("All fields are required.")
+                elif new_pw != confirm:
+                    st.error("New passwords do not match.")
+                else:
+                    ok, msg = change_password(current, new_pw)
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+
+        _sec_c1, _sec_c2, _sec_c3 = st.columns(3)
+        with _sec_c1:
+            if st.button("Change Password", key="_sec_open_change"):
+                _change_password_dialog()
+        with _sec_c2:
+            if st.button("Invalidate All Sessions", key="_sec_invalidate"):
+                invalidate_all_sessions()
+                st.toast("All sessions invalidated. Staff must re-login.")
+                st.rerun()
+
+        # Session duration
+        st.markdown("---")
+        st.markdown("**Session Duration**")
+        _cur_hours = get_session_hours()
+        _new_hours = st.slider(
+            "Hours before session expires",
+            min_value=1,
+            max_value=72,
+            value=_cur_hours,
+            key="_sec_session_hours",
+        )
+        if _new_hours != _cur_hours:
+            set_session_hours(_new_hours)
+            st.toast(f"Session duration set to {_new_hours} hours.")
             st.rerun()
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -302,6 +302,11 @@ div[data-testid="stExpander"] > details > summary {
     unsafe_allow_html=True,
 )
 
+from shared.auth import require_auth, render_logout
+require_auth()
+
+render_logout()
+
 if render_feedback_button:
     render_feedback_button("staff-dashboard")
 

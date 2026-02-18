@@ -30,6 +30,10 @@ try:
     from shared.tool_help import render_tool_help
 except ImportError:
     render_tool_help = None
+try:
+    from shared.feedback_button import render_feedback_button
+except ImportError:
+    render_feedback_button = None
 
 # -- Page config --------------------------------------------------------------
 
@@ -86,6 +90,9 @@ div[data-testid="stToolbar"] { display: none !important; }
     unsafe_allow_html=True,
 )
 
+from shared.auth import require_auth, render_logout
+require_auth()
+
 # -- Nav bar ------------------------------------------------------------------
 
 st.markdown(
@@ -98,6 +105,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+render_logout()
 
 # -- Client banner (shared) ---------------------------------------------------
 try:
@@ -105,6 +113,8 @@ try:
     render_client_banner()
     if render_tool_help:
         render_tool_help("client-info")
+    if render_feedback_button:
+        render_feedback_button("client-info")
 except Exception:
     pass
 
