@@ -22,6 +22,10 @@ try:
     from shared.tool_help import render_tool_help
 except ImportError:
     render_tool_help = None
+try:
+    from shared.feedback_button import render_feedback_button
+except ImportError:
+    render_feedback_button = None
 
 st.set_page_config(
     page_title="Admin Panel — O'Brien Immigration Law",
@@ -83,6 +87,8 @@ try:
     render_client_banner()
     if render_tool_help:
         render_tool_help("admin-panel")
+    if render_feedback_button:
+        render_feedback_button("admin-panel")
 except Exception:
     pass
 
@@ -1556,6 +1562,34 @@ def _editor_client_banner():
     _global = load_config("global-settings") or {}
     current_fields: list[str] = _global.get("banner_fields", _BANNER_DEFAULTS)
 
+    # ── Font size ──
+    st.markdown("**Font Size**")
+    current_size = _global.get("banner_font_size", 13)
+    new_size = st.slider(
+        "Banner font size (px)",
+        min_value=10,
+        max_value=20,
+        value=current_size,
+        step=1,
+        key="_banner_font_size",
+        help="Controls the font size of the client info banner across all tools.",
+    )
+    _preview_size = f"{new_size}px"
+    _preview_name_size = f"{new_size + 1}px"
+    st.markdown(
+        f'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;'
+        f'padding:8px 16px;background:#f0f4ff;border-radius:8px;font-size:{_preview_size};color:#3a4a6b;">'
+        f'<span style="font-weight:700;color:#1a2744;font-size:{_preview_name_size};">Jane Doe</span>'
+        f'<span style="color:#c0c8d8;">|</span>'
+        f'<span style="color:#5a6a85;"><strong style="color:#1a2744;font-weight:600;">#</strong>12345</span>'
+        f'<span style="color:#5a6a85;"><strong style="color:#1a2744;font-weight:600;">A#</strong> 123-456-789</span>'
+        f'<span style="color:#5a6a85;">Guatemala</span>'
+        f'<span style="color:#5a6a85;">Spanish</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("")
+
     st.info("Client name and Customer ID are always displayed.")
 
     updated_fields: list[str] = []
@@ -1573,11 +1607,15 @@ def _editor_client_banner():
                 updated_fields.append(api_name)
         st.markdown("")
 
-    if updated_fields != current_fields:
-        if st.button("Save Banner Fields", type="primary", key="_banner_fields_save"):
+    _fields_changed = updated_fields != current_fields
+    _size_changed = new_size != current_size
+
+    if _fields_changed or _size_changed:
+        if st.button("Save Banner Settings", type="primary", key="_banner_fields_save"):
             _global["banner_fields"] = updated_fields
+            _global["banner_font_size"] = new_size
             save_config("global-settings", _global)
-            st.toast("Banner fields saved! Restart tools to see changes.")
+            st.toast("Banner settings saved! Restart tools to see changes.")
             st.rerun()
     else:
         st.caption("No changes to save.")

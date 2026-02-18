@@ -56,9 +56,23 @@ def _get_banner_fields() -> list[str]:
         return _BANNER_FIELD_DEFAULTS
 
 
-_BANNER_CSS = """
+def _get_banner_font_size() -> int:
+    """Load banner font size from global settings (default 13px)."""
+    try:
+        from shared.config_store import load_config
+        settings = load_config("global-settings") or {}
+        return settings.get("banner_font_size", 13)
+    except Exception:
+        return 13
+
+
+def _banner_css() -> str:
+    """Generate banner CSS with configurable font size."""
+    _size = _get_banner_font_size()
+    _name_size = _size + 1
+    return f"""
 <style>
-.sf-banner {
+.sf-banner {{
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -68,31 +82,31 @@ _BANNER_CSS = """
     background: #f0f4ff;
     border: 1px solid #d0daf0;
     border-radius: 8px;
-    font-size: 0.82rem;
+    font-size: {_size}px;
     color: #3a4a6b;
-}
-.sf-banner-name {
+}}
+.sf-banner-name {{
     font-weight: 700;
     color: #1a2744;
-    font-size: 0.9rem;
-}
-.sf-banner-sep {
+    font-size: {_name_size}px;
+}}
+.sf-banner-sep {{
     color: #c0c8d8;
-}
-.sf-banner-field {
+}}
+.sf-banner-field {{
     color: #5a6a85;
-}
-.sf-banner-field strong {
+}}
+.sf-banner-field strong {{
     color: #1a2744;
     font-weight: 600;
-}
+}}
 /* Blue glow on client ID input */
 input[placeholder*="client number"],
-input[placeholder*="Client #"] {
+input[placeholder*="Client #"] {{
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35), 0 0 12px rgba(59, 130, 246, 0.2) !important;
     border: 2px solid rgba(59, 130, 246, 0.6) !important;
     border-radius: 8px !important;
-}
+}}
 </style>
 """
 
@@ -379,7 +393,7 @@ def render_client_banner() -> dict | None:
         st.session_state.sf_client = active
 
     # 5. Render pull bar + banner
-    st.markdown(_BANNER_CSS, unsafe_allow_html=True)
+    st.markdown(_banner_css(), unsafe_allow_html=True)
     _components.html(_SIDEBAR_TOGGLE_HTML, height=28)
 
     if not _sf_available:
