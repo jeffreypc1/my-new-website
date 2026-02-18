@@ -588,8 +588,18 @@ _DEFAULT_DECLARATION_PROMPTS: dict[str, list[dict]] = {
 }
 
 # ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
-DECLARATION_TYPES: list[str] = get_config_value("declaration-drafter", "declaration_types", _DEFAULT_DECLARATION_TYPES)
-DECLARATION_PROMPTS: dict[str, list[dict]] = get_config_value("declaration-drafter", "prompts", _DEFAULT_DECLARATION_PROMPTS)
+DECLARATION_TYPES = _DEFAULT_DECLARATION_TYPES
+DECLARATION_PROMPTS = _DEFAULT_DECLARATION_PROMPTS
+
+
+def get_declaration_types() -> list[str]:
+    """Return declaration types from admin config, falling back to defaults."""
+    return get_config_value("declaration-drafter", "declaration_types", _DEFAULT_DECLARATION_TYPES)
+
+
+def get_declaration_prompts() -> dict[str, list[dict]]:
+    """Return declaration prompts from admin config, falling back to defaults."""
+    return get_config_value("declaration-drafter", "prompts", _DEFAULT_DECLARATION_PROMPTS)
 
 
 # ---------------------------------------------------------------------------
@@ -623,7 +633,7 @@ def format_numbered_paragraphs(
     Skips any question whose answer is empty.  Returns plain strings — the
     caller is responsible for rendering them with paragraph numbers.
     """
-    sections = DECLARATION_PROMPTS.get(declaration_type, [])
+    sections = get_declaration_prompts().get(declaration_type, [])
     paragraphs: list[str] = []
     for section in sections:
         for question in section["questions"]:

@@ -21,7 +21,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
 from app.drafts import delete_draft, list_drafts, load_draft, new_draft_id, save_draft
-from app.sections import BRIEF_TYPES, load_sections
+from app.sections import BRIEF_TYPES, get_brief_types, load_sections
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
@@ -280,7 +280,7 @@ def _do_load(draft_id: str) -> None:
         return
     _clear_all_content_keys()
     st.session_state.draft_id = draft["id"]
-    st.session_state.inp_brief_type = draft.get("brief_type", list(BRIEF_TYPES.keys())[0])
+    st.session_state.inp_brief_type = draft.get("brief_type", list(get_brief_types().keys())[0])
     ci = draft.get("case_info", {})
     st.session_state.inp_client_name = ci.get("client_name", "")
     st.session_state.inp_a_number = ci.get("a_number", "")
@@ -322,6 +322,10 @@ def _build_preview_html(
         "Appeal Brief": "RESPONDENT'S BRIEF ON APPEAL",
         "Bond Brief": "RESPONDENT'S BRIEF IN SUPPORT OF BOND REDETERMINATION",
         "Cancellation of Removal": "RESPONDENT'S BRIEF IN SUPPORT OF APPLICATION FOR CANCELLATION OF REMOVAL",
+        "Motion to Terminate": "MOTION TO TERMINATE PROCEEDINGS",
+        "Motion for Continuance": "MOTION FOR CONTINUANCE",
+        "Motion to Change Venue": "MOTION TO CHANGE VENUE",
+        "Motion to Suppress": "MOTION TO SUPPRESS EVIDENCE",
     }
     parts.append(f'<div class="brief-title">{esc(title_map.get(brief_type, brief_type.upper()))}</div>')
 
@@ -401,6 +405,10 @@ def _build_plain_text(
         "Appeal Brief": "RESPONDENT'S BRIEF ON APPEAL",
         "Bond Brief": "RESPONDENT'S BRIEF IN SUPPORT OF BOND REDETERMINATION",
         "Cancellation of Removal": "RESPONDENT'S BRIEF IN SUPPORT OF APPLICATION FOR CANCELLATION OF REMOVAL",
+        "Motion to Terminate": "MOTION TO TERMINATE PROCEEDINGS",
+        "Motion for Continuance": "MOTION FOR CONTINUANCE",
+        "Motion to Change Venue": "MOTION TO CHANGE VENUE",
+        "Motion to Suppress": "MOTION TO SUPPRESS EVIDENCE",
     }
     lines.append(title_map.get(brief_type, brief_type.upper()))
     lines.append("")
@@ -493,6 +501,10 @@ def _build_docx(
         "Appeal Brief": "RESPONDENT'S BRIEF ON APPEAL",
         "Bond Brief": "RESPONDENT'S BRIEF IN SUPPORT OF BOND REDETERMINATION",
         "Cancellation of Removal": "RESPONDENT'S BRIEF IN SUPPORT OF APPLICATION FOR CANCELLATION OF REMOVAL",
+        "Motion to Terminate": "MOTION TO TERMINATE PROCEEDINGS",
+        "Motion for Continuance": "MOTION FOR CONTINUANCE",
+        "Motion to Change Venue": "MOTION TO CHANGE VENUE",
+        "Motion to Suppress": "MOTION TO SUPPRESS EVIDENCE",
     }
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -638,7 +650,7 @@ with st.sidebar:
     # Brief type
     brief_type = st.selectbox(
         "Brief Type",
-        options=list(BRIEF_TYPES.keys()),
+        options=list(get_brief_types().keys()),
         key="inp_brief_type",
     )
 

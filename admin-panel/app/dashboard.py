@@ -311,6 +311,7 @@ def _editor_brief_builder():
         sections = brief_types.get(sel_bt, [])
         bp = boilerplate.get(sel_bt, {})
 
+        sec_to_delete = []
         for idx, sec in enumerate(sections):
             with st.expander(f"{sec.get('heading', 'Section')} ({sec.get('key', '')})"):
                 heading = st.text_input("Heading", value=sec.get("heading", ""), key=f"bb_sec_h_{sel_bt}_{idx}")
@@ -330,18 +331,41 @@ def _editor_brief_builder():
                 subs = sec.get("subsections", [])
                 if subs:
                     st.caption("Subsections:")
+                    sub_to_delete = []
                     for si, sub in enumerate(subs):
-                        c1, c2 = st.columns(2)
+                        c1, c2, c3 = st.columns([3, 3, 1])
                         with c1:
                             sub["heading"] = st.text_input("Sub heading", value=sub.get("heading", ""), key=f"bb_sub_h_{sel_bt}_{idx}_{si}")
                         with c2:
                             sub["key"] = st.text_input("Sub key", value=sub.get("key", ""), key=f"bb_sub_k_{sel_bt}_{idx}_{si}")
+                        with c3:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            if st.button("X", key=f"bb_sub_del_{sel_bt}_{idx}_{si}"):
+                                sub_to_delete.append(si)
                         sub_bp = bp.get(sub["key"], "")
                         new_sub_bp = st.text_area("Sub boilerplate", value=sub_bp, key=f"bb_sub_bp_{sel_bt}_{idx}_{si}", height=100)
                         if new_sub_bp.strip():
                             bp[sub["key"]] = new_sub_bp
                         elif sub["key"] in bp:
                             del bp[sub["key"]]
+                    for si in sorted(sub_to_delete, reverse=True):
+                        subs.pop(si)
+
+                # Add subsection button
+                if st.button("+ Add subsection", key=f"bb_sub_add_{sel_bt}_{idx}"):
+                    subs.append({"heading": "", "key": ""})
+                sec["subsections"] = subs
+
+                # Delete section button
+                if st.button("Delete section", key=f"bb_sec_del_{sel_bt}_{idx}"):
+                    sec_to_delete.append(idx)
+
+        for idx in sorted(sec_to_delete, reverse=True):
+            sections.pop(idx)
+
+        # Add section
+        if st.button("+ Add section", key=f"bb_sec_add_{sel_bt}"):
+            sections.append({"heading": "", "key": "", "subsections": []})
 
         boilerplate[sel_bt] = bp
         brief_types[sel_bt] = sections
@@ -463,6 +487,7 @@ def _editor_declaration_drafter():
         sel_dt = st.selectbox("Select declaration type", edited_types, key="dd_sel_type")
         sections = prompts.get(sel_dt, [])
 
+        sec_to_delete = []
         for si, section in enumerate(sections):
             with st.expander(section.get("title", f"Section {si + 1}")):
                 section["title"] = st.text_input("Section title", value=section.get("title", ""), key=f"dd_sec_t_{sel_dt}_{si}")
@@ -486,6 +511,13 @@ def _editor_declaration_drafter():
                 if st.button("+ Add question", key=f"dd_q_add_{sel_dt}_{si}"):
                     questions.append({"id": "", "label": "", "tip": ""})
                 section["questions"] = questions
+
+                # Delete section
+                if st.button("Delete section", key=f"dd_sec_del_{sel_dt}_{si}"):
+                    sec_to_delete.append(si)
+
+        for si in sorted(sec_to_delete, reverse=True):
+            sections.pop(si)
 
         # Add section
         if st.button("+ Add section", key=f"dd_sec_add_{sel_dt}"):

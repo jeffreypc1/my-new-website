@@ -24,6 +24,8 @@ from app.prompts import (
     INTERPRETER_CERT,
     PERJURY_CLAUSE,
     format_numbered_paragraphs,
+    get_declaration_prompts,
+    get_declaration_types,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -249,7 +251,7 @@ if st.session_state.draft_id is None:
 
 def _collect_answers(declaration_type: str) -> dict[str, str]:
     """Gather current answers from widget keys."""
-    sections = DECLARATION_PROMPTS.get(declaration_type, [])
+    sections = get_declaration_prompts().get(declaration_type, [])
     answers: dict[str, str] = {}
     for section in sections:
         for q in section["questions"]:
@@ -259,7 +261,7 @@ def _collect_answers(declaration_type: str) -> dict[str, str]:
 
 def _clear_all_answer_keys() -> None:
     """Clear all text_area widget keys across all declaration types."""
-    for sections in DECLARATION_PROMPTS.values():
+    for sections in get_declaration_prompts().values():
         for section in sections:
             for q in section["questions"]:
                 key = f"ta_{q['id']}"
@@ -528,7 +530,7 @@ with st.sidebar:
     # Declaration type
     declaration_type = st.selectbox(
         "Declaration Type",
-        options=DECLARATION_TYPES,
+        options=get_declaration_types(),
         key="inp_decl_type",
     )
 
@@ -570,7 +572,7 @@ if save_clicked:
 
 # ── Main area ────────────────────────────────────────────────────────────────
 
-sections = DECLARATION_PROMPTS.get(declaration_type, [])
+sections = get_declaration_prompts().get(declaration_type, [])
 
 # Progress bar
 total_qs = sum(len(s["questions"]) for s in sections)

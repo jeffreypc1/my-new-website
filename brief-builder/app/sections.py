@@ -199,6 +199,125 @@ _DEFAULT_BRIEF_TYPES: dict[str, list[dict[str, Any]]] = {
             "subsections": [],
         },
     ],
+    "Motion to Terminate": [
+        {
+            "key": "introduction",
+            "heading": "Introduction",
+            "subsections": [],
+        },
+        {
+            "key": "procedural_history",
+            "heading": "Procedural History",
+            "subsections": [],
+        },
+        {
+            "key": "statement_of_facts",
+            "heading": "Statement of Facts",
+            "subsections": [],
+        },
+        {
+            "key": "legal_standard",
+            "heading": "Legal Standard",
+            "subsections": [],
+        },
+        {
+            "key": "argument",
+            "heading": "Argument",
+            "subsections": [
+                {"key": "nta_deficiency", "heading": "NTA Deficiency"},
+                {"key": "no_jurisdiction", "heading": "No Jurisdiction"},
+            ],
+        },
+        {
+            "key": "conclusion",
+            "heading": "Conclusion",
+            "subsections": [],
+        },
+    ],
+    "Motion for Continuance": [
+        {
+            "key": "introduction",
+            "heading": "Introduction",
+            "subsections": [],
+        },
+        {
+            "key": "procedural_history",
+            "heading": "Procedural History",
+            "subsections": [],
+        },
+        {
+            "key": "good_cause",
+            "heading": "Good Cause for Continuance",
+            "subsections": [],
+        },
+        {
+            "key": "no_prejudice",
+            "heading": "No Prejudice to DHS",
+            "subsections": [],
+        },
+        {
+            "key": "conclusion",
+            "heading": "Conclusion",
+            "subsections": [],
+        },
+    ],
+    "Motion to Change Venue": [
+        {
+            "key": "introduction",
+            "heading": "Introduction",
+            "subsections": [],
+        },
+        {
+            "key": "procedural_history",
+            "heading": "Procedural History",
+            "subsections": [],
+        },
+        {
+            "key": "good_cause_venue",
+            "heading": "Good Cause for Change of Venue",
+            "subsections": [],
+        },
+        {
+            "key": "administrative_convenience",
+            "heading": "Administrative Convenience",
+            "subsections": [],
+        },
+        {
+            "key": "conclusion",
+            "heading": "Conclusion",
+            "subsections": [],
+        },
+    ],
+    "Motion to Suppress": [
+        {
+            "key": "introduction",
+            "heading": "Introduction",
+            "subsections": [],
+        },
+        {
+            "key": "statement_of_facts",
+            "heading": "Statement of Facts",
+            "subsections": [],
+        },
+        {
+            "key": "legal_standard",
+            "heading": "Legal Standard",
+            "subsections": [
+                {"key": "fourth_amendment", "heading": "Fourth Amendment"},
+                {"key": "egregious_violations", "heading": "Egregious Violations Standard"},
+            ],
+        },
+        {
+            "key": "argument",
+            "heading": "Argument",
+            "subsections": [],
+        },
+        {
+            "key": "conclusion",
+            "heading": "Conclusion",
+            "subsections": [],
+        },
+    ],
 }
 
 
@@ -312,11 +431,100 @@ _DEFAULT_BOILERPLATE: dict[str, dict[str, str]] = {
             "(BIA 2002)."
         ),
     },
+    "Motion to Terminate": {
+        "legal_standard": (
+            "An Immigration Judge may terminate removal proceedings where the "
+            "Notice to Appear (NTA) fails to meet the requirements of INA "
+            "\u00a7239(a)(1), 8 U.S.C. \u00a71229(a)(1). The Supreme Court held in "
+            "Pereira v. Sessions, 138 S. Ct. 2105 (2018), that a putative "
+            "notice to appear that fails to designate the specific time or "
+            "place of the removal proceedings is not a 'notice to appear' "
+            "under \u00a7239(a). See also Matter of Bermudez-Cota, 27 I&N Dec. "
+            "441 (BIA 2018)."
+        ),
+        "nta_deficiency": (
+            "The NTA in this case fails to comply with the statutory "
+            "requirements of INA \u00a7239(a)(1) because it does not specify "
+            "the time and place of the hearing. Under Pereira v. Sessions, "
+            "138 S. Ct. 2105 (2018), a document that fails to include this "
+            "information is not a valid 'notice to appear' and does not "
+            "trigger the stop-time rule or vest jurisdiction with the "
+            "Immigration Court."
+        ),
+        "no_jurisdiction": (
+            "Where an NTA is deficient under INA \u00a7239(a)(1), the "
+            "Immigration Court lacks jurisdiction over the proceedings. "
+            "Matter of Bermudez-Cota, 27 I&N Dec. 441 (BIA 2018), holds "
+            "that a two-step notice process can cure certain NTA defects. "
+            "However, where the NTA is fundamentally deficient, termination "
+            "is the appropriate remedy."
+        ),
+    },
+    "Motion for Continuance": {
+        "good_cause": (
+            "An Immigration Judge may grant a continuance for good cause "
+            "shown. 8 C.F.R. \u00a71003.29. In determining whether to grant a "
+            "continuance, the Immigration Judge should consider the reasons "
+            "for the request, the length of time for which it is requested, "
+            "and any opposition from the opposing party. Matter of Hashmi, "
+            "24 I&N Dec. 785 (BIA 2009). Good cause exists where a "
+            "continuance is necessary to ensure the respondent has a full "
+            "and fair hearing."
+        ),
+    },
+    "Motion to Change Venue": {
+        "good_cause_venue": (
+            "An Immigration Judge may change venue to another Immigration "
+            "Court upon a showing of good cause. 8 C.F.R. \u00a71003.20(b). "
+            "Good cause includes, but is not limited to, the respondent's "
+            "residence, the location of counsel, witnesses, or evidence, "
+            "and the administrative convenience of the parties and the "
+            "court. Matter of Rahman, 20 I&N Dec. 480 (BIA 1992)."
+        ),
+        "administrative_convenience": (
+            "Transfer of venue would serve administrative convenience "
+            "because the respondent, counsel, and witnesses are located "
+            "in the jurisdiction of the receiving court. 8 C.F.R. "
+            "\u00a71003.20(b). The BIA has held that venue should generally "
+            "lie where the respondent resides. Matter of Rahman, 20 I&N "
+            "Dec. 480 (BIA 1992)."
+        ),
+    },
+    "Motion to Suppress": {
+        "fourth_amendment": (
+            "The Fourth Amendment to the United States Constitution protects "
+            "individuals from unreasonable searches and seizures. While the "
+            "exclusionary rule does not generally apply in civil immigration "
+            "proceedings, INS v. Lopez-Mendoza, 468 U.S. 1032 (1984), the "
+            "Supreme Court recognized an exception where evidence is obtained "
+            "through egregious violations of the Fourth Amendment."
+        ),
+        "egregious_violations": (
+            "Evidence obtained through egregious violations of the Fourth "
+            "Amendment must be suppressed in removal proceedings. INS v. "
+            "Lopez-Mendoza, 468 U.S. 1032, 1050-51 (1984). An egregious "
+            "violation is one that is fundamentally unfair and undermines "
+            "the probative value of the evidence obtained or transgresses "
+            "notions of fundamental fairness. The respondent bears the "
+            "initial burden of establishing a prima facie case that the "
+            "stop or arrest was egregiously unlawful."
+        ),
+    },
 }
 
 # ── Config-aware loading (JSON override with hardcoded fallback) ─────────────
-BRIEF_TYPES: dict[str, list[dict[str, Any]]] = get_config_value("brief-builder", "brief_types", _DEFAULT_BRIEF_TYPES)
-_BOILERPLATE: dict[str, dict[str, str]] = get_config_value("brief-builder", "boilerplate", _DEFAULT_BOILERPLATE)
+BRIEF_TYPES = _DEFAULT_BRIEF_TYPES
+_BOILERPLATE = _DEFAULT_BOILERPLATE
+
+
+def get_brief_types() -> dict[str, list[dict[str, Any]]]:
+    """Return brief types from admin config, falling back to defaults."""
+    return get_config_value("brief-builder", "brief_types", _DEFAULT_BRIEF_TYPES)
+
+
+def get_boilerplate_all() -> dict[str, dict[str, str]]:
+    """Return all boilerplate from admin config, falling back to defaults."""
+    return get_config_value("brief-builder", "boilerplate", _DEFAULT_BOILERPLATE)
 
 
 # ---------------------------------------------------------------------------
@@ -331,16 +539,17 @@ def load_sections(brief_type: str) -> list[dict[str, Any]]:
 
     Raises ``ValueError`` if the brief type is not recognized.
     """
-    if brief_type not in BRIEF_TYPES:
+    brief_types = get_brief_types()
+    if brief_type not in brief_types:
         raise ValueError(
             f"Unknown brief type: {brief_type!r}. "
-            f"Valid types: {', '.join(BRIEF_TYPES.keys())}"
+            f"Valid types: {', '.join(brief_types.keys())}"
         )
 
-    boilerplate = _BOILERPLATE.get(brief_type, {})
+    boilerplate = get_boilerplate_all().get(brief_type, {})
     sections = []
 
-    for section_def in BRIEF_TYPES[brief_type]:
+    for section_def in brief_types[brief_type]:
         section: dict[str, Any] = {
             "key": section_def["key"],
             "heading": section_def["heading"],
@@ -373,6 +582,4 @@ def get_boilerplate(brief_type: str) -> dict[str, str]:
     legal language. Returns an empty dict if the brief type has no
     boilerplate defined.
     """
-    # TODO: Allow overrides from a user-configurable template store
-    # TODO: Support per-circuit variations (e.g., 9th Circuit vs. 2nd Circuit)
-    return _BOILERPLATE.get(brief_type, {})
+    return get_boilerplate_all().get(brief_type, {})
