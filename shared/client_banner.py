@@ -388,6 +388,9 @@ def render_client_banner() -> dict | None:
     has_box = bool(active and (active.get("Box_Folder_ID__c") or ""))
     has_email = bool(active and (active.get("Email") or ""))
 
+    # Track last-pulled ID so we can detect when the user enters a new one
+    _prev_cid = st.session_state.get("_banner_last_pulled", "")
+
     banner_cols = st.columns([3, 1, 1, 1])
     with banner_cols[0]:
         new_cid = st.text_input(
@@ -407,7 +410,10 @@ def render_client_banner() -> dict | None:
         do_email = st.button("Email", use_container_width=True, key="_banner_email",
                              disabled=not has_email or not _sf_available)
 
-    if do_pull and _sf_available:
+    # Auto-pull when user presses Enter (new value differs from last pull)
+    _entered_new = bool(new_cid.strip() and new_cid.strip() != _prev_cid)
+
+    if (do_pull or _entered_new) and _sf_available:
         # If text entered, pull that client; otherwise refresh current client
         cid_to_pull = new_cid.strip() if new_cid.strip() else (active.get("Customer_ID__c", "") if active else "")
         if cid_to_pull:
@@ -416,9 +422,12 @@ def render_client_banner() -> dict | None:
                 if record:
                     save_active_client(record)
                     st.session_state.sf_client = record
+                    st.session_state._banner_last_pulled = cid_to_pull
+                    st.session_state._banner_client_id = ""
                     st.rerun()
                 else:
                     st.warning(f"No client found for #{cid_to_pull}")
+                    st.session_state._banner_last_pulled = cid_to_pull
             except Exception as e:
                 st.error(f"Salesforce error: {e}")
         else:
