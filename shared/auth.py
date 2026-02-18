@@ -138,7 +138,14 @@ def require_auth() -> None:
 
     Call right after st.set_page_config() and CSS. If not authenticated,
     renders a login (or initial setup) form and calls st.stop().
+    Skips entirely when auth is disabled in auth.json.
     """
+    auth = _load_auth()
+
+    # Auth disabled or not configured → let everyone through
+    if auth is None or not auth.get("enabled", False):
+        return
+
     # Already logged in?
     token = st.session_state.get("_auth_token")
     if token and _session_is_valid(token):
@@ -148,14 +155,7 @@ def require_auth() -> None:
     if token:
         st.session_state.pop("_auth_token", None)
 
-    auth = _load_auth()
-
-    if auth is None:
-        # First-time setup: no password configured yet
-        _render_setup_form()
-    else:
-        _render_login_form(auth)
-
+    _render_login_form(auth)
     st.stop()
 
 
@@ -241,6 +241,7 @@ def _render_setup_form() -> None:
                     {
                         "password_hash": _hash_password(pw1),
                         "session_hours": _DEFAULT_SESSION_HOURS,
+                        "enabled": False,
                     }
                 )
                 token = _create_session()
@@ -285,6 +286,24 @@ def set_session_hours(hours: int) -> None:
 def is_password_set() -> bool:
     auth = _load_auth()
     return auth is not None and bool(auth.get("password_hash"))
+
+
+def is_auth_enabled() -> bool:
+    auth = _load_auth()
+    return auth is not None and auth.get("enabled", False)
+
+
+def set_auth_enabled(enabled: bool) -> None:
+    auth = _load_auth() or {"password_hash": "", "session_hours": _DEFAULT_SESSION_HOURS}
+    auth["enabled"] = enabled
+    _save_auth(auth)
+
+
+def reset_password(new: str) -> None:
+    """Set a new password without requiring the current one (admin reset)."""
+    auth = _load_auth() or {"session_hours": _DEFAULT_SESSION_HOURS, "enabled": False}
+    auth["password_hash"] = _hash_password(new)
+    _save_auth(auth)
 
 
 def active_session_count() -> int:

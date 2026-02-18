@@ -2196,7 +2196,10 @@ with tab_governance:
         # ── Security ────────────────────────────────────────────────────
         from shared.auth import (
             is_password_set,
+            is_auth_enabled,
+            set_auth_enabled,
             change_password,
+            reset_password,
             invalidate_all_sessions,
             get_session_hours,
             set_session_hours,
@@ -2205,15 +2208,26 @@ with tab_governance:
 
         st.subheader("Security")
 
+        # Enable/disable toggle
+        _auth_on = st.toggle(
+            "Enable password authentication",
+            value=is_auth_enabled(),
+            key="_sec_enabled",
+        )
+        if _auth_on != is_auth_enabled():
+            set_auth_enabled(_auth_on)
+            st.toast("Authentication enabled." if _auth_on else "Authentication disabled.")
+            st.rerun()
+
         # Status indicator
         if is_password_set():
             st.success("Password is set")
         else:
-            st.warning("No password configured. Open any tool to set one.")
+            st.warning("No password configured yet.")
 
         st.caption(f"Active sessions: {active_session_count()}")
 
-        # Change password
+        # Change password (requires current password)
         @st.dialog("Change Password")
         def _change_password_dialog():
             current = st.text_input("Current Password", type="password", key="_sec_cur_pw")
@@ -2231,11 +2245,29 @@ with tab_governance:
                     else:
                         st.error(msg)
 
+        # Reset password (no current password needed — admin override)
+        @st.dialog("Reset Password")
+        def _reset_password_dialog():
+            st.warning("This sets a new password without requiring the current one.")
+            new_pw = st.text_input("New Password", type="password", key="_sec_reset_pw")
+            confirm = st.text_input("Confirm New Password", type="password", key="_sec_reset_conf")
+            if st.button("Reset Password", use_container_width=True, key="_sec_reset_btn"):
+                if not new_pw:
+                    st.error("Password cannot be empty.")
+                elif new_pw != confirm:
+                    st.error("Passwords do not match.")
+                else:
+                    reset_password(new_pw)
+                    st.success("Password has been reset.")
+
         _sec_c1, _sec_c2, _sec_c3 = st.columns(3)
         with _sec_c1:
             if st.button("Change Password", key="_sec_open_change"):
                 _change_password_dialog()
         with _sec_c2:
+            if st.button("Reset Password", key="_sec_open_reset"):
+                _reset_password_dialog()
+        with _sec_c3:
             if st.button("Invalidate All Sessions", key="_sec_invalidate"):
                 invalidate_all_sessions()
                 st.toast("All sessions invalidated. Staff must re-login.")
