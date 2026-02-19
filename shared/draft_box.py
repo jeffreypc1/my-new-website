@@ -2,8 +2,8 @@
 
 Renders a text area for instructions + Generate Draft button. Sends the
 page's current content + instructions to Claude, which drafts a document.
-Export as .txt, .docx, .pdf, or upload to Google Docs — with optional
-page numbers (bottom-right).
+Export via popup editor dialog — edit the draft, then finalize as Google Docs,
+Word, PDF, or plain text with optional page numbers.
 
 Draft history is kept per case/draft ID so users don't see unrelated
 drafts from other cases.
@@ -195,6 +195,151 @@ def _build_draft_pdf(text: str, title: str, page_numbers: bool = False) -> bytes
     return bytes(pdf.output())
 
 
+# ── Editor dialog ──────────────────────────────────────────────────────────
+
+
+@st.dialog("Edit & Finalize Draft", width="large")
+def _show_draft_editor(tool_name: str, client_name: str, document_type: str):
+    """Popup dialog for editing a draft and exporting it."""
+    edited = st.text_area(
+        "Edit your draft",
+        height=400,
+        key=f"_draft_editor_text_{tool_name}",
+    )
+
+    _fmt_options = ["Google Docs", "Word (.docx)", "PDF (.pdf)", "Text (.txt)", "Email"]
+    opt_cols = st.columns([4, 1])
+    with opt_cols[0]:
+        fmt = st.radio(
+            "Format",
+            options=_fmt_options,
+            key=f"_draft_editor_fmt_{tool_name}",
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+    with opt_cols[1]:
+        page_nums = st.checkbox("Page numbers", key=f"_draft_editor_pn_{tool_name}")
+
+    safe_name = (client_name or "Draft").replace(" ", "_")
+    title = (
+        f"{document_type.title()} Draft — {client_name}"
+        if client_name
+        else f"{document_type.title()} Draft"
+    )
+
+    if fmt == "Google Docs":
+        if st.button(
+            "Finalize",
+            type="primary",
+            use_container_width=True,
+            key=f"_draft_editor_action_{tool_name}",
+        ):
+            with st.spinner("Uploading to Google Docs..."):
+                try:
+                    from shared.google_upload import upload_to_google_docs
+
+                    docx_bytes = _build_draft_docx(edited, title, page_numbers=page_nums)
+                    url = upload_to_google_docs(docx_bytes, title)
+                    st.session_state[f"_draft_box_gdoc_url_{tool_name}"] = url
+                except Exception as e:
+                    st.error(f"Upload failed: {e}")
+        if st.session_state.get(f"_draft_box_gdoc_url_{tool_name}"):
+            st.markdown(
+                f"[Open Google Doc]({st.session_state[f'_draft_box_gdoc_url_{tool_name}']})"
+            )
+
+    elif fmt == "Word (.docx)":
+        docx_bytes = _build_draft_docx(edited, title, page_numbers=page_nums)
+        st.download_button(
+            "Finalize",
+            data=docx_bytes,
+            file_name=f"Draft_{safe_name}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True,
+            type="primary",
+            key=f"_draft_editor_action_{tool_name}",
+        )
+
+    elif fmt == "PDF (.pdf)":
+        pdf_bytes = _build_draft_pdf(edited, title, page_numbers=page_nums)
+        st.download_button(
+            "Finalize",
+            data=pdf_bytes,
+            file_name=f"Draft_{safe_name}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            type="primary",
+            key=f"_draft_editor_action_{tool_name}",
+        )
+
+    elif fmt == "Email":
+        # Get client email from active SF client
+        _sf_client = st.session_state.get("sf_client") or {}
+        _client_email = _sf_client.get("Email", "")
+        _contact_id = _sf_client.get("Id", "")
+
+        _email_to = st.text_input(
+            "To",
+            value=_client_email,
+            key=f"_draft_editor_email_to_{tool_name}",
+        )
+        _email_subject = st.text_input(
+            "Subject",
+            value=title,
+            key=f"_draft_editor_email_subj_{tool_name}",
+        )
+
+        if not _client_email and not _email_to:
+            st.info("No email address on file. Enter one above or load a client with an email address.")
+
+        if st.button(
+            "Send Email",
+            type="primary",
+            use_container_width=True,
+            key=f"_draft_editor_action_{tool_name}",
+            disabled=not _email_to.strip(),
+        ):
+            with st.spinner("Sending email via Salesforce..."):
+                try:
+                    from shared.email_service import send_email
+                    from shared.salesforce_client import _sf_conn
+
+                    # Load staff directory for sender name
+                    staff = load_config("staff-directory") or {}
+                    staff_list = staff.get("staff", [])
+                    sender_name = "O'Brien Immigration Law"
+                    if staff_list:
+                        s = staff_list[0]
+                        sender_name = f"{s.get('first_name', '')} {s.get('last_name', '')}".strip() or sender_name
+
+                    sf = _sf_conn()
+                    send_email(
+                        sf_connection=sf,
+                        contact_id=_contact_id,
+                        to_email=_email_to.strip(),
+                        subject=_email_subject.strip(),
+                        body=edited,
+                        sender_name=sender_name,
+                    )
+                    st.success(f"Email sent to {_email_to.strip()}")
+                except Exception as e:
+                    st.error(f"Email failed: {e}")
+
+    else:  # Text (.txt)
+        st.download_button(
+            "Finalize",
+            data=edited,
+            file_name=f"Draft_{safe_name}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            type="primary",
+            key=f"_draft_editor_action_{tool_name}",
+        )
+
+    # Persist edits back to session state so closing the dialog keeps changes
+    st.session_state[f"_draft_box_latest_{tool_name}"] = edited
+
+
 # ── Main component ──────────────────────────────────────────────────────────
 
 
@@ -211,11 +356,14 @@ def render_draft_box(tool_name: str, context: dict) -> None:
         - client_name: str — for file naming
         - case_id: str — scopes draft history to this case
         - content: str — the page's current content as text
+        Optional:
+        - enclosed_docs: list[str] — checked document names to include in prompt
     """
     document_type = context.get("document_type", "document")
     client_name = context.get("client_name", "")
     case_id = context.get("case_id", "")
     content = context.get("content", "")
+    enclosed_docs = context.get("enclosed_docs", [])
 
     st.divider()
     st.markdown('<div class="section-label" style="font-weight:600; margin-bottom:4px;">Draft Box</div>', unsafe_allow_html=True)
@@ -250,8 +398,16 @@ def render_draft_box(tool_name: str, context: dict) -> None:
                     else:
                         user_message = (
                             f"## Instructions\n\n{instructions}\n\n"
-                            f"(No content on the page yet — draft from scratch based on the instructions.)"
+                            f"(No content on the page yet — draft from scratch "
+                            f"based on the instructions.)"
                         )
+
+                    # Append enclosed documents if provided
+                    if enclosed_docs:
+                        docs_list = "\n".join(
+                            f"{i}. {name}" for i, name in enumerate(enclosed_docs, 1)
+                        )
+                        user_message += f"\n\n## Enclosed Documents\n\n{docs_list}"
 
                     draft_text = draft_with_claude(system_prompt, user_message, tool_name=tool_name)
 
@@ -266,82 +422,32 @@ def render_draft_box(tool_name: str, context: dict) -> None:
                         "draft": draft_text,
                     }
                     _save_history_entry(tool_name, case_id, entry)
+
+                    # Open editor dialog with the new draft
+                    st.session_state[f"_draft_editor_text_{tool_name}"] = draft_text
+                    st.session_state[f"_draft_box_open_editor_{tool_name}"] = True
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"Draft generation failed: {e}")
 
-    # Show latest draft
+    # Auto-open editor dialog after generate or "Use This Draft"
+    if st.session_state.pop(f"_draft_box_open_editor_{tool_name}", False):
+        _show_draft_editor(tool_name, client_name, document_type)
+
+    # Show latest draft (read-only preview + Edit & Finalize button)
     latest = st.session_state.get(f"_draft_box_latest_{tool_name}", "")
     if latest:
         with st.expander("Latest Draft", expanded=True):
             st.markdown(latest)
-
-            safe_name = (client_name or "Draft").replace(" ", "_")
-            title = f"{document_type.title()} Draft — {client_name}" if client_name else f"{document_type.title()} Draft"
-
-            # Export options
-            st.markdown("---")
-            opt_cols = st.columns([3, 2])
-            with opt_cols[0]:
-                fmt = st.radio(
-                    "Format",
-                    options=["Google Docs", "Word (.docx)", "PDF (.pdf)", "Text (.txt)"],
-                    key=f"_draft_box_fmt_{tool_name}",
-                    horizontal=True,
-                    label_visibility="collapsed",
-                )
-            with opt_cols[1]:
-                page_nums = st.checkbox(
-                    "Page numbers",
-                    key=f"_draft_box_pn_{tool_name}",
-                )
-
-            if fmt == "Google Docs":
-                if st.button("Upload to Google Docs", use_container_width=True, key=f"_draft_box_action_{tool_name}"):
-                    with st.spinner("Uploading to Google Docs..."):
-                        try:
-                            from shared.google_upload import upload_to_google_docs
-
-                            docx_bytes = _build_draft_docx(latest, title, page_numbers=page_nums)
-                            url = upload_to_google_docs(docx_bytes, title)
-                            st.session_state[f"_draft_box_gdoc_url_{tool_name}"] = url
-                        except Exception as e:
-                            st.error(f"Upload failed: {e}")
-                if st.session_state.get(f"_draft_box_gdoc_url_{tool_name}"):
-                    st.markdown(f"[Open Google Doc]({st.session_state[f'_draft_box_gdoc_url_{tool_name}']})")
-
-            elif fmt == "Word (.docx)":
-                docx_bytes = _build_draft_docx(latest, title, page_numbers=page_nums)
-                st.download_button(
-                    "Download .docx",
-                    data=docx_bytes,
-                    file_name=f"Draft_{safe_name}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True,
-                    key=f"_draft_box_action_{tool_name}",
-                )
-
-            elif fmt == "PDF (.pdf)":
-                pdf_bytes = _build_draft_pdf(latest, title, page_numbers=page_nums)
-                st.download_button(
-                    "Download .pdf",
-                    data=pdf_bytes,
-                    file_name=f"Draft_{safe_name}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                    key=f"_draft_box_action_{tool_name}",
-                )
-
-            else:  # Text (.txt)
-                st.download_button(
-                    "Download .txt",
-                    data=latest,
-                    file_name=f"Draft_{safe_name}.txt",
-                    mime="text/plain",
-                    use_container_width=True,
-                    key=f"_draft_box_action_{tool_name}",
-                )
+            if st.button(
+                "Edit & Finalize",
+                type="primary",
+                use_container_width=True,
+                key=f"_draft_box_edit_finalize_{tool_name}",
+            ):
+                st.session_state[f"_draft_editor_text_{tool_name}"] = latest
+                _show_draft_editor(tool_name, client_name, document_type)
 
     # Draft history
     history = _load_history(tool_name, case_id)
@@ -362,5 +468,7 @@ def render_draft_box(tool_name: str, context: dict) -> None:
                 if st.button("Use This Draft", key=f"_draft_box_use_{tool_name}_{i}"):
                     st.session_state[f"_draft_box_latest_{tool_name}"] = draft
                     st.session_state[f"_draft_box_latest_instructions_{tool_name}"] = instr
+                    st.session_state[f"_draft_editor_text_{tool_name}"] = draft
+                    st.session_state[f"_draft_box_open_editor_{tool_name}"] = True
                     st.rerun()
                 st.markdown("---")

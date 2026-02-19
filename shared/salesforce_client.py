@@ -143,6 +143,18 @@ def create_lc_task(contact_sf_id: str, description: str) -> str:
     return result["id"]
 
 
+def update_lc_task(task_sf_id: str, description: str) -> None:
+    """Update the For__c field on an existing LC_Task__c record."""
+    sf = _sf_conn()
+    sf.LC_Task__c.update(task_sf_id, {"For__c": description})
+
+
+def delete_lc_task(task_sf_id: str) -> None:
+    """Delete an LC_Task__c record from Salesforce."""
+    sf = _sf_conn()
+    sf.LC_Task__c.delete(task_sf_id)
+
+
 def update_client(sf_id: str, updates: dict) -> None:
     """Push field updates back to Salesforce for a Contact.
 
