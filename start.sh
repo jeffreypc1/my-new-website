@@ -72,7 +72,7 @@ start_app "Declaration Drafter    :8503" \
     "$BASE/declaration-drafter" \
     "uv run streamlit run app/dashboard.py --server.port 8503"
 
-start_app "Cover Letters          :8504" \
+start_app "Filing Assembler       :8504" \
     "$BASE/cover-letters" \
     "uv run streamlit run app/dashboard.py --server.port 8504"
 

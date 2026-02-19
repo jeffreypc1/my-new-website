@@ -3,7 +3,7 @@
 Manages four template categories:
 - Email templates (shared with client banner email dialog)
 - Client cover letter templates
-- Government cover letter templates (shared with Cover Pages tool)
+- Government cover letter templates (shared with Filing Assembler tool)
 - EOIR templates
 """
 

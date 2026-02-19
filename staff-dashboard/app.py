@@ -401,7 +401,7 @@ tools = [
     },
     {
         "icon": "&#x2709;&#xFE0F;",  # envelope
-        "name": "Cover Pages",
+        "name": "Filing Assembler",
         "desc": "Generate and customize cover pages for filings and correspondence.",
         "status": "live",
         "status_label": "Live",

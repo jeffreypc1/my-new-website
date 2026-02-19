@@ -1,6 +1,6 @@
-"""Cover Pages — Streamlit dashboard.
+"""Filing Assembler — Streamlit dashboard.
 
-Production-quality UI for generating immigration cover pages with
+Production-quality UI for generating immigration filing cover pages with
 live preview, enclosed document management, draft persistence, and
 Word/text export. Works entirely offline without the API server.
 """
@@ -49,7 +49,7 @@ except ImportError:
 # -- Page config --------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Cover Pages — O'Brien Immigration Law",
+    page_title="Filing Assembler — O'Brien Immigration Law",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -250,7 +250,7 @@ st.markdown(
     """
 <div class="nav-bar">
     <a href="http://localhost:8502" class="nav-back">&#8592; Staff Dashboard</a>
-    <div class="nav-title">Cover Pages<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
+    <div class="nav-title">Filing Assembler<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
     <div class="nav-spacer"></div>
 </div>
 """,
@@ -361,6 +361,8 @@ def _do_save(case_type: str) -> None:
         recipient_type=_rtype,
         recipient_address=_raddr,
         salutation=_rsal,
+        custom_purpose=st.session_state.get("inp_purpose_paragraph", ""),
+        custom_closing=st.session_state.get("inp_closing_paragraph", ""),
     )
     name = client["name"] or "draft"
     st.session_state.last_saved_msg = f"Saved -- {name}"
@@ -444,6 +446,22 @@ def _do_load(draft_id: str) -> None:
     st.session_state.custom_docs = custom
     st.session_state.doc_descriptions = descs
 
+    # Restore custom paragraphs
+    _loaded_purpose = draft.get("custom_purpose", "")
+    _loaded_closing = draft.get("custom_closing", "")
+    _loaded_case_type = draft.get("case_type", CASE_TYPES[0])
+    if _loaded_purpose:
+        st.session_state.inp_purpose_paragraph = _loaded_purpose
+    else:
+        _tpl = TEMPLATES.get(_loaded_case_type, {})
+        st.session_state.inp_purpose_paragraph = _tpl.get("purpose_paragraph", "")
+    if _loaded_closing:
+        st.session_state.inp_closing_paragraph = _loaded_closing
+    else:
+        _tpl = TEMPLATES.get(_loaded_case_type, {})
+        st.session_state.inp_closing_paragraph = _tpl.get("closing_paragraph", "")
+    st.session_state["_prev_case_type"] = _loaded_case_type
+
 
 def _do_new() -> None:
     """Start a fresh cover letter."""
@@ -458,7 +476,8 @@ def _do_new() -> None:
         "inp_filing_office", "inp_case_type",
         "inp_recipient_type", "inp_recipient_category", "inp_recipient_name",
         "inp_client_address", "inp_client_salutation",
-        "_sf_autofill_cid",
+        "inp_purpose_paragraph", "inp_closing_paragraph",
+        "_sf_autofill_cid", "_prev_case_type",
     ):
         if k in st.session_state:
             del st.session_state[k]
@@ -556,7 +575,7 @@ def _build_docx(letter_text: str, attorney_name: str, firm_name: str) -> bytes:
     return buf.getvalue()
 
 
-# -- Sidebar ------------------------------------------------------------------
+# -- Sidebar (drafts only) ---------------------------------------------------
 
 with st.sidebar:
     # Draft management
@@ -598,76 +617,49 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-    st.divider()
+    render_tool_notes("cover-letters")
 
-    # Case type
+
+# -- Add Address dialog trigger -----------------------------------------------
+if st.session_state.get("_show_add_address"):
+    _add_address_dialog()
+
+
+# -- Main area ----------------------------------------------------------------
+
+builder_col, preview_col = st.columns([3, 2], gap="large")
+
+with builder_col:
+
+    # ── Step 1: Case Type ────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Case Type</div>', unsafe_allow_html=True)
     case_type = st.selectbox(
         "Case Type",
         options=CASE_TYPES,
         key="inp_case_type",
+        label_visibility="collapsed",
     )
+
+    # Template change detection — auto-populate purpose/closing paragraphs
+    _prev_ct = st.session_state.get("_prev_case_type")
+    if _prev_ct != case_type:
+        _new_tpl = TEMPLATES.get(case_type, {})
+        if not _prev_ct:
+            # First load — only set if not already in session state
+            if "inp_purpose_paragraph" not in st.session_state:
+                st.session_state["inp_purpose_paragraph"] = _new_tpl.get("purpose_paragraph", "")
+            if "inp_closing_paragraph" not in st.session_state:
+                st.session_state["inp_closing_paragraph"] = _new_tpl.get("closing_paragraph", "")
+        else:
+            # Case type changed — reset to new template
+            st.session_state["inp_purpose_paragraph"] = _new_tpl.get("purpose_paragraph", "")
+            st.session_state["inp_closing_paragraph"] = _new_tpl.get("closing_paragraph", "")
+        st.session_state["_prev_case_type"] = case_type
 
     st.divider()
 
-    # Attorney info — driven by staff directory + global settings
-    st.markdown("#### Attorney / Firm")
-    _staff = load_config("staff-directory") or []
-    _staff_names = [
-        f"{m.get('first_name', '')} {m.get('last_name', '')}".strip()
-        for m in _staff
-    ]
-    _staff_options = [""] + _staff_names
-    _cur_sel = st.session_state.get("inp_attorney_staff", "")
-    _sel_idx = _staff_options.index(_cur_sel) if _cur_sel in _staff_options else 0
-    _selected_staff = st.selectbox(
-        "Attorney",
-        options=_staff_options,
-        index=_sel_idx,
-        format_func=lambda x: x if x else "Select attorney...",
-        key="inp_attorney_staff",
-    )
-    # Derive attorney_name and bar_number from selected staff member
-    _matched = next(
-        (m for m in _staff
-         if f"{m.get('first_name', '')} {m.get('last_name', '')}".strip() == _selected_staff),
-        None,
-    )
-    attorney_name = _selected_staff
-    bar_number = _matched.get("bar_number", "") if _matched else ""
-    if bar_number:
-        st.caption(f"Bar #: {bar_number}")
-    # Firm info from global settings
-    _gs = load_config("global-settings") or {}
-    firm_name = _gs.get("firm_name", "O'Brien Immigration Law")
-    firm_address = _gs.get("firm_address", "")
-    st.caption(f"{firm_name}")
-    if firm_address:
-        st.caption(firm_address.replace("\n", "  \n"))
-
-    st.divider()
-
-    # Client info
-    st.markdown("#### Client")
-    client_name = st.text_input(
-        "Client Name",
-        key="inp_client_name",
-        placeholder="e.g. Maria Garcia Lopez",
-    )
-    a_number = st.text_input(
-        "A-Number",
-        key="inp_a_number",
-        placeholder="e.g. 123-456-789",
-    )
-    receipt_number = st.text_input(
-        "Receipt Number",
-        key="inp_receipt_number",
-        placeholder="e.g. SRC-21-123-45678",
-    )
-
-    st.divider()
-
-    # Recipient
-    st.markdown("#### Recipient")
+    # ── Step 2: Recipient ────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Recipient</div>', unsafe_allow_html=True)
     recipient_type = st.radio(
         "Recipient type",
         options=["Government Agency", "Client"],
@@ -754,28 +746,46 @@ with st.sidebar:
         )
         filing_office = ""
 
-    render_tool_notes("cover-letters")
+    st.divider()
 
+    # ── Step 3: Client / RE Block ────────────────────────────────────────────
+    st.markdown('<div class="section-label">Client</div>', unsafe_allow_html=True)
+    client_name = st.text_input(
+        "Client Name",
+        key="inp_client_name",
+        placeholder="e.g. Maria Garcia Lopez",
+    )
+    a_number = st.text_input(
+        "A-Number",
+        key="inp_a_number",
+        placeholder="e.g. 123-456-789",
+    )
+    receipt_number = st.text_input(
+        "Receipt Number",
+        key="inp_receipt_number",
+        placeholder="e.g. SRC-21-123-45678",
+    )
 
+    st.divider()
 
-# -- Add Address dialog trigger -----------------------------------------------
-if st.session_state.get("_show_add_address"):
-    _add_address_dialog()
+    # ── Step 4: Letter Body ──────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Letter Body</div>', unsafe_allow_html=True)
+    purpose_paragraph = st.text_area(
+        "Purpose paragraph",
+        key="inp_purpose_paragraph",
+        height=150,
+        help="Opening paragraph explaining the purpose of this filing. Use {client_name} as a placeholder — it will be replaced with the client's name.",
+    )
+    closing_paragraph = st.text_area(
+        "Closing paragraph",
+        key="inp_closing_paragraph",
+        height=100,
+        help="Closing paragraph before the signature block.",
+    )
 
-# -- Handle save (after sidebar renders) -------------------------------------
+    st.divider()
 
-if save_clicked:
-    _do_save(case_type)
-    st.rerun()
-
-
-# -- Main area ----------------------------------------------------------------
-
-doc_col, preview_col = st.columns([3, 2], gap="large")
-
-# -- Left column: Enclosed documents ------------------------------------------
-
-with doc_col:
+    # ── Step 5: Enclosed Documents ───────────────────────────────────────────
     st.markdown('<div class="section-label">Enclosed Documents</div>', unsafe_allow_html=True)
     st.caption("Check the documents to include in this cover letter. Add descriptions for specificity.")
 
@@ -957,14 +967,65 @@ with doc_col:
     st.session_state.custom_docs = new_custom
     st.session_state.doc_descriptions = new_descriptions
 
+    st.divider()
+
+    # ── Step 6: Attorney / Signature Block ───────────────────────────────────
+    st.markdown('<div class="section-label">Attorney / Signature</div>', unsafe_allow_html=True)
+    _staff = load_config("staff-directory") or []
+    _staff_names = [
+        f"{m.get('first_name', '')} {m.get('last_name', '')}".strip()
+        for m in _staff
+    ]
+    _staff_options = [""] + _staff_names
+    _cur_sel = st.session_state.get("inp_attorney_staff", "")
+    _sel_idx = _staff_options.index(_cur_sel) if _cur_sel in _staff_options else 0
+    _selected_staff = st.selectbox(
+        "Attorney",
+        options=_staff_options,
+        index=_sel_idx,
+        format_func=lambda x: x if x else "Select attorney...",
+        key="inp_attorney_staff",
+    )
+    # Derive attorney_name and bar_number from selected staff member
+    _matched = next(
+        (m for m in _staff
+         if f"{m.get('first_name', '')} {m.get('last_name', '')}".strip() == _selected_staff),
+        None,
+    )
+    attorney_name = _selected_staff
+    bar_number = _matched.get("bar_number", "") if _matched else ""
+    if bar_number:
+        st.caption(f"Bar #: {bar_number}")
+    # Firm info from global settings
+    _gs = load_config("global-settings") or {}
+    firm_name = _gs.get("firm_name", "O'Brien Immigration Law")
+    firm_address = _gs.get("firm_address", "")
+    st.caption(f"{firm_name}")
+    if firm_address:
+        st.caption(firm_address.replace("\n", "  \n"))
+
+
+# -- Handle save (after all widgets render) -----------------------------------
+
+if save_clicked:
+    _do_save(case_type)
+    st.rerun()
+
+
 # -- Right column: Cover letter preview + export ------------------------------
 
 with preview_col:
     st.markdown('<div class="section-label">Cover Letter Preview</div>', unsafe_allow_html=True)
     if not client_name:
-        st.info("Enter the client's name in the sidebar to see the live preview.")
+        st.info("Enter the client's name to see the live preview.")
     else:
         all_enclosed = _build_enclosed_docs_list()
+
+        # Substitute {client_name} in custom paragraphs, then escape remaining
+        # braces so render_cover_letter's .format() call is safe.
+        _purpose_rendered = purpose_paragraph.replace("{client_name}", client_name) if purpose_paragraph else ""
+        _purpose_safe = _purpose_rendered.replace("{", "{{").replace("}", "}}") if _purpose_rendered else ""
+        _closing_safe = closing_paragraph.replace("{", "{{").replace("}", "}}") if closing_paragraph else ""
 
         letter_text = render_cover_letter(
             case_type=case_type,
@@ -977,6 +1038,8 @@ with preview_col:
             bar_number=bar_number,
             firm_name=firm_name,
             firm_address=firm_address,
+            custom_purpose=_purpose_safe,
+            custom_closing=_closing_safe,
             recipient_address=recipient_address,
             salutation=salutation,
         )
@@ -1023,12 +1086,17 @@ if render_draft_box is not None:
     _all_enc = _build_enclosed_docs_list()
     _draft_content = ""
     if client_name:
+        _draft_purpose_rendered = purpose_paragraph.replace("{client_name}", client_name) if purpose_paragraph else ""
+        _draft_purpose_safe = _draft_purpose_rendered.replace("{", "{{").replace("}", "}}") if _draft_purpose_rendered else ""
+        _draft_closing_safe = closing_paragraph.replace("{", "{{").replace("}", "}}") if closing_paragraph else ""
         _draft_content = render_cover_letter(
             case_type=case_type, client_name=client_name,
             a_number=a_number, receipt_number=receipt_number,
             filing_office=filing_office, enclosed_docs=_all_enc,
             attorney_name=attorney_name, bar_number=bar_number,
             firm_name=firm_name, firm_address=firm_address,
+            custom_purpose=_draft_purpose_safe,
+            custom_closing=_draft_closing_safe,
             recipient_address=recipient_address, salutation=salutation,
         )
     render_draft_box("cover-letters", {

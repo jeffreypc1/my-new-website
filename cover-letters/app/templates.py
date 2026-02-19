@@ -1,4 +1,4 @@
-"""Cover letter templates for Cover Pages.
+"""Cover letter templates for Filing Assembler.
 
 Each case type has a structured template with standard enclosed documents,
 filing offices, required fields, and a render() function that produces

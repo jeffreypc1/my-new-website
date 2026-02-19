@@ -143,8 +143,13 @@ def render_feedback_button(tool_name: str) -> None:
     """Render a fixed-position feedback button in the top-right corner.
 
     Call this once per page, typically right after render_client_banner()
-    and render_tool_help().
+    and render_tool_help().  If render_tool_help() already rendered the
+    feedback button inline, this is a no-op.
     """
+    # Skip if already rendered side-by-side by render_tool_help()
+    if st.session_state.get(f"_feedback_rendered_{tool_name}"):
+        return
+
     # Hidden Streamlit button that triggers the dialog
     _c = st.container()
     with _c:

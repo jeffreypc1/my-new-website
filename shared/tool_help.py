@@ -34,7 +34,7 @@ _DEFAULTS: dict[str, dict] = {
         ],
     },
     "cover-letters": {
-        "title": "Cover Pages",
+        "title": "Filing Assembler",
         "icon": "✉️",
         "description": "Generate and customize professional cover pages for USCIS filings and immigration court correspondence.",
         "features": [
@@ -130,7 +130,7 @@ _DEFAULTS: dict[str, dict] = {
         "features": [
             "Email templates with merge field placeholders (shared with Email button)",
             "Client cover letter templates for appointment letters, status updates",
-            "Government cover letter templates for USCIS filings (shared with Cover Pages tool)",
+            "Government cover letter templates for USCIS filings (shared with Filing Assembler tool)",
             "EOIR templates for motions, notices, certificates of service",
             "Add, edit, and delete templates with instant config persistence",
         ],
@@ -252,8 +252,29 @@ def _show_help_dialog(tool_name: str) -> None:
 
 
 def render_tool_help(tool_name: str) -> None:
-    """Render a compact right-aligned 'About' button that opens the help dialog."""
-    _, spacer, btn_col = st.columns([5, 3, 1.5])
-    with btn_col:
-        if st.button("ℹ️ About", key=f"_tool_help_btn_{tool_name}", use_container_width=True):
-            _show_help_dialog(tool_name)
+    """Render About and Feedback buttons side-by-side, right-aligned.
+
+    If the feedback module is available, both buttons share a row.
+    Marks the feedback button as rendered so ``render_feedback_button()``
+    becomes a no-op when called afterwards.
+    """
+    try:
+        from shared.feedback_button import _show_feedback_dialog
+        _has_feedback = True
+    except ImportError:
+        _has_feedback = False
+
+    if _has_feedback:
+        _, _about_col, _fb_col = st.columns([7, 1.2, 1.2])
+        with _about_col:
+            if st.button("ℹ️ About", key=f"_tool_help_btn_{tool_name}", use_container_width=True):
+                _show_help_dialog(tool_name)
+        with _fb_col:
+            if st.button("📸 Feedback", key=f"_feedback_btn_{tool_name}", use_container_width=True):
+                _show_feedback_dialog(tool_name)
+        st.session_state[f"_feedback_rendered_{tool_name}"] = True
+    else:
+        _, _spacer, _btn_col = st.columns([5, 3, 1.5])
+        with _btn_col:
+            if st.button("ℹ️ About", key=f"_tool_help_btn_{tool_name}", use_container_width=True):
+                _show_help_dialog(tool_name)

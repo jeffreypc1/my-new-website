@@ -330,7 +330,7 @@ with tab_client:
 
 def _render_govt_letter_templates() -> None:
     st.caption(
-        "Templates for government cover letters used by the Cover Pages tool. "
+        "Templates for government cover letters used by the Filing Assembler tool. "
         "Each case type has standard enclosed documents, purpose and closing paragraphs."
     )
 

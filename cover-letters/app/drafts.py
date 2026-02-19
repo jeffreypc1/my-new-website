@@ -33,6 +33,8 @@ def save_draft(
     recipient_type: str = "agency",
     recipient_address: str = "",
     salutation: str = "Dear Sir or Madam:",
+    custom_purpose: str = "",
+    custom_closing: str = "",
 ) -> dict:
     """Save or update a draft.  Returns the saved draft dict."""
     _ensure_dir()
@@ -57,6 +59,8 @@ def save_draft(
         "recipient_type": recipient_type,
         "recipient_address": recipient_address,
         "salutation": salutation,
+        "custom_purpose": custom_purpose,
+        "custom_closing": custom_closing,
         "created_at": created_at,
         "updated_at": now,
     }

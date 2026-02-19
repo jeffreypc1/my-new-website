@@ -1318,7 +1318,7 @@ def _editor_salesforce_fields():
 # Display names → JSON keys
 _TOOL_KEY_MAP = {
     "Country Reports": "country-reports",
-    "Cover Pages": "cover-letters",
+    "Filing Assembler": "cover-letters",
     "Brief Builder": "brief-builder",
     "Declaration Drafter": "declaration-drafter",
     "Timeline Builder": "timeline-builder",
@@ -1478,7 +1478,7 @@ def _editor_components():
 
     tool_prompts = draft_box.get("tool_prompts", {})
     _TOOL_LABELS = {
-        "cover-letters": "Cover Pages",
+        "cover-letters": "Filing Assembler",
         "brief-builder": "Brief Builder",
         "declaration-drafter": "Declaration Drafter",
         "timeline-builder": "Timeline Builder",
@@ -1899,7 +1899,7 @@ def _editor_api_usage():
     tool_data = get_per_tool_breakdown()
     if tool_data:
         _TOOL_LABELS = {
-            "cover-letters": "Cover Pages",
+            "cover-letters": "Filing Assembler",
             "brief-builder": "Brief Builder",
             "declaration-drafter": "Declaration Drafter",
             "timeline-builder": "Timeline Builder",
@@ -2150,7 +2150,7 @@ def _editor_email_templates():
 _TOOL_EDITORS = {
     "Case Checklist": _editor_case_checklist,
     "Brief Builder": _editor_brief_builder,
-    "Cover Pages": _editor_cover_letters,
+    "Filing Assembler": _editor_cover_letters,
     "Declaration Drafter": _editor_declaration_drafter,
     "Legal Research": _editor_legal_research,
     "Forms Assistant": _editor_forms_assistant,
@@ -2200,7 +2200,7 @@ with tab_integrations:
 
 _SIDEBAR_TOOLS = [
     ("country-reports", "Country Reports"),
-    ("cover-letters", "Cover Pages"),
+    ("cover-letters", "Filing Assembler"),
     ("brief-builder", "Brief Builder"),
     ("declaration-drafter", "Declaration Drafter"),
     ("timeline-builder", "Timeline Builder"),
