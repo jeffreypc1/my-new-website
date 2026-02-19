@@ -112,6 +112,10 @@ start_app "Admin Panel            :8513" \
     "$BASE/admin-panel" \
     "uv run streamlit run app/dashboard.py --server.port 8513"
 
+start_app "Hearing Prep           :8514" \
+    "$BASE/hearing-prep" \
+    "uv run streamlit run app/dashboard.py --server.port 8514"
+
 # --- Summary ---
 echo ""
 echo "================================================"

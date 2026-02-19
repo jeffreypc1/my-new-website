@@ -533,9 +533,12 @@ def _build_plain_text(case_data: dict[str, Any]) -> str:
 @st.dialog("New Case")
 def _new_case_dialog() -> None:
     """Modal dialog for creating a new case."""
+    _sf = st.session_state.get("sf_client")
+    _default_name = _sf.get("Name", "") if _sf else ""
+    _default_anum = _sf.get("A_Number__c", "") if _sf else ""
     case_type = st.selectbox("Case Type", options=CASE_TYPES)
-    client_name = st.text_input("Client Name", placeholder="e.g. Maria Garcia Lopez")
-    a_number = st.text_input("A-Number", placeholder="e.g. 123-456-789")
+    client_name = st.text_input("Client Name", value=_default_name, placeholder="e.g. Maria Garcia Lopez")
+    a_number = st.text_input("A-Number", value=_default_anum, placeholder="e.g. 123-456-789")
     attorney = st.text_input("Attorney", placeholder="e.g. John O'Brien")
 
     col1, col2 = st.columns(2)

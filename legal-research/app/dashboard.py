@@ -325,6 +325,17 @@ for _k, _v in _DEFAULTS.items():
 if st.session_state.collection_id is None:
     st.session_state.collection_id = new_collection_id()
 
+# -- SF auto-fill for client fields -------------------------------------------
+_sf_client = st.session_state.get("sf_client")
+if _sf_client:
+    _sf_cid = _sf_client.get("Id", "")
+    _prev_cid = st.session_state.get("_sf_autofill_cid", "")
+    if _sf_cid and _sf_cid != _prev_cid:
+        _sf_anum = _sf_client.get("A_Number__c", "")
+        if _sf_anum:
+            st.session_state["a_number"] = _sf_anum
+        st.session_state["_sf_autofill_cid"] = _sf_cid
+
 
 # -- Helpers ------------------------------------------------------------------
 

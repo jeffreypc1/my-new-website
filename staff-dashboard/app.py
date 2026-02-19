@@ -480,6 +480,14 @@ tools = [
         "url": "http://localhost:8512",
     },
     {
+        "icon": "&#x1F3A4;",  # microphone
+        "name": "Hearing Prep",
+        "desc": "Oral Q&A simulation for ICE cross-examination practice with audio recording and AI evaluation.",
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8514",
+    },
+    {
         "icon": "&#x2699;&#xFE0F;",  # gear
         "name": "Admin Panel",
         "desc": "Configure tool settings, templates, and lists.",

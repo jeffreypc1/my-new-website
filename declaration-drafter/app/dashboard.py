@@ -256,6 +256,23 @@ for k, v in _DEFAULTS.items():
 if st.session_state.draft_id is None:
     st.session_state.draft_id = new_draft_id()
 
+# -- SF auto-fill for client fields -------------------------------------------
+_sf_client = st.session_state.get("sf_client")
+if _sf_client:
+    _sf_cid = _sf_client.get("Id", "")
+    _prev_cid = st.session_state.get("_sf_autofill_cid", "")
+    if _sf_cid and _sf_cid != _prev_cid:
+        _sf_name = _sf_client.get("Name", "")
+        if _sf_name:
+            st.session_state["inp_name"] = _sf_name
+        _sf_country = _sf_client.get("Country__c", "")
+        if _sf_country:
+            st.session_state["inp_country"] = _sf_country
+        _sf_anum = _sf_client.get("A_Number__c", "")
+        if _sf_anum:
+            st.session_state["inp_anumber"] = _sf_anum
+        st.session_state["_sf_autofill_cid"] = _sf_cid
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

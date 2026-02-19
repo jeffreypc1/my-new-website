@@ -171,6 +171,22 @@ _DEFAULTS: dict[str, dict] = {
             "Sidebar visibility toggle per tool",
         ],
     },
+    "hearing-prep": {
+        "title": "Hearing Prep",
+        "icon": "🎤",
+        "description": "Oral Q&A simulation for ICE cross-examination practice. Record audio answers, get AI evaluation with scoring, and export session transcripts.",
+        "features": [
+            "5 case types: Asylum, Cancellation (Non-LPR & LPR), Adjustment of Status, Bond",
+            "Attorney-guided and solo practice modes",
+            "Audio recording with Google Speech-to-Text transcription",
+            "22+ supported languages for multilingual clients",
+            "AI-powered ICE trial attorney evaluation with scoring (1-5)",
+            "Auto-generated follow-up questions mimicking real cross-examination",
+            "Multi-turn conversation history for consistency checking",
+            "Session persistence with SQLite — resume any session",
+            "Export to .txt, .docx, or Google Docs",
+        ],
+    },
 }
 
 

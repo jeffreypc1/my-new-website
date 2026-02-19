@@ -231,6 +231,23 @@ for k, v in _DEFAULTS.items():
 if st.session_state.draft_id is None:
     st.session_state.draft_id = new_draft_id()
 
+# -- SF auto-fill for client fields -------------------------------------------
+_sf_client = st.session_state.get("sf_client")
+if _sf_client:
+    _sf_cid = _sf_client.get("Id", "")
+    _prev_cid = st.session_state.get("_sf_autofill_cid", "")
+    if _sf_cid and _sf_cid != _prev_cid:
+        _sf_name = _sf_client.get("Name", "")
+        if _sf_name:
+            st.session_state["inp_client_name"] = _sf_name
+        _sf_anum = _sf_client.get("A_Number__c", "")
+        if _sf_anum:
+            st.session_state["inp_a_number"] = _sf_anum
+        _sf_court = _sf_client.get("Immigration_Court__c", "")
+        if _sf_court:
+            st.session_state["inp_court_or_office"] = _sf_court
+        st.session_state["_sf_autofill_cid"] = _sf_cid
+
 # Roman numeral helper
 _ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
            "XI", "XII", "XIII", "XIV", "XV"]

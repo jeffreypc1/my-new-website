@@ -349,6 +349,17 @@ for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
+# -- SF auto-fill for client fields -------------------------------------------
+_sf_client = st.session_state.get("sf_client")
+if _sf_client:
+    _sf_cid = _sf_client.get("Id", "")
+    _prev_cid = st.session_state.get("_sf_autofill_cid", "")
+    if _sf_cid and _sf_cid != _prev_cid:
+        _sf_name = _sf_client.get("Name", "")
+        if _sf_name:
+            st.session_state["inp_client_name"] = _sf_name
+        st.session_state["_sf_autofill_cid"] = _sf_cid
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
