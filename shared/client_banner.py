@@ -3,9 +3,9 @@
 Renders a compact client info bar at the top of each tool page.
 Loads the active client from the shared JSON file, with inline
 option to pull a new client or refresh. Includes a "Files" button
-that opens a Box folder browser dialog when the client has a
-Box_Folder_ID__c, and an "Email" button that opens a compose
-dialog to send emails via Salesforce.
+that opens a unified dialog with two tabs — "Documents" (LC_Task__c
+CRUD) and "Box Files" (folder browser) — and an "Email" button
+that opens a compose dialog to send emails via Salesforce.
 
 Usage in any tool's dashboard.py:
     from shared.client_banner import render_client_banner
@@ -133,120 +133,338 @@ _SIDEBAR_TOGGLE_HTML = """
 """
 
 
-# -- Box folder dialog --------------------------------------------------------
+# -- Unified files dialog -----------------------------------------------------
 
 @st.dialog("Client Files", width="large")
-def _show_box_files(folder_id: str, client_name: str):
-    """Dialog showing Box folder contents with navigation."""
-    try:
-        from shared.box_client import (
-            list_folder_items,
-            get_folder_name,
-            parse_folder_id,
-        )
-    except ImportError:
-        st.error("Box client not available. Check that box-sdk-gen is installed.")
-        return
+def _show_client_files(client_record: dict):
+    """Dialog with two tabs: Documents (LC_Task__c CRUD) and Box Files."""
+    client_name = client_record.get("Name", "Client")
+    contact_sf_id = client_record.get("Id", "")
+    folder_id = client_record.get("Box_Folder_ID__c", "")
 
-    root_id = parse_folder_id(folder_id)
+    tab_docs, tab_box = st.tabs(["Documents", "Box Files"])
 
-    # Track client for nav reset
-    client_id = st.session_state.get("_box_dlg_client", "")
-    current_client = st.session_state.get("sf_client", {}).get("Customer_ID__c", "")
-    if client_id != current_client:
-        st.session_state._box_dlg_nav = [root_id]
-        st.session_state._box_dlg_client = current_client
-        st.session_state.pop("_box_dlg_cache", None)
-
-    if "_box_dlg_nav" not in st.session_state:
-        st.session_state._box_dlg_nav = [root_id]
-
-    current = st.session_state._box_dlg_nav[-1]
-
-    # Header with back button and folder name
-    if len(st.session_state._box_dlg_nav) > 1:
-        c1, c2 = st.columns([1, 5])
-        with c1:
-            if st.button("Back", use_container_width=True, key="_box_dlg_back"):
-                st.session_state._box_dlg_nav.pop()
-                st.session_state.pop("_box_dlg_cache", None)
-                st.rerun()
-        with c2:
+    # ── Documents tab (LC_Task__c management) ────────────────────────────────
+    with tab_docs:
+        if not contact_sf_id:
+            st.info("No Salesforce Contact ID available for this client.")
+        else:
+            sf_tasks: list[dict] = []
             try:
-                fname = get_folder_name(current)
+                from shared.salesforce_client import get_lc_tasks
+                sf_tasks = get_lc_tasks(contact_sf_id)
             except Exception:
-                fname = f"Folder {current}"
-            st.markdown(f"**{fname}**")
-    else:
-        st.markdown(f"**{client_name} — Documents**")
+                sf_tasks = []
 
-    # Cached listing (60-second TTL)
-    cache = st.session_state.get("_box_dlg_cache", {})
-    cached = cache.get(current)
-    if cached and (time.time() - cached["ts"] < 60):
-        items = cached["items"]
-    else:
-        try:
-            with st.spinner("Loading files..."):
-                items = list_folder_items(current)
-            cache[current] = {"items": items, "ts": time.time()}
-            st.session_state._box_dlg_cache = cache
-        except Exception as e:
-            st.error(f"Box error: {e}")
-            return
+            pending_deletes: list[str] = list(
+                st.session_state.get("_files_dlg_pending_delete", [])
+            )
 
-    if not items:
-        st.caption("Empty folder")
-    else:
-        for idx, item in enumerate(items):
-            ext = (item.get("extension", "") or "").lower()
-            if item["type"] == "folder":
-                badge = "DIR"
-            elif ext == "pdf":
-                badge = "PDF"
-            elif ext in ("doc", "docx"):
-                badge = "DOC"
-            elif ext in ("jpg", "jpeg", "png", "gif"):
-                badge = "IMG"
-            elif ext in ("xls", "xlsx", "csv"):
-                badge = "XLS"
+            if sf_tasks:
+                has_edits = False
+
+                for task in sf_tasks:
+                    task_id = task.get("Id", "")
+                    task_label = task.get("For__c") or task.get("Name") or "Untitled"
+                    is_pending_delete = task_id in pending_deletes
+                    edit_key = f"_files_dlg_edit_{task_id}"
+
+                    if is_pending_delete:
+                        st.markdown(
+                            f"~~{html_mod.escape(task_label)}~~",
+                        )
+                        undo_cols = st.columns([8, 1])
+                        with undo_cols[1]:
+                            if st.button("Undo", key=f"_files_dlg_undo_{task_id}",
+                                         use_container_width=True):
+                                pending_deletes.remove(task_id)
+                                st.session_state._files_dlg_pending_delete = pending_deletes
+                                st.rerun()
+                    else:
+                        tc = st.columns([8, 0.5])
+                        with tc[0]:
+                            st.text_input(
+                                "Edit document name",
+                                value=st.session_state.get(edit_key, task_label),
+                                key=edit_key,
+                                label_visibility="collapsed",
+                            )
+                        with tc[1]:
+                            if st.button("X", key=f"_files_dlg_del_{task_id}",
+                                         help="Mark for deletion"):
+                                pending_deletes.append(task_id)
+                                st.session_state._files_dlg_pending_delete = pending_deletes
+                                st.rerun()
+
+                        edited_val = st.session_state.get(edit_key, "").strip()
+                        if edited_val and edited_val != task_label:
+                            has_edits = True
+
+                # ── Save Changes button ──
+                has_changes = has_edits or len(pending_deletes) > 0
+                if has_changes:
+                    badge_parts: list[str] = []
+                    edit_count = sum(
+                        1 for t in sf_tasks
+                        if t.get("Id", "") not in pending_deletes
+                        and st.session_state.get(
+                            f"_files_dlg_edit_{t.get('Id', '')}", ""
+                        ).strip()
+                        != (t.get("For__c") or t.get("Name") or "Untitled")
+                        and st.session_state.get(
+                            f"_files_dlg_edit_{t.get('Id', '')}", ""
+                        ) != ""
+                    )
+                    if edit_count:
+                        badge_parts.append(
+                            f"{edit_count} edit{'s' if edit_count != 1 else ''}"
+                        )
+                    if pending_deletes:
+                        del_count = len(pending_deletes)
+                        badge_parts.append(
+                            f"{del_count} deletion{'s' if del_count != 1 else ''}"
+                        )
+                    st.caption(" | ".join(badge_parts))
+
+                    if st.button(
+                        "Save Changes to Salesforce",
+                        type="primary",
+                        use_container_width=True,
+                        key="_files_dlg_save_all",
+                    ):
+                        save_errors: list[str] = []
+                        try:
+                            from shared.salesforce_client import (
+                                update_lc_task,
+                                delete_lc_task,
+                            )
+
+                            for t in sf_tasks:
+                                tid = t.get("Id", "")
+                                if tid in pending_deletes:
+                                    continue
+                                orig = t.get("For__c") or t.get("Name") or "Untitled"
+                                new_val = st.session_state.get(
+                                    f"_files_dlg_edit_{tid}", ""
+                                ).strip()
+                                if new_val and new_val != orig:
+                                    try:
+                                        update_lc_task(tid, new_val)
+                                    except Exception as e:
+                                        save_errors.append(f"Edit '{new_val}': {e}")
+
+                            for tid in pending_deletes:
+                                try:
+                                    delete_lc_task(tid)
+                                except Exception as e:
+                                    save_errors.append(f"Delete {tid}: {e}")
+
+                            st.session_state._files_dlg_pending_delete = []
+                            for t in sf_tasks:
+                                ek = f"_files_dlg_edit_{t.get('Id', '')}"
+                                if ek in st.session_state:
+                                    del st.session_state[ek]
+
+                            if save_errors:
+                                st.warning(
+                                    f"Saved with {len(save_errors)} error(s): "
+                                    f"{'; '.join(save_errors)}"
+                                )
+                            else:
+                                st.success("Changes saved to Salesforce.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Save failed: {e}")
             else:
-                badge = "FILE"
+                st.caption("No documents found for this client.")
 
-            if item["type"] == "folder":
-                c1, c2 = st.columns([5, 1])
+            # ── Add single document ──
+            st.markdown("---")
+            add_cols = st.columns([5, 1])
+            with add_cols[0]:
+                new_task_desc = st.text_input(
+                    "New document",
+                    key="_files_dlg_new_task",
+                    placeholder="Add a document...",
+                    label_visibility="collapsed",
+                )
+            with add_cols[1]:
+                if (
+                    st.button("Add", use_container_width=True, key="_files_dlg_add")
+                    and new_task_desc
+                ):
+                    try:
+                        from shared.salesforce_client import create_lc_task
+
+                        create_lc_task(contact_sf_id, new_task_desc.strip())
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to create: {e}")
+
+            # ── Bulk add ──
+            with st.expander("Bulk Add Documents"):
+                mass_input = st.text_area(
+                    "Paste comma-separated document names",
+                    key="_files_dlg_mass",
+                    height=80,
+                    placeholder="e.g.: I-589 Application, Passport Copy, Birth Certificate",
+                    label_visibility="collapsed",
+                )
+                if (
+                    st.button(
+                        "Upload All",
+                        use_container_width=True,
+                        key="_files_dlg_mass_btn",
+                    )
+                    and mass_input.strip()
+                ):
+                    items = [
+                        item.strip()
+                        for item in mass_input.split(",")
+                        if item.strip()
+                    ]
+                    if not items:
+                        st.warning("No documents found. Separate items with commas.")
+                    else:
+                        created = 0
+                        errors = 0
+                        try:
+                            from shared.salesforce_client import create_lc_task
+
+                            for item in items:
+                                try:
+                                    create_lc_task(contact_sf_id, item)
+                                    created += 1
+                                except Exception:
+                                    errors += 1
+                            if errors:
+                                st.warning(
+                                    f"Created {created} record(s), {errors} failed."
+                                )
+                            else:
+                                st.success(
+                                    f"Created {created} record(s) in Salesforce."
+                                )
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to upload: {e}")
+
+    # ── Box Files tab ────────────────────────────────────────────────────────
+    with tab_box:
+        if not folder_id:
+            st.info(
+                "No Box folder configured for this client. "
+                "Set the Box_Folder_ID__c field in Salesforce to enable file browsing."
+            )
+        else:
+            try:
+                from shared.box_client import (
+                    list_folder_items,
+                    get_folder_name,
+                    parse_folder_id,
+                )
+            except ImportError:
+                st.error("Box client not available. Check that box-sdk-gen is installed.")
+                return
+
+            root_id = parse_folder_id(folder_id)
+
+            # Track client for nav reset
+            prev_client = st.session_state.get("_box_dlg_client", "")
+            current_client = client_record.get("Customer_ID__c", "")
+            if prev_client != current_client:
+                st.session_state._box_dlg_nav = [root_id]
+                st.session_state._box_dlg_client = current_client
+                st.session_state.pop("_box_dlg_cache", None)
+
+            if "_box_dlg_nav" not in st.session_state:
+                st.session_state._box_dlg_nav = [root_id]
+
+            current = st.session_state._box_dlg_nav[-1]
+
+            # Header with back button and folder name
+            if len(st.session_state._box_dlg_nav) > 1:
+                c1, c2 = st.columns([1, 5])
                 with c1:
-                    st.markdown(f"`{badge}` **{item['name']}**")
-                with c2:
-                    if st.button("Open", key=f"_box_dlg_f_{item['id']}_{idx}",
-                                 use_container_width=True):
-                        st.session_state._box_dlg_nav.append(item["id"])
+                    if st.button("Back", use_container_width=True, key="_box_dlg_back"):
+                        st.session_state._box_dlg_nav.pop()
                         st.session_state.pop("_box_dlg_cache", None)
                         st.rerun()
+                with c2:
+                    try:
+                        fname = get_folder_name(current)
+                    except Exception:
+                        fname = f"Folder {current}"
+                    st.markdown(f"**{fname}**")
             else:
-                # Format file size
-                size = item.get("size", 0)
-                if size >= 1_000_000:
-                    size_str = f"{size / 1_000_000:.1f} MB"
-                elif size >= 1_000:
-                    size_str = f"{size / 1_000:.0f} KB"
-                else:
-                    size_str = f"{size} B"
+                st.markdown(f"**{client_name} — Documents**")
 
-                st.markdown(
-                    f"`{badge}` [{item['name']}]({item['web_url']}) "
-                    f"<span style='color:#86868b;font-size:0.75rem;'>({size_str})</span>",
-                    unsafe_allow_html=True,
-                )
+            # Cached listing (60-second TTL)
+            cache = st.session_state.get("_box_dlg_cache", {})
+            cached = cache.get(current)
+            if cached and (time.time() - cached["ts"] < 60):
+                box_items = cached["items"]
+            else:
+                try:
+                    with st.spinner("Loading files..."):
+                        box_items = list_folder_items(current)
+                    cache[current] = {"items": box_items, "ts": time.time()}
+                    st.session_state._box_dlg_cache = cache
+                except Exception as e:
+                    st.error(f"Box error: {e}")
+                    return
 
-    # Footer link
-    box_url = f"https://app.box.com/folder/{root_id}"
-    st.markdown("---")
-    st.markdown(
-        f"[Open folder in Box]({box_url}) &nbsp;|&nbsp; "
-        f"[Full browser in Client Info](http://localhost:8512)",
-        unsafe_allow_html=True,
-    )
+            if not box_items:
+                st.caption("Empty folder")
+            else:
+                for idx, item in enumerate(box_items):
+                    ext = (item.get("extension", "") or "").lower()
+                    if item["type"] == "folder":
+                        badge = "DIR"
+                    elif ext == "pdf":
+                        badge = "PDF"
+                    elif ext in ("doc", "docx"):
+                        badge = "DOC"
+                    elif ext in ("jpg", "jpeg", "png", "gif"):
+                        badge = "IMG"
+                    elif ext in ("xls", "xlsx", "csv"):
+                        badge = "XLS"
+                    else:
+                        badge = "FILE"
+
+                    if item["type"] == "folder":
+                        c1, c2 = st.columns([5, 1])
+                        with c1:
+                            st.markdown(f"`{badge}` **{item['name']}**")
+                        with c2:
+                            if st.button("Open", key=f"_box_dlg_f_{item['id']}_{idx}",
+                                         use_container_width=True):
+                                st.session_state._box_dlg_nav.append(item["id"])
+                                st.session_state.pop("_box_dlg_cache", None)
+                                st.rerun()
+                    else:
+                        size = item.get("size", 0)
+                        if size >= 1_000_000:
+                            size_str = f"{size / 1_000_000:.1f} MB"
+                        elif size >= 1_000:
+                            size_str = f"{size / 1_000:.0f} KB"
+                        else:
+                            size_str = f"{size} B"
+
+                        st.markdown(
+                            f"`{badge}` [{item['name']}]({item['web_url']}) "
+                            f"<span style='color:#86868b;font-size:0.75rem;'>({size_str})</span>",
+                            unsafe_allow_html=True,
+                        )
+
+            # Footer link
+            box_url = f"https://app.box.com/folder/{root_id}"
+            st.markdown("---")
+            st.markdown(
+                f"[Open folder in Box]({box_url}) &nbsp;|&nbsp; "
+                f"[Full browser in Client Info](http://localhost:8512)",
+                unsafe_allow_html=True,
+            )
 
 
 # -- Email compose dialog -----------------------------------------------------
@@ -399,7 +617,7 @@ def render_client_banner() -> dict | None:
     if not _sf_available:
         st.caption("Salesforce unavailable — showing cached data.")
 
-    has_box = bool(active and (active.get("Box_Folder_ID__c") or ""))
+    has_client = bool(active)
     has_email = bool(active and (active.get("Email") or ""))
 
     # Track last-pulled ID so we can detect when the user enters a new one.
@@ -422,7 +640,7 @@ def render_client_banner() -> dict | None:
                             disabled=not _sf_available)
     with banner_cols[2]:
         do_files = st.button("Files", use_container_width=True, key="_banner_files",
-                             disabled=not has_box)
+                             disabled=not has_client)
     with banner_cols[3]:
         do_email = st.button("Email", use_container_width=True, key="_banner_email",
                              disabled=not has_email or not _sf_available)
@@ -451,9 +669,7 @@ def render_client_banner() -> dict | None:
             st.info("Enter a client number to pull.")
 
     if do_files and active:
-        folder_id = active.get("Box_Folder_ID__c", "")
-        client_name = active.get("Name", "Client")
-        _show_box_files(folder_id, client_name)
+        _show_client_files(active)
 
     if do_email and active:
         _show_email_compose(active, _sf_available)
