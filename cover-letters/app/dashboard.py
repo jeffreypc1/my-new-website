@@ -29,6 +29,7 @@ from app.templates import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from shared.config_store import load_config
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
@@ -280,6 +281,21 @@ for k, v in _DEFAULTS.items():
 if st.session_state.draft_id is None:
     st.session_state.draft_id = new_draft_id()
 
+# -- SF auto-fill for client fields -------------------------------------------
+_sf_client = st.session_state.get("sf_client")
+if _sf_client:
+    _sf_cid = _sf_client.get("Id", "")
+    _prev_cid = st.session_state.get("_sf_autofill_cid", "")
+    if _sf_cid and _sf_cid != _prev_cid:
+        # New client pulled — auto-fill fields
+        _sf_name = _sf_client.get("Name", "")
+        if _sf_name:
+            st.session_state["inp_client_name"] = _sf_name
+        _sf_anum = _sf_client.get("A_Number__c", "")
+        if _sf_anum:
+            st.session_state["inp_a_number"] = _sf_anum
+        st.session_state["_sf_autofill_cid"] = _sf_cid
+
 
 # -- Helpers ------------------------------------------------------------------
 
@@ -303,11 +319,21 @@ def _do_save(case_type: str) -> None:
         "a_number": st.session_state.get("inp_a_number", ""),
         "receipt_number": st.session_state.get("inp_receipt_number", ""),
     }
+    # Resolve attorney from staff directory selection
+    _staff_sel = st.session_state.get("inp_attorney_staff", "")
+    _staff_list = load_config("staff-directory") or []
+    _staff_match = next(
+        (m for m in _staff_list
+         if f"{m.get('first_name', '')} {m.get('last_name', '')}".strip() == _staff_sel),
+        None,
+    )
+    _gs = load_config("global-settings") or {}
     attorney = {
-        "name": st.session_state.get("inp_attorney_name", ""),
-        "bar_number": st.session_state.get("inp_bar_number", ""),
-        "firm_name": st.session_state.get("inp_firm_name", "O'Brien Immigration Law"),
-        "firm_address": st.session_state.get("inp_firm_address", ""),
+        "name": _staff_sel,
+        "bar_number": _staff_match.get("bar_number", "") if _staff_match else "",
+        "firm_name": _gs.get("firm_name", "O'Brien Immigration Law"),
+        "firm_address": _gs.get("firm_address", ""),
+        "staff_id": _staff_match.get("id", "") if _staff_match else "",
     }
     filing_office = st.session_state.get("inp_filing_office", "")
     enclosed = _build_enclosed_docs_list()
@@ -354,10 +380,28 @@ def _do_load(draft_id: str) -> None:
     st.session_state.inp_receipt_number = c.get("receipt_number", "")
 
     a = draft.get("attorney", {})
-    st.session_state.inp_attorney_name = a.get("name", "")
-    st.session_state.inp_bar_number = a.get("bar_number", "")
-    st.session_state.inp_firm_name = a.get("firm_name", "O'Brien Immigration Law")
-    st.session_state.inp_firm_address = a.get("firm_address", "")
+    # Restore attorney selection — try staff_id first, fall back to name match
+    _staff_id = a.get("staff_id", "")
+    _atty_name = a.get("name", "")
+    if _staff_id or _atty_name:
+        _staff_list = load_config("staff-directory") or []
+        _match = None
+        if _staff_id:
+            _match = next((m for m in _staff_list if m.get("id") == _staff_id), None)
+        if not _match and _atty_name:
+            _match = next(
+                (m for m in _staff_list
+                 if f"{m.get('first_name', '')} {m.get('last_name', '')}".strip() == _atty_name),
+                None,
+            )
+        if _match:
+            st.session_state.inp_attorney_staff = (
+                f"{_match.get('first_name', '')} {_match.get('last_name', '')}".strip()
+            )
+        else:
+            st.session_state.inp_attorney_staff = ""
+    else:
+        st.session_state.inp_attorney_staff = ""
 
     st.session_state.inp_filing_office = draft.get("filing_office", "")
 
@@ -410,15 +454,14 @@ def _do_new() -> None:
     st.session_state.doc_descriptions = {}
     for k in (
         "inp_client_name", "inp_a_number", "inp_receipt_number",
-        "inp_attorney_name", "inp_bar_number", "inp_firm_address",
+        "inp_attorney_staff",
         "inp_filing_office", "inp_case_type",
         "inp_recipient_type", "inp_recipient_category", "inp_recipient_name",
         "inp_client_address", "inp_client_salutation",
+        "_sf_autofill_cid",
     ):
         if k in st.session_state:
             del st.session_state[k]
-    if "inp_firm_name" in st.session_state:
-        del st.session_state["inp_firm_name"]
 
 
 @st.dialog("Add New Address")
@@ -471,7 +514,7 @@ def _build_preview_html(
         escaped = esc(line)
         if line.startswith("RE: "):
             parts.append(f"<strong>{escaped}</strong>")
-        elif line.startswith("    A# ") or line.startswith("    Receipt#") or (line.startswith("    ") and not line.startswith("    ") + "  "):
+        elif line.startswith("    A# ") or line.startswith("    Receipt#") or (line.startswith("    ") and not line.startswith("    " + "  ")):
             parts.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{esc(line.strip())}")
         elif line == "CERTIFICATE OF SERVICE":
             parts.append(f'<div class="letter-cert"><strong>{escaped}</strong></div>')
@@ -566,21 +609,40 @@ with st.sidebar:
 
     st.divider()
 
-    # Attorney info
+    # Attorney info — driven by staff directory + global settings
     st.markdown("#### Attorney / Firm")
-    attorney_name = st.text_input("Attorney Name", key="inp_attorney_name")
-    bar_number = st.text_input("Bar Number", key="inp_bar_number")
-    firm_name = st.text_input(
-        "Firm Name",
-        value="O'Brien Immigration Law",
-        key="inp_firm_name",
+    _staff = load_config("staff-directory") or []
+    _staff_names = [
+        f"{m.get('first_name', '')} {m.get('last_name', '')}".strip()
+        for m in _staff
+    ]
+    _staff_options = [""] + _staff_names
+    _cur_sel = st.session_state.get("inp_attorney_staff", "")
+    _sel_idx = _staff_options.index(_cur_sel) if _cur_sel in _staff_options else 0
+    _selected_staff = st.selectbox(
+        "Attorney",
+        options=_staff_options,
+        index=_sel_idx,
+        format_func=lambda x: x if x else "Select attorney...",
+        key="inp_attorney_staff",
     )
-    firm_address = st.text_area(
-        "Firm Address",
-        key="inp_firm_address",
-        height=80,
-        placeholder="123 Main Street\nSuite 400\nCity, State ZIP",
+    # Derive attorney_name and bar_number from selected staff member
+    _matched = next(
+        (m for m in _staff
+         if f"{m.get('first_name', '')} {m.get('last_name', '')}".strip() == _selected_staff),
+        None,
     )
+    attorney_name = _selected_staff
+    bar_number = _matched.get("bar_number", "") if _matched else ""
+    if bar_number:
+        st.caption(f"Bar #: {bar_number}")
+    # Firm info from global settings
+    _gs = load_config("global-settings") or {}
+    firm_name = _gs.get("firm_name", "O'Brien Immigration Law")
+    firm_address = _gs.get("firm_address", "")
+    st.caption(f"{firm_name}")
+    if firm_address:
+        st.caption(firm_address.replace("\n", "  \n"))
 
     st.divider()
 
