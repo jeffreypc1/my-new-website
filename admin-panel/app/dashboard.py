@@ -1566,6 +1566,24 @@ def _editor_client_banner():
     _global = load_config("global-settings") or {}
     current_fields: list[str] = _global.get("banner_fields", _BANNER_DEFAULTS)
 
+    # ── Pull bar toggle ──
+    st.markdown("**Pull Bar**")
+    _cur_pull_bar = _global.get("show_pull_bar", False)
+    _new_pull_bar = st.toggle(
+        "Show pull bar on tool pages",
+        value=_cur_pull_bar,
+        key="_banner_pull_bar_toggle",
+        help="When enabled, each tool page shows a client input with Pull, Files, and Email buttons. "
+             "When disabled, only the read-only info ribbon is shown.",
+    )
+    if _new_pull_bar != _cur_pull_bar:
+        _global["show_pull_bar"] = _new_pull_bar
+        save_config("global-settings", _global)
+        st.toast("Pull bar setting saved!")
+        st.rerun()
+
+    st.markdown("")
+
     # ── Font size ──
     st.markdown("**Font Size**")
     current_size = _global.get("banner_font_size", 13)
@@ -1626,6 +1644,37 @@ def _editor_client_banner():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Firm Info
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _editor_firm_info():
+    """Manage firm-level settings used across tools (cover pages, briefs, etc.)."""
+    st.subheader("Firm Info")
+    st.caption(
+        "Firm name and address are used in cover pages, briefs, and other documents. "
+        "Changes are shared across all tools."
+    )
+
+    _global = load_config("global-settings") or {}
+    cur_name = _global.get("firm_name", "O'Brien Immigration Law")
+    cur_addr = _global.get("firm_address", "")
+
+    new_name = st.text_input("Firm Name", value=cur_name, key="_firm_name")
+    new_addr = st.text_area("Firm Address", value=cur_addr, key="_firm_address", height=100)
+
+    if new_name != cur_name or new_addr != cur_addr:
+        if st.button("Save Firm Info", type="primary", key="_firm_save"):
+            _global["firm_name"] = new_name
+            _global["firm_address"] = new_addr
+            save_config("global-settings", _global)
+            st.toast("Firm info saved!")
+            st.rerun()
+    else:
+        st.caption("No changes to save.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Staff Directory
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1649,6 +1698,7 @@ def _editor_staff_directory():
             new_email = st.text_input("Email", key="_staff_new_email")
         with c2:
             new_phone = st.text_input("Phone", key="_staff_new_phone")
+            new_bar = st.text_input("Bar Number", key="_staff_new_bar")
             new_address = st.text_area("Address", key="_staff_new_address", height=100)
 
         if st.button("Add Staff Member", type="primary", key="_staff_add"):
@@ -1662,6 +1712,7 @@ def _editor_staff_directory():
                     "last_name": new_last.strip(),
                     "email": new_email.strip(),
                     "phone": new_phone.strip(),
+                    "bar_number": new_bar.strip(),
                     "address": new_address.strip(),
                 })
                 save_config("staff-directory", staff)
@@ -1688,15 +1739,18 @@ def _editor_staff_directory():
                 email = st.text_input("Email", value=member.get("email", ""), key=f"_staff_e_{idx}")
             with c2:
                 phone = st.text_input("Phone", value=member.get("phone", ""), key=f"_staff_p_{idx}")
+                bar_num = st.text_input("Bar Number", value=member.get("bar_number", ""), key=f"_staff_b_{idx}")
                 address = st.text_area("Address", value=member.get("address", ""), key=f"_staff_a_{idx}", height=100)
 
             if (first != member.get("first_name", "") or last != member.get("last_name", "") or
                     email != member.get("email", "") or phone != member.get("phone", "") or
+                    bar_num != member.get("bar_number", "") or
                     address != member.get("address", "")):
                 member["first_name"] = first
                 member["last_name"] = last
                 member["email"] = email
                 member["phone"] = phone
+                member["bar_number"] = bar_num
                 member["address"] = address
                 staff_changed = True
 
@@ -2123,13 +2177,15 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)"],
+        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
     )
     st.divider()
-    if int_sub == "Staff Directory":
+    if int_sub == "Firm Info":
+        _editor_firm_info()
+    elif int_sub == "Staff Directory":
         _editor_staff_directory()
     elif int_sub == "Client Banner":
         _editor_client_banner()

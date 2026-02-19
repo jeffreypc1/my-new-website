@@ -786,7 +786,7 @@ with doc_col:
 
     if _sf_contact_id:
         try:
-            from shared.salesforce_client import get_lc_tasks, create_lc_task
+            from shared.salesforce_client import get_lc_tasks
             _sf_tasks = get_lc_tasks(_sf_contact_id)
         except Exception:
             _sf_tasks = []
@@ -909,56 +909,8 @@ with doc_col:
     elif _sf_contact_id:
         st.caption("No tasks found for this client.")
 
-    if _sf_contact_id:
-        st.markdown("---")
-
-        _add_task_cols = st.columns([5, 1])
-        with _add_task_cols[0]:
-            _new_task_desc = st.text_input(
-                "New SF task",
-                key="_inp_new_sf_task",
-                placeholder="Add a document...",
-                label_visibility="collapsed",
-            )
-        with _add_task_cols[1]:
-            if st.button("Add", use_container_width=True, key="_btn_add_sf_task") and _new_task_desc:
-                try:
-                    from shared.salesforce_client import create_lc_task
-                    create_lc_task(_sf_contact_id, _new_task_desc.strip())
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to create task: {e}")
-
-        with st.expander("Bulk Add Documents"):
-            _mass_input = st.text_area(
-                "Paste comma-separated document names",
-                key="_inp_mass_upload",
-                height=80,
-                placeholder="e.g.: I-589 Application, Passport Copy, Birth Certificate, Country Conditions Report",
-                label_visibility="collapsed",
-            )
-            if st.button("Upload All to Salesforce", use_container_width=True, key="_btn_mass_upload") and _mass_input.strip():
-                _items = [item.strip() for item in _mass_input.split(",") if item.strip()]
-                if not _items:
-                    st.warning("No documents found. Separate items with commas.")
-                else:
-                    _created = 0
-                    _errors = 0
-                    try:
-                        from shared.salesforce_client import create_lc_task
-                        for _item in _items:
-                            try:
-                                create_lc_task(_sf_contact_id, _item)
-                                _created += 1
-                            except Exception:
-                                _errors += 1
-                        if _errors:
-                            st.warning(f"Created {_created} record(s), {_errors} failed.")
-                        else:
-                            st.success(f"Created {_created} record(s) in Salesforce.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Failed to upload: {e}")
+    from shared.document_adder import render_document_adder
+    render_document_adder("cover-letters")
 
     descriptions = st.session_state.get("doc_descriptions", {})
     new_descriptions: dict[str, str] = dict(descriptions)
