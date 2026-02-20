@@ -166,6 +166,68 @@ def update_client(sf_id: str, updates: dict) -> None:
     sf.Contact.update(sf_id, updates)
 
 
+def create_google_doc_record(
+    name: str,
+    google_doc_link: str,
+    contact_id: str,
+    legal_case_id: str | None = None,
+) -> dict:
+    """Create a Google_Doc__c record in Salesforce.
+
+    Args:
+        name: Document name.
+        google_doc_link: URL of the Google Doc.
+        contact_id: Salesforce Contact record Id.
+        legal_case_id: Salesforce Legal Case record Id (optional).
+
+    Returns:
+        Dict with 'id' (record Id) and 'url' (Salesforce record URL).
+    """
+    sf = _sf_conn()
+    data: dict = {
+        "Name": name,
+        "Google_Doc_Link__c": google_doc_link,
+        "Contact__c": contact_id,
+    }
+    if legal_case_id:
+        data["Legal_Case__c"] = legal_case_id
+    result = sf.Google_Doc__c.create(data)
+    record_id = result["id"]
+    record_url = f"https://{sf.sf_instance}/{record_id}"
+    return {"id": record_id, "url": record_url}
+
+
+def upload_file_to_contact(
+    contact_sf_id: str,
+    file_bytes: bytes,
+    file_name: str,
+    file_extension: str = "docx",
+    title: str = "",
+) -> str:
+    """Upload a file to a Salesforce Contact's Files (ContentVersion).
+
+    Args:
+        contact_sf_id: The Salesforce record Id of the Contact.
+        file_bytes: Raw file content bytes.
+        file_name: Base file name (without extension).
+        file_extension: File extension (default "docx").
+        title: Optional title for the file; defaults to file_name.
+
+    Returns:
+        The new ContentVersion record Id.
+    """
+    import base64
+
+    sf = _sf_conn()
+    result = sf.ContentVersion.create({
+        "Title": title or file_name,
+        "PathOnClient": f"{file_name}.{file_extension}",
+        "VersionData": base64.b64encode(file_bytes).decode("utf-8"),
+        "FirstPublishLocationId": contact_sf_id,
+    })
+    return result["id"]
+
+
 def get_field_metadata(field_names: list[str] | None = None) -> dict:
     """Return metadata for Contact fields including picklist values.
 

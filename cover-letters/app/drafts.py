@@ -35,6 +35,9 @@ def save_draft(
     salutation: str = "Dear Sir or Madam:",
     custom_purpose: str = "",
     custom_closing: str = "",
+    template_selection: str = "",
+    letter_subject: str = "",
+    letter_body: str = "",
 ) -> dict:
     """Save or update a draft.  Returns the saved draft dict."""
     _ensure_dir()
@@ -61,6 +64,9 @@ def save_draft(
         "salutation": salutation,
         "custom_purpose": custom_purpose,
         "custom_closing": custom_closing,
+        "template_selection": template_selection,
+        "letter_subject": letter_subject,
+        "letter_body": letter_body,
         "created_at": created_at,
         "updated_at": now,
     }

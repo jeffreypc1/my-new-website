@@ -26,6 +26,10 @@ try:
     from shared.feedback_button import render_feedback_button
 except ImportError:
     render_feedback_button = None
+try:
+    from shared.recipient_manager import render_recipient_manager
+except ImportError:
+    render_recipient_manager = None
 
 st.set_page_config(
     page_title="Admin Panel — O'Brien Immigration Law",
@@ -1416,10 +1420,29 @@ def _editor_feature_registry():
 
 
 def _editor_components():
-    """Edit shared component configuration — currently Draft Box prompts."""
+    """Edit shared component configuration — tabbed interface."""
     st.subheader("Components")
     st.caption("Configure shared UI components that appear across multiple tools.")
 
+    comp_tab_db, comp_tab_sp, comp_tab_recip, comp_tab_docs = st.tabs([
+        "Draft Box", "System Prompts", "Recipients", "Document Manager",
+    ])
+
+    with comp_tab_db:
+        _editor_comp_draft_box()
+
+    with comp_tab_sp:
+        _editor_comp_system_prompts()
+
+    with comp_tab_recip:
+        _editor_comp_recipients()
+
+    with comp_tab_docs:
+        _editor_comp_document_manager()
+
+
+def _editor_comp_draft_box():
+    """Draft Box AI prompt configuration (global + per-tool overrides)."""
     config = load_config("components") or {}
     draft_box = config.get("draft-box", {})
 
@@ -1503,6 +1526,54 @@ def _editor_components():
         }
         save_config("components", config)
         st.toast("Component settings saved!")
+
+
+def _editor_comp_system_prompts():
+    """Placeholder for future system prompt management."""
+    st.info("System prompt management coming soon.")
+
+
+def _editor_comp_recipients():
+    """Admin recipient address book — add / edit / delete addresses."""
+    st.markdown("### Recipient Address Book")
+    st.caption(
+        "Manage the shared address book used by the Filing Assembler's recipient picker "
+        "and other tools."
+    )
+    if render_recipient_manager is not None:
+        render_recipient_manager()
+    else:
+        st.error("Could not load `shared/recipient_manager.py`.")
+
+
+def _editor_comp_document_manager():
+    """Reference for standard enclosed document templates per case type."""
+    st.markdown("### Document Manager")
+    st.caption(
+        "View the standard enclosed document lists configured for each case type. "
+        "To edit case-type-specific document lists, go to "
+        "**Tool Configuration → Filing Assembler**."
+    )
+
+    # Load templates from cover-letters config
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "cover-letters"))
+        from app.templates import get_govt_cover_letter_templates, TEMPLATES
+    except ImportError:
+        st.error("Could not load cover-letter templates.")
+        return
+
+    templates = get_govt_cover_letter_templates()
+    if not templates:
+        templates = TEMPLATES
+
+    for case_type, tpl in templates.items():
+        docs = tpl.get("standard_enclosed_docs", [])
+        if not docs:
+            continue
+        with st.expander(f"{case_type} ({len(docs)} documents)", expanded=False):
+            for i, doc in enumerate(docs, 1):
+                st.markdown(f"{i}. {doc}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2177,7 +2248,7 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components (Draft Box)"],
+        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",

@@ -644,6 +644,8 @@ def render_cover_letter(
     custom_closing: str = "",
     recipient_address: str = "",
     salutation: str = "",
+    custom_subject: str = "",
+    custom_body: str = "",
 ) -> str:
     """Render a complete cover letter as plain text.
 
@@ -694,7 +696,11 @@ def render_cover_letter(
     lines.append("")
 
     # RE block
-    lines.append(f"RE: {client_name}")
+    if custom_subject:
+        lines.append(f"RE: {custom_subject}")
+        lines.append(f"    Client: {client_name}")
+    else:
+        lines.append(f"RE: {client_name}")
     if a_number:
         lines.append(f"    A# {a_number}")
     if receipt_number:
@@ -711,32 +717,53 @@ def render_cover_letter(
         lines.append(tpl["confidentiality_notice"])
         lines.append("")
 
-    # Purpose paragraph
-    purpose = custom_purpose or tpl.get("purpose_paragraph", "")
-    if purpose:
-        lines.append(purpose.format(client_name=client_name))
-    lines.append("")
+    if custom_body:
+        # Template mode: body → enclosed docs → signature (no separate closing)
+        lines.append(custom_body)
+        lines.append("")
 
-    # Enclosed documents
-    lines.append(
-        "Enclosed please find the following documents in support of the "
-        "above-referenced matter:"
-    )
-    lines.append("")
-    for idx, doc in enumerate(enclosed_docs, start=1):
-        name = doc.get("name", "")
-        desc = doc.get("description", "")
-        if desc:
-            lines.append(f"    {idx}. {name} -- {desc}")
-        else:
-            lines.append(f"    {idx}. {name}")
-    lines.append("")
+        # Enclosed documents
+        if enclosed_docs:
+            lines.append(
+                "Enclosed please find the following documents in support of the "
+                "above-referenced matter:"
+            )
+            lines.append("")
+            for idx, doc in enumerate(enclosed_docs, start=1):
+                name = doc.get("name", "")
+                desc = doc.get("description", "")
+                if desc:
+                    lines.append(f"    {idx}. {name} -- {desc}")
+                else:
+                    lines.append(f"    {idx}. {name}")
+            lines.append("")
+    else:
+        # Default mode: purpose → enclosed docs → closing
+        purpose = custom_purpose or tpl.get("purpose_paragraph", "")
+        if purpose:
+            lines.append(purpose.format(client_name=client_name))
+        lines.append("")
 
-    # Closing paragraph
-    closing = custom_closing or tpl.get("closing_paragraph", "")
-    if closing:
-        lines.append(closing)
-    lines.append("")
+        # Enclosed documents
+        lines.append(
+            "Enclosed please find the following documents in support of the "
+            "above-referenced matter:"
+        )
+        lines.append("")
+        for idx, doc in enumerate(enclosed_docs, start=1):
+            name = doc.get("name", "")
+            desc = doc.get("description", "")
+            if desc:
+                lines.append(f"    {idx}. {name} -- {desc}")
+            else:
+                lines.append(f"    {idx}. {name}")
+        lines.append("")
+
+        # Closing paragraph
+        closing = custom_closing or tpl.get("closing_paragraph", "")
+        if closing:
+            lines.append(closing)
+        lines.append("")
 
     # Signature block
     lines.append("Respectfully submitted,")

@@ -82,3 +82,69 @@ def upload_to_google_docs(
         pass
 
     return url
+
+
+def copy_template_and_fill(
+    template_id: str,
+    title: str,
+    replacements: dict[str, str],
+    folder_id: str = "",
+) -> str:
+    """Copy a Google Docs template and fill placeholders.
+
+    Args:
+        template_id: The Google Docs file ID of the template to copy.
+        title: Name for the new document.
+        replacements: Dict of placeholder → replacement text,
+                      e.g. {"{{CONTENT}}": "letter body here"}.
+        folder_id: Optional Google Drive folder ID to place the copy in.
+
+    Returns:
+        The URL of the newly created Google Doc.
+    """
+    from googleapiclient.discovery import build
+
+    creds = _get_credentials()
+    drive = build("drive", "v3", credentials=creds)
+    docs = build("docs", "v1", credentials=creds)
+
+    # 1. Copy the template
+    copy_metadata: dict = {"name": title}
+    if folder_id:
+        copy_metadata["parents"] = [folder_id]
+    copied = drive.files().copy(
+        fileId=template_id, body=copy_metadata, fields="id"
+    ).execute()
+    new_id = copied["id"]
+
+    # 2. Replace placeholders
+    requests = [
+        {
+            "replaceAllText": {
+                "containsText": {"text": placeholder, "matchCase": True},
+                "replaceText": replacement,
+            }
+        }
+        for placeholder, replacement in replacements.items()
+    ]
+    if requests:
+        docs.documents().batchUpdate(
+            documentId=new_id, body={"requests": requests}
+        ).execute()
+
+    url = f"https://docs.google.com/document/d/{new_id}/edit"
+
+    # Log usage
+    try:
+        from shared.usage_tracker import log_api_call
+
+        log_api_call(
+            service="google_docs",
+            tool="",
+            operation="template_copy_fill",
+            details=title,
+        )
+    except Exception:
+        pass
+
+    return url
