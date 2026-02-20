@@ -58,7 +58,7 @@ echo ""
 echo -e "${BOLD}Starting Staff Dashboard...${RESET}"
 start_app "Staff Dashboard        :8502" \
     "$BASE/country-reports-tool" \
-    "uv run streamlit run $BASE/staff-dashboard/app.py --server.port 8502"
+    "uv run streamlit run $BASE/staff-dashboard/app.py --server.port 8502 --server.headless true"
 
 # --- Individual Tools ---
 echo ""
@@ -66,55 +66,55 @@ echo -e "${BOLD}Starting Tools...${RESET}"
 
 start_app "Country Reports Tool   :8501" \
     "$BASE/country-reports-tool" \
-    "uv run streamlit run app/dashboard.py --server.port 8501"
+    "uv run streamlit run app/dashboard.py --server.port 8501 --server.headless true"
 
 start_app "Declaration Drafter    :8503" \
     "$BASE/declaration-drafter" \
-    "uv run streamlit run app/dashboard.py --server.port 8503"
+    "uv run streamlit run app/dashboard.py --server.port 8503 --server.headless true"
 
 start_app "Filing Assembler       :8504" \
     "$BASE/cover-letters" \
-    "uv run streamlit run app/dashboard.py --server.port 8504"
+    "uv run streamlit run app/dashboard.py --server.port 8504 --server.headless true"
 
 start_app "Timeline Builder       :8505" \
     "$BASE/timeline-builder" \
-    "uv run streamlit run app/dashboard.py --server.port 8505"
+    "uv run streamlit run app/dashboard.py --server.port 8505 --server.headless true"
 
 start_app "Case Checklist         :8506" \
     "$BASE/case-checklist" \
-    "uv run streamlit run app/dashboard.py --server.port 8506"
+    "uv run streamlit run app/dashboard.py --server.port 8506 --server.headless true"
 
 start_app "Brief Builder          :8507" \
     "$BASE/brief-builder" \
-    "uv run streamlit run app/dashboard.py --server.port 8507"
+    "uv run streamlit run app/dashboard.py --server.port 8507 --server.headless true"
 
 start_app "Legal Research         :8508" \
     "$BASE/legal-research" \
-    "uv run streamlit run app/dashboard.py --server.port 8508"
+    "uv run streamlit run app/dashboard.py --server.port 8508 --server.headless true"
 
 start_app "Forms Assistant        :8509" \
     "$BASE/forms-assistant" \
-    "uv run streamlit run app/dashboard.py --server.port 8509"
+    "uv run streamlit run app/dashboard.py --server.port 8509 --server.headless true"
 
 start_app "Templates              :8510" \
     "$BASE/evidence-indexer" \
-    "uv run streamlit run app/dashboard.py --server.port 8510"
+    "uv run streamlit run app/dashboard.py --server.port 8510 --server.headless true"
 
 start_app "Document Translator    :8511" \
     "$BASE/document-translator" \
-    "uv run streamlit run app/dashboard.py --server.port 8511"
+    "uv run streamlit run app/dashboard.py --server.port 8511 --server.headless true"
 
 start_app "Client Info            :8512" \
     "$BASE/client-info" \
-    "uv run streamlit run app/dashboard.py --server.port 8512"
+    "uv run streamlit run app/dashboard.py --server.port 8512 --server.headless true"
 
 start_app "Admin Panel            :8513" \
     "$BASE/admin-panel" \
-    "uv run streamlit run app/dashboard.py --server.port 8513"
+    "uv run streamlit run app/dashboard.py --server.port 8513 --server.headless true"
 
 start_app "Hearing Prep           :8514" \
     "$BASE/hearing-prep" \
-    "uv run streamlit run app/dashboard.py --server.port 8514"
+    "uv run streamlit run app/dashboard.py --server.port 8514 --server.headless true"
 
 # --- Summary ---
 echo ""

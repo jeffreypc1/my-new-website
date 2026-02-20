@@ -23,17 +23,58 @@ if _ENV_PATH.exists():
     load_dotenv(_ENV_PATH)
 
 
+_SF_SESSION_PATH = Path(__file__).resolve().parent.parent / "data" / ".sf_session.json"
+
+
+def _save_session(sf) -> None:
+    """Persist SF session token + instance URL to disk."""
+    try:
+        _SF_SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _SF_SESSION_PATH.write_text(json.dumps({
+            "session_id": sf.session_id,
+            "sf_instance": sf.sf_instance,
+        }))
+    except Exception:
+        pass  # non-critical — next call will just re-auth
+
+
+def _restore_session():
+    """Try to restore a cached SF session without full re-auth."""
+    if not _SF_SESSION_PATH.exists():
+        return None
+    try:
+        from simple_salesforce import Salesforce
+
+        data = json.loads(_SF_SESSION_PATH.read_text())
+        sf = Salesforce(
+            instance=data["sf_instance"],
+            session_id=data["session_id"],
+        )
+        # Validate the session is still alive with a lightweight call
+        sf.query("SELECT Id FROM Organization LIMIT 1")
+        return sf
+    except Exception:
+        # Session expired or invalid — remove stale cache
+        try:
+            _SF_SESSION_PATH.unlink()
+        except Exception:
+            pass
+        return None
+
+
 def _get_connection():
     """Create and return a Salesforce connection (lazy, cached)."""
     from simple_salesforce import Salesforce
 
-    return Salesforce(
+    sf = Salesforce(
         username=os.environ["SF_USERNAME"],
         password=os.environ["SF_PASSWORD"],
         security_token=os.environ["SF_SECURITY_TOKEN"],
         consumer_key=os.environ["SF_CONSUMER_KEY"],
         consumer_secret=os.environ["SF_CONSUMER_SECRET"],
     )
+    _save_session(sf)
+    return sf
 
 
 # Cache the connection so we don't re-auth on every call
@@ -43,7 +84,10 @@ _sf = None
 def _sf_conn():
     global _sf
     if _sf is None:
-        _sf = _get_connection()
+        # Try restoring a cached session first
+        _sf = _restore_session()
+        if _sf is None:
+            _sf = _get_connection()
     return _sf
 
 
@@ -51,6 +95,10 @@ def reset_connection():
     """Force a fresh connection on next call (e.g. after token expiry)."""
     global _sf
     _sf = None
+    try:
+        _SF_SESSION_PATH.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def describe_contact_fields() -> list[dict]:
