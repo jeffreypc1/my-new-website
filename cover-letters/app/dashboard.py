@@ -56,6 +56,11 @@ try:
 except ImportError:
     get_legal_case_field_metadata = None
 try:
+    from shared.salesforce_client import get_case_beneficiaries, update_case_beneficiary
+except ImportError:
+    get_case_beneficiaries = None
+    update_case_beneficiary = None
+try:
     from shared.google_doc_creator import render_google_doc_button
 except ImportError:
     render_google_doc_button = None
@@ -566,12 +571,13 @@ def _do_new() -> None:
         "inp_eoir_service_method", "inp_eoir_legal_case_idx",
         "_eoir_beneficiaries", "_eoir_beneficiaries_case_id",
         "_eoir_autofill_case_id",
+        "_case_bens", "_case_bens_case_id", "_case_bens_selected",
         # EOIR case detail keys
         "inp_eoir_cd_city", "inp_eoir_cd_applicant", "inp_eoir_cd_next_date_type",
-        "inp_eoir_cd_next_govt_date", "inp_eoir_cd_hearing_time",
+        "inp_eoir_cd_next_govt_date",
         "inp_eoir_cd_judge", "inp_eoir_cd_attorney", "inp_eoir_cd_electronic",
         "inp_eoir_cd_asst_initials", "inp_eoir_cd_a_number",
-        "_eoir_cd_lc_meta",
+        "_eoir_cd_lc_meta", "_eoir_cd_edit_mode",
         "_eoir_cd_autofill_case_id",
     ):
         if k in st.session_state:
@@ -1031,6 +1037,46 @@ with tab_cover:
             help="Use {client_name}, {first_name}, {last_name}, {case_type}, {a_number} as placeholders.",
         )
 
+        # ── Case Beneficiaries (Cover Letter) ─────────────────────────────
+        # Show beneficiaries from the active legal case if available
+        _cl_sf_client = st.session_state.get("sf_client")
+        _cl_case_bens: list[dict] = st.session_state.get("_case_bens", [])
+        if _cl_sf_client and _cl_case_bens:
+            st.divider()
+            st.markdown('<div class="section-label">Case Beneficiaries</div>', unsafe_allow_html=True)
+            st.caption("Select beneficiaries to include in this cover letter.")
+            _cl_sel_ids: list[str] = st.session_state.get("_case_bens_selected", [])
+
+            _cl_all_ids = [b.get("Id") for b in _cl_case_bens]
+            _cl_all_sel = all(bid in _cl_sel_ids for bid in _cl_all_ids)
+            if st.checkbox("Select All", value=_cl_all_sel, key="_cl_bens_sel_all"):
+                if not _cl_all_sel:
+                    st.session_state["_case_bens_selected"] = list(_cl_all_ids)
+                    st.rerun()
+            elif _cl_all_sel:
+                st.session_state["_case_bens_selected"] = []
+                st.rerun()
+
+            _cl_new_sel: list[str] = []
+            for _ci, _cb in enumerate(_cl_case_bens):
+                _cid = _cb.get("Id", "")
+                _cfirst = _cb.get("First_Name__c", "")
+                _clast = _cb.get("Last_Name__c", "")
+                _cname = f"{_cfirst} {_clast}".strip() or "Unnamed"
+                _crel = _cb.get("Relationship__c", "")
+                _canum = _cb.get("Alien_Number__c", "")
+                _clabel = _cname
+                if _crel:
+                    _clabel += f" ({_crel})"
+                if _canum:
+                    _clabel += f" — A# {_canum}"
+                if st.checkbox(_clabel, value=_cid in _cl_sel_ids, key=f"_cl_cben_chk_{_ci}"):
+                    _cl_new_sel.append(_cid)
+            st.session_state["_case_bens_selected"] = _cl_new_sel
+        elif _cl_sf_client and not _cl_case_bens:
+            st.divider()
+            st.caption("No derivatives found for this case.")
+
         st.divider()
 
         # ── Step 5: Enclosed Documents ───────────────────────────────────────
@@ -1277,6 +1323,29 @@ with tab_cover:
                     custom_body=_body_safe,
                 )
 
+            # Append selected beneficiaries to letter text
+            _cl_sel_ben_ids = st.session_state.get("_case_bens_selected", [])
+            _cl_bens_for_letter = [
+                b for b in (st.session_state.get("_case_bens") or [])
+                if b.get("Id") in _cl_sel_ben_ids
+            ]
+            if _cl_bens_for_letter:
+                _ben_parts: list[str] = []
+                for _b in _cl_bens_for_letter:
+                    _bf = _b.get("First_Name__c", "")
+                    _bl = _b.get("Last_Name__c", "")
+                    _br = (_b.get("Relationship__c") or "").lower()
+                    _bn = f"{_bf} {_bl}".strip()
+                    _ben_parts.append(f"{_br}: {_bn}" if _br else _bn)
+                _ben_sentence = "Also filing for " + ", ".join(_ben_parts) + "."
+                # Insert before the signature block (find "Sincerely" or "Respectfully")
+                for _sig in ("Sincerely,", "Respectfully,", "Respectfully submitted,"):
+                    if _sig in letter_text:
+                        letter_text = letter_text.replace(_sig, f"{_ben_sentence}\n\n{_sig}", 1)
+                        break
+                else:
+                    letter_text += f"\n\n{_ben_sentence}"
+
             preview_html = _build_preview_html(letter_text, case_type)
             st.markdown(
                 f'<div class="preview-panel">{preview_html}</div>',
@@ -1350,6 +1419,23 @@ with tab_eoir:
                 st.session_state["_eoir_beneficiaries_case_id"] = _eoir_case_id
             _eoir_beneficiaries: list[dict] = st.session_state.get("_eoir_beneficiaries", [])
 
+            # ── Fetch Case_Contact__c beneficiaries (cached per case) ─────
+            _cached_cb_case = st.session_state.get("_case_bens_case_id", "")
+            if _eoir_case_id != _cached_cb_case:
+                if get_case_beneficiaries and _eoir_case_id:
+                    try:
+                        st.session_state["_case_bens"] = get_case_beneficiaries(_eoir_case_id)
+                    except Exception:
+                        st.session_state["_case_bens"] = []
+                else:
+                    st.session_state["_case_bens"] = []
+                st.session_state["_case_bens_case_id"] = _eoir_case_id
+                # Default: all selected
+                st.session_state["_case_bens_selected"] = [
+                    b.get("Id") for b in (st.session_state.get("_case_bens") or [])
+                ]
+            _case_bens: list[dict] = st.session_state.get("_case_bens", [])
+
             # ── Verify Case Details (collapsed) ──────────────────────────
             # Auto-fill case detail fields on case change
             _prev_cd_fill = st.session_state.get("_eoir_cd_autofill_case_id", "")
@@ -1368,7 +1454,6 @@ with tab_eoir:
                         st.session_state["inp_eoir_cd_next_govt_date"] = None
                 else:
                     st.session_state["inp_eoir_cd_next_govt_date"] = None
-                st.session_state["inp_eoir_cd_hearing_time"] = _eoir_case.get("Next_Hearing_Time__c", "") or ""
                 st.session_state["inp_eoir_cd_judge"] = _eoir_case.get("Immigration_Judge__c", "") or ""
                 st.session_state["inp_eoir_cd_attorney"] = _eoir_case.get("Primary_Attorney__r_Name", "") or ""
                 st.session_state["inp_eoir_cd_electronic"] = bool(_eoir_case.get("Electronic_Service__c", False))
@@ -1381,12 +1466,9 @@ with tab_eoir:
                     _eoir_case.get("A_number_dashed__c", "") or _eoir_sf_client.get("A_Number__c", "")
                 )
                 st.session_state["_eoir_cd_autofill_case_id"] = _eoir_case_id
-                # Reset all per-field edit toggles on case change
-                for _ek in ("city", "next_date_type", "next_govt_date", "hearing_time",
-                            "judge", "electronic", "asst_initials"):
-                    st.session_state[f"_eoir_cd_editing_{_ek}"] = False
+                st.session_state["_eoir_cd_edit_mode"] = False
 
-            # Fetch Legal Case field metadata for picklists (cached)
+            # Fetch Legal Case field metadata for picklists + updateable flags (cached)
             _lc_meta: dict = st.session_state.get("_eoir_cd_lc_meta") or {}
             if not _lc_meta and get_legal_case_field_metadata:
                 try:
@@ -1395,7 +1477,7 @@ with tab_eoir:
                 except Exception:
                     _lc_meta = {}
 
-            # Build picklist options from SF metadata for each picklist field
+            # Build picklist options from SF metadata
             def _pl_opts(api_name: str) -> list[str]:
                 meta = _lc_meta.get(api_name, {})
                 return [""] + [pv["value"] for pv in meta.get("picklistValues", [])]
@@ -1404,109 +1486,135 @@ with tab_eoir:
             _next_type_opts = _pl_opts("Type_of_next_date__c")
             _judge_opts = _pl_opts("Immigration_Judge__c")
 
+            # Load admin-configured visible fields (or defaults)
+            _comp_config = load_config("components") or {}
+            _CD_DEFAULTS = [
+                "Location_City__c", "Type_of_next_date__c", "Next_Government_Date__c",
+                "Immigration_Judge__c", "Electronic_Service__c", "_asst_initials",
+                "Primary_Applicant__r_Name", "Primary_Attorney__r_Name", "A_number_dashed__c",
+            ]
+            _visible_cd_fields: list[str] = _comp_config.get("case_detail_fields", _CD_DEFAULTS)
+
+            # Master field registry: api_key → (label, ss_key, widget, options, sf_api, readonly)
+            _ALL_CD_FIELDS = {
+                "Location_City__c":          ("City",              "inp_eoir_cd_city",           "picklist", _city_opts,      "Location_City__c",          False),
+                "Type_of_next_date__c":      ("Next Date Type",    "inp_eoir_cd_next_date_type", "picklist", _next_type_opts, "Type_of_next_date__c",      False),
+                "Next_Government_Date__c":   ("Next Govt Date",    "inp_eoir_cd_next_govt_date", "date",     None,            "Next_Government_Date__c",   False),
+                "Immigration_Judge__c":      ("Immigration Judge", "inp_eoir_cd_judge",          "picklist", _judge_opts,     "Immigration_Judge__c",      False),
+                "Electronic_Service__c":     ("Electronic Service","inp_eoir_cd_electronic",     "toggle",   None,            "Electronic_Service__c",     False),
+                "_asst_initials":            ("Assistant Initials","inp_eoir_cd_asst_initials",  "text",     None,            None,                        False),
+                "Primary_Applicant__r_Name": ("Primary Applicant", "inp_eoir_cd_applicant",     "text",     None,            None,                        True),
+                "Primary_Attorney__r_Name":  ("Primary Attorney",  "inp_eoir_cd_attorney",      "text",     None,            None,                        True),
+                "A_number_dashed__c":        ("A-Number (Dashed)", "inp_eoir_cd_a_number",      "text",     None,            None,                        True),
+            }
+
             with st.expander("Verify Case Details", expanded=False):
-                # ── Field definitions ────────────────────────────────────
-                # Each editable field: (label, session_key, edit_toggle_key,
-                #                       widget_type, extra)
-                # widget_type: "picklist", "date", "toggle", "text"
-                # extra: picklist options list, or None
-                _EDITABLE_FIELDS = [
-                    ("City",              "inp_eoir_cd_city",           "city",           "picklist", _city_opts),
-                    ("Next Date Type",    "inp_eoir_cd_next_date_type", "next_date_type", "picklist", _next_type_opts),
-                    ("Next Govt Date",    "inp_eoir_cd_next_govt_date", "next_govt_date", "date",     None),
-                    ("Next Hearing Time", "inp_eoir_cd_hearing_time",   "hearing_time",   "text",     None),
-                    ("Immigration Judge", "inp_eoir_cd_judge",          "judge",          "picklist", _judge_opts),
-                    ("Electronic Service","inp_eoir_cd_electronic",     "electronic",     "toggle",   None),
-                    ("Assistant Initials","inp_eoir_cd_asst_initials",  "asst_initials",  "text",     None),
-                ]
-                _READONLY_FIELDS = [
-                    ("Primary Applicant", "inp_eoir_cd_applicant",  "Relationship field"),
-                    ("Primary Attorney",  "inp_eoir_cd_attorney",   "Set in Attorney / Signature below"),
-                    ("A-Number (Dashed)", "inp_eoir_cd_a_number",   "Formula field — read-only"),
-                ]
+                _edit_mode = st.session_state.get("_eoir_cd_edit_mode", False)
 
-                # Render each editable field with per-field pencil toggle
+                # Bulk edit toggle buttons
+                if not _edit_mode:
+                    if st.button("Edit Case Information", key="_eoir_cd_enter_edit"):
+                        st.session_state["_eoir_cd_edit_mode"] = True
+                        st.rerun()
+
+                # Build visible field lists
+                _vis_editable = [(k, _ALL_CD_FIELDS[k]) for k in _visible_cd_fields
+                                 if k in _ALL_CD_FIELDS and not _ALL_CD_FIELDS[k][5]]
+                _vis_readonly = [(k, _ALL_CD_FIELDS[k]) for k in _visible_cd_fields
+                                 if k in _ALL_CD_FIELDS and _ALL_CD_FIELDS[k][5]]
+
                 _cd_c1, _cd_c2 = st.columns(2)
-                _col_toggle = False  # alternate fields between columns
+                _col_toggle = False
 
-                for _label, _ss_key, _edit_key, _wtype, _extra in _EDITABLE_FIELDS:
-                    _col = _cd_c1 if not _col_toggle else _cd_c2
-                    _col_toggle = not _col_toggle
-                    _editing_key = f"_eoir_cd_editing_{_edit_key}"
-                    _is_editing = st.session_state.get(_editing_key, False)
-                    _val = st.session_state.get(_ss_key)
-
-                    with _col:
-                        if _is_editing:
-                            # ── Active widget ────────────────────────
+                if _edit_mode:
+                    # ── Bulk edit mode: all editable fields as inputs ─────
+                    for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_editable:
+                        _col = _cd_c1 if not _col_toggle else _cd_c2
+                        _col_toggle = not _col_toggle
+                        _val = st.session_state.get(_ss_key)
+                        with _col:
                             if _wtype == "picklist" and _extra:
                                 _cur = _val or ""
                                 _idx = _extra.index(_cur) if _cur in _extra else 0
-                                st.selectbox(
-                                    f"✏️ {_label}", options=_extra, index=_idx,
-                                    key=_ss_key,
-                                )
+                                st.selectbox(f"✏️ {_label}", options=_extra, index=_idx, key=_ss_key)
                             elif _wtype == "date":
                                 if _val is None:
                                     st.session_state[_ss_key] = date.today()
-                                st.date_input(
-                                    f"✏️ {_label}", format="MM/DD/YYYY",
-                                    key=_ss_key,
-                                )
+                                st.date_input(f"✏️ {_label}", format="MM/DD/YYYY", key=_ss_key)
                             elif _wtype == "toggle":
                                 st.toggle(f"✏️ {_label}", key=_ss_key)
                             else:
                                 st.text_input(f"✏️ {_label}", key=_ss_key)
-                            # Done button to collapse back to view
-                            if st.button("Done", key=f"_cd_done_{_edit_key}"):
-                                st.session_state[_editing_key] = False
-                                st.rerun()
-                        else:
-                            # ── View mode with pencil button ─────────
+
+                    # Read-only fields shown as disabled
+                    for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_readonly:
+                        _col = _cd_c1 if not _col_toggle else _cd_c2
+                        _col_toggle = not _col_toggle
+                        with _col:
+                            st.text_input(f"🔒 {_label}", key=_ss_key, disabled=True)
+
+                    # Save / Cancel buttons
+                    _btn_c1, _btn_c2, _btn_c3 = st.columns([2, 2, 4])
+                    with _btn_c1:
+                        _do_save = st.button("Save", type="primary", key="_eoir_cd_save")
+                    with _btn_c2:
+                        _do_cancel = st.button("Cancel", key="_eoir_cd_cancel")
+
+                    if _do_cancel:
+                        # Revert to SF values by re-triggering autofill
+                        st.session_state["_eoir_cd_autofill_case_id"] = ""
+                        st.session_state["_eoir_cd_edit_mode"] = False
+                        st.rerun()
+
+                    if _do_save and update_legal_case and _eoir_case_id:
+                        # Build updates from visible editable fields only
+                        # Use metadata to verify each field is updateable in SF
+                        updates: dict = {}
+                        for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_editable:
+                            if not _sf_api:
+                                continue  # derived field, not in SF
+                            # Check metadata: only push if field exists and is updateable
+                            _fmeta = _lc_meta.get(_sf_api, {})
+                            if _fmeta and not _fmeta.get("updateable", False):
+                                continue  # skip formula / non-updateable
+                            if _fmeta and _fmeta.get("formula", False):
+                                continue
+                            val = st.session_state.get(_ss_key)
                             if _wtype == "date":
-                                _disp = _val.strftime("%m/%d/%Y") if _val else "—"
-                            elif _wtype == "toggle":
-                                _disp = "Yes" if _val else "No"
-                            else:
-                                _disp = str(_val) if _val else "—"
-                            _row_text, _row_btn = st.columns([5, 1])
-                            with _row_text:
-                                st.markdown(f"**{_label}:** {_disp}")
-                            with _row_btn:
-                                if st.button("✏️", key=f"_cd_pen_{_edit_key}", help=f"Edit {_label}"):
-                                    st.session_state[_editing_key] = True
-                                    st.rerun()
-
-                # Render read-only fields (always view mode with lock icon)
-                for _label, _ss_key, _help_text in _READONLY_FIELDS:
-                    _col = _cd_c1 if not _col_toggle else _cd_c2
-                    _col_toggle = not _col_toggle
-                    _val = st.session_state.get(_ss_key, "") or "—"
-                    with _col:
-                        st.markdown(f"🔒 **{_label}:** {_val}")
-
-                # ── Sync to Salesforce ────────────────────────────────────
-                if update_legal_case and _eoir_case_id:
-                    st.markdown("")
-                    if st.button("Sync to Salesforce", type="primary", key="_eoir_cd_sync"):
-                        _sync_date_obj = st.session_state.get("inp_eoir_cd_next_govt_date")
-                        _sync_date = _sync_date_obj.strftime("%Y-%m-%d") if _sync_date_obj else None
-                        # Only push editable, non-formula fields
-                        updates = {
-                            "Location_City__c": st.session_state.get("inp_eoir_cd_city", ""),
-                            "Type_of_next_date__c": st.session_state.get("inp_eoir_cd_next_date_type", ""),
-                            "Next_Government_Date__c": _sync_date,
-                            "Next_Hearing_Time__c": st.session_state.get("inp_eoir_cd_hearing_time", ""),
-                            "Immigration_Judge__c": st.session_state.get("inp_eoir_cd_judge", ""),
-                            "Electronic_Service__c": st.session_state.get("inp_eoir_cd_electronic", False),
-                        }
+                                val = val.strftime("%Y-%m-%d") if val else None
+                            updates[_sf_api] = val
                         updates = {k: v for k, v in updates.items() if v is not None}
+
                         with st.spinner("Syncing to Salesforce..."):
                             try:
                                 update_legal_case(_eoir_case_id, updates)
+                                st.session_state["_eoir_cd_edit_mode"] = False
                                 st.toast("Case details synced to Salesforce!")
+                                st.rerun()
                             except Exception as e:
                                 st.error(f"Sync failed: {e}")
+
+                else:
+                    # ── View mode: compact display ───────────────────────
+                    for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_editable:
+                        _col = _cd_c1 if not _col_toggle else _cd_c2
+                        _col_toggle = not _col_toggle
+                        _val = st.session_state.get(_ss_key)
+                        if _wtype == "date":
+                            _disp = _val.strftime("%m/%d/%Y") if _val else "—"
+                        elif _wtype == "toggle":
+                            _disp = "Yes" if _val else "No"
+                        else:
+                            _disp = str(_val) if _val else "—"
+                        with _col:
+                            st.markdown(f"✏️ **{_label}:** {_disp}")
+
+                    for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_readonly:
+                        _col = _cd_c1 if not _col_toggle else _cd_c2
+                        _col_toggle = not _col_toggle
+                        _val = st.session_state.get(_ss_key, "") or "—"
+                        with _col:
+                            st.markdown(f"🔒 **{_label}:** {_val}")
 
             st.divider()
 
@@ -1538,15 +1646,130 @@ with tab_eoir:
             if _eoir_case_type:
                 st.markdown(f"**Case Type:** {_eoir_case_type}")
 
-            if _eoir_beneficiaries:
-                st.markdown("**Beneficiaries / Derivatives:**")
-                for _ben in _eoir_beneficiaries:
-                    _ben_line = _ben.get("Name", "")
-                    if _ben.get("A_Number"):
-                        _ben_line += f" — A# {_ben['A_Number']}"
-                    if _ben.get("Type"):
-                        _ben_line += f" ({_ben['Type']})"
-                    st.caption(_ben_line)
+            # ── Case Beneficiaries (Case_Contact__c) ─────────────────
+            if _case_bens:
+                st.markdown("**Case Beneficiaries**")
+                _sel_ids: list[str] = st.session_state.get("_case_bens_selected", [])
+
+                # Select All toggle
+                _all_ids = [b.get("Id") for b in _case_bens]
+                _all_selected = all(bid in _sel_ids for bid in _all_ids)
+                if st.checkbox("Select All", value=_all_selected, key="_case_bens_sel_all"):
+                    if not _all_selected:
+                        st.session_state["_case_bens_selected"] = list(_all_ids)
+                        st.rerun()
+                elif _all_selected:
+                    st.session_state["_case_bens_selected"] = []
+                    st.rerun()
+
+                # Individual checkboxes
+                _new_sel: list[str] = []
+                for _bi, _ben in enumerate(_case_bens):
+                    _bid = _ben.get("Id", "")
+                    _bfirst = _ben.get("First_Name__c", "")
+                    _blast = _ben.get("Last_Name__c", "")
+                    _bname = f"{_bfirst} {_blast}".strip() or "Unnamed"
+                    _brel = _ben.get("Relationship__c", "")
+                    _banum = _ben.get("Alien_Number__c", "")
+                    _bdob = _ben.get("Date_of_Birth__c", "")
+                    _bline = _bname
+                    if _brel:
+                        _bline += f" ({_brel})"
+                    if _banum:
+                        _bline += f" — A# {_banum}"
+                    _checked = st.checkbox(_bline, value=_bid in _sel_ids, key=f"_cben_chk_{_bi}")
+                    if _checked:
+                        _new_sel.append(_bid)
+                st.session_state["_case_bens_selected"] = _new_sel
+
+                # ── Derivatives detail (expandable with pencil edits) ──
+                _selected_bens = [b for b in _case_bens if b.get("Id") in _new_sel]
+                if _selected_bens:
+                    with st.expander(f"Derivatives ({len(_selected_bens)})", expanded=False):
+                        for _di, _db in enumerate(_selected_bens):
+                            _db_id = _db.get("Id", "")
+                            _db_first = _db.get("First_Name__c", "")
+                            _db_last = _db.get("Last_Name__c", "")
+                            _db_name = f"{_db_first} {_db_last}".strip() or "Unnamed"
+                            _db_rel = _db.get("Relationship__c", "")
+                            _db_anum = _db.get("Alien_Number__c", "")
+                            _db_dob = _db.get("Date_of_Birth__c", "")
+                            if _db_dob:
+                                try:
+                                    _db_dob = date.fromisoformat(_db_dob[:10]).strftime("%m/%d/%Y")
+                                except Exception:
+                                    pass
+
+                            st.markdown(f"**{_db_name}**")
+
+                            # Relationship — pencil editable
+                            _rel_edit_key = f"_cben_edit_rel_{_di}"
+                            if st.session_state.get(_rel_edit_key, False):
+                                _new_rel = st.text_input(
+                                    "✏️ Relationship", value=_db_rel,
+                                    key=f"_cben_rel_val_{_di}",
+                                )
+                                if st.button("Done", key=f"_cben_rel_done_{_di}"):
+                                    # Update in cached data
+                                    _db["Relationship__c"] = _new_rel
+                                    st.session_state[_rel_edit_key] = False
+                                    st.rerun()
+                            else:
+                                _r_text, _r_btn = st.columns([5, 1])
+                                with _r_text:
+                                    st.caption(f"Relationship: {_db_rel or '—'}")
+                                with _r_btn:
+                                    if st.button("✏️", key=f"_cben_rel_pen_{_di}", help="Edit Relationship"):
+                                        st.session_state[_rel_edit_key] = True
+                                        st.rerun()
+
+                            # A-Number — pencil editable
+                            _anum_edit_key = f"_cben_edit_anum_{_di}"
+                            if st.session_state.get(_anum_edit_key, False):
+                                _new_anum = st.text_input(
+                                    "✏️ A-Number", value=_db_anum,
+                                    key=f"_cben_anum_val_{_di}",
+                                )
+                                if st.button("Done", key=f"_cben_anum_done_{_di}"):
+                                    _db["Alien_Number__c"] = _new_anum
+                                    st.session_state[_anum_edit_key] = False
+                                    st.rerun()
+                            else:
+                                _a_text, _a_btn = st.columns([5, 1])
+                                with _a_text:
+                                    st.caption(f"A-Number: {_db_anum or '—'}")
+                                with _a_btn:
+                                    if st.button("✏️", key=f"_cben_anum_pen_{_di}", help="Edit A-Number"):
+                                        st.session_state[_anum_edit_key] = True
+                                        st.rerun()
+
+                            st.caption(f"DOB: {_db_dob or '—'}")
+
+                            if _di < len(_selected_bens) - 1:
+                                st.markdown("---")
+
+                        # Sync edits back to Salesforce
+                        if update_case_beneficiary:
+                            if st.button("Sync Beneficiary Edits to Salesforce", key="_cben_sync"):
+                                _sync_count = 0
+                                with st.spinner("Syncing beneficiary edits..."):
+                                    for _sb in _selected_bens:
+                                        _sb_id = _sb.get("Id", "")
+                                        if not _sb_id:
+                                            continue
+                                        _sb_updates = {
+                                            "Relationship__c": _sb.get("Relationship__c", ""),
+                                            "Alien_Number__c": _sb.get("Alien_Number__c", ""),
+                                        }
+                                        try:
+                                            update_case_beneficiary(_sb_id, _sb_updates)
+                                            _sync_count += 1
+                                        except Exception as e:
+                                            st.error(f"Failed to sync {_sb.get('First_Name__c', '')} {_sb.get('Last_Name__c', '')}: {e}")
+                                if _sync_count:
+                                    st.toast(f"Synced {_sync_count} beneficiar{'ies' if _sync_count != 1 else 'y'} to Salesforce!")
+            else:
+                st.caption("No derivatives found for this case.")
 
             st.divider()
 
@@ -1590,6 +1813,19 @@ with tab_eoir:
             )
 
             # ── Render EOIR text ─────────────────────────────────────────
+            # Map selected Case_Contact__c beneficiaries to render format
+            _sel_ben_ids = st.session_state.get("_case_bens_selected", [])
+            _render_bens = []
+            for _cb in _case_bens:
+                if _cb.get("Id") in _sel_ben_ids:
+                    _render_bens.append({
+                        "Name": f"{_cb.get('First_Name__c', '')} {_cb.get('Last_Name__c', '')}".strip(),
+                        "A_Number": _cb.get("Alien_Number__c", ""),
+                        "Type": _cb.get("Relationship__c", ""),
+                    })
+            # Fall back to LC_Contact__c if no Case_Contact__c data
+            _final_bens = _render_bens if _case_bens else _eoir_beneficiaries
+
             if _eoir_submission_type.strip():
                 letter_text = render_eoir_submission(
                     attorney_name=attorney_name,
@@ -1604,7 +1840,7 @@ with tab_eoir:
                     applicant_name=_eoir_applicant_name,
                     a_number=_eoir_a_number,
                     case_type=_eoir_case_type,
-                    beneficiaries=_eoir_beneficiaries,
+                    beneficiaries=_final_bens,
                     submission_type=_eoir_submission_type.strip(),
                     document_list=_eoir_enclosed,
                     dhs_address=_eoir_dhs_addr,

@@ -1424,8 +1424,8 @@ def _editor_components():
     st.subheader("Components")
     st.caption("Configure shared UI components that appear across multiple tools.")
 
-    comp_tab_db, comp_tab_sp, comp_tab_recip, comp_tab_docs = st.tabs([
-        "Draft Box", "System Prompts", "Recipients", "Document Manager",
+    comp_tab_db, comp_tab_sp, comp_tab_recip, comp_tab_docs, comp_tab_cd = st.tabs([
+        "Draft Box", "System Prompts", "Recipients", "Document Manager", "Case Details",
     ])
 
     with comp_tab_db:
@@ -1439,6 +1439,70 @@ def _editor_components():
 
     with comp_tab_docs:
         _editor_comp_document_manager()
+
+    with comp_tab_cd:
+        _editor_comp_case_details()
+
+
+_CASE_DETAIL_FIELD_OPTIONS = [
+    ("Editable", [
+        ("Location_City__c", "City", "picklist"),
+        ("Type_of_next_date__c", "Next Date Type", "picklist"),
+        ("Next_Government_Date__c", "Next Govt Date", "date"),
+        ("Immigration_Judge__c", "Immigration Judge", "picklist"),
+        ("Electronic_Service__c", "Electronic Service", "toggle"),
+    ]),
+    ("Derived / Manual", [
+        ("_asst_initials", "Assistant Initials", "text"),
+    ]),
+    ("Read-Only", [
+        ("Primary_Applicant__r_Name", "Primary Applicant", "readonly"),
+        ("Primary_Attorney__r_Name", "Primary Attorney", "readonly"),
+        ("A_number_dashed__c", "A-Number (Dashed)", "readonly"),
+    ]),
+]
+
+_CASE_DETAIL_DEFAULTS = [
+    "Location_City__c", "Type_of_next_date__c", "Next_Government_Date__c",
+    "Immigration_Judge__c", "Electronic_Service__c", "_asst_initials",
+    "Primary_Applicant__r_Name", "Primary_Attorney__r_Name", "A_number_dashed__c",
+]
+
+
+def _editor_comp_case_details():
+    """Configure which Legal_Case__c fields appear in the EOIR Verify Case Details section."""
+    st.markdown("### Case Details Fields")
+    st.caption(
+        "Choose which Legal Case fields appear in the 'Verify Case Details' section "
+        "of the EOIR Submission tab. Read-only fields are always shown as locked."
+    )
+
+    config = load_config("components") or {}
+    current_fields: list[str] = config.get("case_detail_fields", _CASE_DETAIL_DEFAULTS)
+
+    updated_fields: list[str] = []
+    for group_name, fields in _CASE_DETAIL_FIELD_OPTIONS:
+        st.markdown(f"**{group_name}**")
+        for api_name, label, ftype in fields:
+            is_on = api_name in current_fields
+            icon = "🔒" if ftype == "readonly" else "✏️"
+            toggled = st.toggle(
+                f"{icon} {label}  `{api_name}`",
+                value=is_on,
+                key=f"_cd_fld_{api_name}",
+            )
+            if toggled:
+                updated_fields.append(api_name)
+        st.markdown("")
+
+    if updated_fields != current_fields:
+        if st.button("Save Case Detail Settings", type="primary", key="_cd_fields_save"):
+            config["case_detail_fields"] = updated_fields
+            save_config("components", config)
+            st.toast("Case detail settings saved! Restart Filing Assembler to see changes.")
+            st.rerun()
+    else:
+        st.caption("No changes to save.")
 
 
 def _editor_comp_draft_box():

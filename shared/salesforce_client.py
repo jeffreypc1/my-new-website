@@ -139,7 +139,7 @@ LEGAL_CASE_FIELDS = [
     "Application_Priority_Date__c", "Outcome_Date__c",
     "Submitted_Date__c", "Watch_Date__c", "Watch_Date_Picklist__c",
     "Type_of_next_date__c", "Next_Government_Date__c",
-    "Next_Hearing_Time__c", "Immigration_Judge__c", "Electronic_Service__c",
+    "Immigration_Judge__c", "Electronic_Service__c",
     # EOIR court / service fields
     "Location_City__c", "Address_of_next_hearing__c", "DHS_Address__c",
 ]
@@ -207,6 +207,35 @@ def get_beneficiaries(legal_case_sf_id: str) -> list[dict]:
             "Type": r.get("Type__c", ""),
         })
     return out
+
+
+def get_case_beneficiaries(legal_case_sf_id: str) -> list[dict]:
+    """Fetch Case_Contact__c records (derivatives/beneficiaries) for a Legal Case.
+
+    Returns list of dicts with Id, First_Name__c, Last_Name__c,
+    Relationship__c, Alien_Number__c, Date_of_Birth__c.
+    """
+    sf = _sf_conn()
+    fields = (
+        "Id, First_Name__c, Last_Name__c, Relationship__c, "
+        "Alien_Number__c, Date_of_Birth__c"
+    )
+    query = (
+        f"SELECT {fields} FROM Case_Contact__c "
+        f"WHERE Legal_Case__c = '{legal_case_sf_id}' "
+        f"ORDER BY Relationship__c, Last_Name__c"
+    )
+    result = sf.query(query)
+    return [
+        {k: v for k, v in r.items() if k != "attributes"}
+        for r in result.get("records", [])
+    ]
+
+
+def update_case_beneficiary(record_id: str, updates: dict) -> None:
+    """Push field updates to a Case_Contact__c record."""
+    sf = _sf_conn()
+    sf.Case_Contact__c.update(record_id, updates)
 
 
 def get_legal_case_field_metadata() -> dict:
