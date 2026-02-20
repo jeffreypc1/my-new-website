@@ -139,6 +139,7 @@ LEGAL_CASE_FIELDS = [
     "Application_Priority_Date__c", "Outcome_Date__c",
     "Submitted_Date__c", "Watch_Date__c", "Watch_Date_Picklist__c",
     "Type_of_next_date__c", "Next_Government_Date__c",
+    "Next_Hearing_Time__c", "Immigration_Judge__c", "Electronic_Service__c",
     # EOIR court / service fields
     "Location_City__c", "Address_of_next_hearing__c", "DHS_Address__c",
 ]
