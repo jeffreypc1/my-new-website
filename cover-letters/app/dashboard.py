@@ -26,6 +26,7 @@ from app.templates import (
     get_filing_offices,
     get_recipient_addresses,
     render_cover_letter,
+    render_eoir_submission,
     save_recipient_addresses,
 )
 
@@ -42,6 +43,10 @@ try:
     from shared.salesforce_client import upload_file_to_contact
 except ImportError:
     upload_file_to_contact = None
+try:
+    from shared.salesforce_client import get_beneficiaries
+except ImportError:
+    get_beneficiaries = None
 try:
     from shared.google_doc_creator import render_google_doc_button
 except ImportError:
@@ -547,6 +552,12 @@ def _do_new() -> None:
         "inp_export_file_name",
         "_sf_autofill_cid", "_prev_case_type", "_prev_template_selection",
         "_gdoc_result_gdoc_export_cl", "google_doc_url",
+        # EOIR tab keys
+        "inp_eoir_court_location", "inp_eoir_court_address",
+        "inp_eoir_submission_type", "inp_eoir_dhs_address",
+        "inp_eoir_service_method", "inp_eoir_legal_case_idx",
+        "_eoir_beneficiaries", "_eoir_beneficiaries_case_id",
+        "_eoir_autofill_case_id",
     ):
         if k in st.session_state:
             del st.session_state[k]
@@ -610,6 +621,47 @@ def _build_preview_html(
             parts.append(f"<br>{escaped}")
         else:
             parts.append(escaped)
+
+    return "<br>".join(parts)
+
+
+def _build_eoir_preview_html(text: str) -> str:
+    """Convert EOIR submission plain text into styled HTML for the preview panel."""
+    esc = html_mod.escape
+    lines = text.split("\n")
+    parts: list[str] = []
+
+    # Centered headings
+    _centered = {
+        "UNITED STATES DEPARTMENT OF JUSTICE",
+        "EXECUTIVE OFFICE FOR IMMIGRATION REVIEW",
+        "IMMIGRATION COURT",
+        "IN THE MATTERS OF:",
+        "RESPONDENT'S SUBMISSION",
+        "CERTIFICATE OF SERVICE",
+    }
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped in _centered:
+            if stripped == "CERTIFICATE OF SERVICE":
+                parts.append(
+                    f'<div class="letter-cert" style="text-align:center;">'
+                    f"<strong>{esc(stripped)}</strong></div>"
+                )
+            else:
+                parts.append(f'<div style="text-align:center;"><strong>{esc(stripped)}</strong></div>')
+        elif line.startswith("    ") and len(line) > 4 and line.strip()[0:1].isdigit():
+            # Numbered document list item
+            parts.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{esc(stripped)}")
+        elif line.startswith("____"):
+            parts.append(f"<br>{esc(line)}")
+        elif stripped.startswith("Bar No."):
+            parts.append(esc(stripped))
+        elif stripped.startswith("Tel:") or stripped.startswith("Fax:") or stripped.startswith("Email:"):
+            parts.append(esc(stripped))
+        else:
+            parts.append(esc(line))
 
     return "<br>".join(parts)
 
@@ -746,6 +798,7 @@ if st.session_state.get("_show_add_address"):
 # Pre-compute attorney/firm info from session state so the preview (rendered
 # inside the tab BEFORE the footer selectbox) uses the current values.
 _staff_dir = load_config("staff-directory") or []
+_staff_dir = [m for m in _staff_dir if m.get("visible", True)]
 _gs_global = load_config("global-settings") or {}
 _atty_sel_pre = st.session_state.get("inp_attorney_staff", "")
 _matched_pre = next(
@@ -1221,17 +1274,187 @@ with tab_cover:
 with tab_eoir:
     _eoir_left, _eoir_right = st.columns([3, 2], gap="large")
 
-    with _eoir_left:
-        st.info("EOIR Submission form coming soon. Court-specific fields will be added here.")
+    # Resolve legal cases from active client
+    _eoir_sf_client = st.session_state.get("sf_client")
+    _eoir_legal_cases: list[dict] = []
+    if _eoir_sf_client:
+        _eoir_legal_cases = _eoir_sf_client.get("legal_cases", [])
 
+    with _eoir_left:
+        if not _eoir_sf_client:
+            st.info("Pull a client to use the EOIR Submission tab.")
+        elif not _eoir_legal_cases:
+            st.warning("No legal cases found for this client.")
+        else:
+            # ── Legal Case Selector ──────────────────────────────────────
+            st.markdown('<div class="section-label">Legal Case</div>', unsafe_allow_html=True)
+            _lc_labels = []
+            for _lc in _eoir_legal_cases:
+                _lc_name = _lc.get("Name", "")
+                _lc_type = _lc.get("Legal_Case_Type__c", "")
+                _lc_labels.append(f"{_lc_name} — {_lc_type}" if _lc_type else _lc_name)
+
+            # Default to the selected_legal_case from Client Info if available
+            _preselected_lc = _eoir_sf_client.get("selected_legal_case")
+            _default_lc_idx = 0
+            if _preselected_lc:
+                for _i, _lc in enumerate(_eoir_legal_cases):
+                    if _lc.get("Id") == _preselected_lc.get("Id"):
+                        _default_lc_idx = _i
+                        break
+
+            _eoir_lc_idx = st.selectbox(
+                "Select Legal Case",
+                options=range(len(_eoir_legal_cases)),
+                index=st.session_state.get("inp_eoir_legal_case_idx", _default_lc_idx),
+                format_func=lambda i: _lc_labels[i],
+                key="inp_eoir_legal_case_idx",
+                label_visibility="collapsed",
+            )
+            _eoir_case = _eoir_legal_cases[_eoir_lc_idx]
+            _eoir_case_id = _eoir_case.get("Id", "")
+
+            # ── Auto-fill from case fields on case change ────────────────
+            _prev_autofill = st.session_state.get("_eoir_autofill_case_id", "")
+            if _eoir_case_id and _eoir_case_id != _prev_autofill:
+                st.session_state["inp_eoir_court_location"] = _eoir_case.get("Location_City__c", "") or ""
+                st.session_state["inp_eoir_court_address"] = _eoir_case.get("Address_of_next_hearing__c", "") or ""
+                st.session_state["inp_eoir_dhs_address"] = _eoir_case.get("DHS_Address__c", "") or ""
+                st.session_state["_eoir_autofill_case_id"] = _eoir_case_id
+
+            # ── Fetch beneficiaries (cached per case) ────────────────────
+            _cached_ben_case = st.session_state.get("_eoir_beneficiaries_case_id", "")
+            if _eoir_case_id != _cached_ben_case:
+                if get_beneficiaries and _eoir_case_id:
+                    try:
+                        st.session_state["_eoir_beneficiaries"] = get_beneficiaries(_eoir_case_id)
+                    except Exception:
+                        st.session_state["_eoir_beneficiaries"] = []
+                else:
+                    st.session_state["_eoir_beneficiaries"] = []
+                st.session_state["_eoir_beneficiaries_case_id"] = _eoir_case_id
+            _eoir_beneficiaries: list[dict] = st.session_state.get("_eoir_beneficiaries", [])
+
+            st.divider()
+
+            # ── Court Information ────────────────────────────────────────
+            st.markdown('<div class="section-label">Court Information</div>', unsafe_allow_html=True)
+            _eoir_court_loc = st.text_input(
+                "Court Location",
+                key="inp_eoir_court_location",
+                placeholder="e.g. SAN FRANCISCO CA",
+            )
+            _eoir_court_addr = st.text_area(
+                "Court Address",
+                key="inp_eoir_court_address",
+                height=80,
+                placeholder="Full court street address",
+            )
+
+            st.divider()
+
+            # ── Parties ──────────────────────────────────────────────────
+            st.markdown('<div class="section-label">Parties</div>', unsafe_allow_html=True)
+            _eoir_applicant_name = _eoir_case.get("Primary_Applicant__r_Name", "") or _eoir_sf_client.get("Name", "")
+            _eoir_a_number = _eoir_case.get("A_number_dashed__c", "") or _eoir_sf_client.get("A_Number__c", "")
+            _eoir_case_type = _eoir_case.get("Legal_Case_Type__c", "")
+
+            st.markdown(f"**Primary Applicant:** {_eoir_applicant_name}")
+            if _eoir_a_number:
+                st.markdown(f"**A#:** {_eoir_a_number}")
+            if _eoir_case_type:
+                st.markdown(f"**Case Type:** {_eoir_case_type}")
+
+            if _eoir_beneficiaries:
+                st.markdown("**Beneficiaries / Derivatives:**")
+                for _ben in _eoir_beneficiaries:
+                    _ben_line = _ben.get("Name", "")
+                    if _ben.get("A_Number"):
+                        _ben_line += f" — A# {_ben['A_Number']}"
+                    if _ben.get("Type"):
+                        _ben_line += f" ({_ben['Type']})"
+                    st.caption(_ben_line)
+
+            st.divider()
+
+            # ── Submission Details ───────────────────────────────────────
+            st.markdown('<div class="section-label">Submission Details</div>', unsafe_allow_html=True)
+            _eoir_submission_type = st.text_area(
+                "Submission Description",
+                key="inp_eoir_submission_type",
+                height=80,
+                placeholder="e.g. Respondent's Pre-Hearing Brief and Supporting Evidence",
+            )
+
+            # Show enclosed documents summary (shared with Cover Letter tab)
+            _eoir_enclosed = _build_enclosed_docs_list()
+            if _eoir_enclosed:
+                st.markdown(f"**Enclosed Documents** ({len(_eoir_enclosed)}):")
+                for _idx, _doc in enumerate(_eoir_enclosed, start=1):
+                    _doc_label = _doc.get("name", "")
+                    _doc_desc = _doc.get("description", "")
+                    if _doc_desc:
+                        st.caption(f"{_idx}. {_doc_label} — {_doc_desc}")
+                    else:
+                        st.caption(f"{_idx}. {_doc_label}")
+            else:
+                st.caption("No enclosed documents. Add documents in the Cover Letter tab.")
+
+            st.divider()
+
+            # ── Certificate of Service ───────────────────────────────────
+            st.markdown('<div class="section-label">Certificate of Service</div>', unsafe_allow_html=True)
+            _eoir_dhs_addr = st.text_area(
+                "DHS / OCC Address",
+                key="inp_eoir_dhs_address",
+                height=80,
+                placeholder="Office of the Chief Counsel address",
+            )
+            _eoir_service_method = st.selectbox(
+                "Service Method",
+                options=["first-class mail", "hand delivery", "electronic filing (ECAS)"],
+                key="inp_eoir_service_method",
+            )
+
+            # ── Render EOIR text ─────────────────────────────────────────
+            if _eoir_submission_type.strip():
+                letter_text = render_eoir_submission(
+                    attorney_name=attorney_name,
+                    bar_number=bar_number,
+                    firm_name=firm_name,
+                    firm_address=firm_address,
+                    firm_phone=_gs_global.get("firm_phone", ""),
+                    firm_fax=_gs_global.get("firm_fax", ""),
+                    firm_email=_gs_global.get("firm_email", ""),
+                    court_location=_eoir_court_loc,
+                    court_address=_eoir_court_addr,
+                    applicant_name=_eoir_applicant_name,
+                    a_number=_eoir_a_number,
+                    case_type=_eoir_case_type,
+                    beneficiaries=_eoir_beneficiaries,
+                    submission_type=_eoir_submission_type.strip(),
+                    document_list=_eoir_enclosed,
+                    dhs_address=_eoir_dhs_addr,
+                    service_method=_eoir_service_method,
+                )
+
+    # ── EOIR Preview (right column) ──────────────────────────────────────
     with _eoir_right:
-        st.markdown(
-            '<div class="preview-panel" style="min-height:200px;display:flex;align-items:center;'
-            'justify-content:center;color:#94a3b8;font-style:italic;">'
-            'EOIR Submission preview will appear here.'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="section-label">EOIR Submission Preview</div>', unsafe_allow_html=True)
+        if letter_text and "EXECUTIVE OFFICE FOR IMMIGRATION REVIEW" in letter_text:
+            _eoir_preview_html = _build_eoir_preview_html(letter_text)
+            st.markdown(
+                f'<div class="preview-panel">{_eoir_preview_html}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="preview-panel" style="min-height:200px;display:flex;align-items:center;'
+                'justify-content:center;color:#94a3b8;font-style:italic;">'
+                'Fill in the submission description to see a preview.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PERSISTENT FOOTER — Attorney / Signature + Export
@@ -1278,7 +1501,17 @@ with _footer_right:
         st.markdown('<div class="section-label">Export</div>', unsafe_allow_html=True)
 
         # File name input — smart default, no explicit value (Streamlit pitfall)
-        _default_file_name = f"{date.today().isoformat()} - {client_name} - Cover Letter"
+        _is_eoir_content = "EXECUTIVE OFFICE FOR IMMIGRATION REVIEW" in letter_text
+        _doc_type_label = "EOIR Submission" if _is_eoir_content else "Cover Letter"
+        _eoir_applicant = st.session_state.get("inp_eoir_court_location", "")
+        _file_name_client = client_name
+        # For EOIR, use the applicant name from the case if available
+        if _is_eoir_content and _eoir_sf_client:
+            _eoir_case_for_name = _eoir_legal_cases[st.session_state.get("inp_eoir_legal_case_idx", 0)] if _eoir_legal_cases else {}
+            _eoir_app_name = _eoir_case_for_name.get("Primary_Applicant__r_Name", "") or _eoir_sf_client.get("Name", "")
+            if _eoir_app_name:
+                _file_name_client = _eoir_app_name
+        _default_file_name = f"{date.today().isoformat()} - {_file_name_client} - {_doc_type_label}"
         if "inp_export_file_name" not in st.session_state:
             st.session_state["inp_export_file_name"] = ""
         _export_input = st.text_input(
@@ -1319,9 +1552,12 @@ with _footer_right:
             )
 
         # Export to Google Doc
-        # Pick template based on context (Cover Letter vs EOIR when implemented)
+        # Pick template based on context (Cover Letter vs EOIR)
         _gd_folder = _gs_global.get("google_drive_folder_id", "")
-        _gd_template = _gs_global.get("cover_letter_template_id", "")
+        if _is_eoir_content:
+            _gd_template = _gs_global.get("eoir_template_id", "") or _gs_global.get("cover_letter_template_id", "")
+        else:
+            _gd_template = _gs_global.get("cover_letter_template_id", "")
         _sf_contact_id_export = (_sf_client.get("Id", "") if _sf_client else "")
 
         if _sf_contact_id_export and _gd_template and render_google_doc_button:

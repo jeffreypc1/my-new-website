@@ -305,8 +305,8 @@ def _show_draft_editor(tool_name: str, client_name: str, document_type: str):
                     from shared.salesforce_client import _sf_conn
 
                     # Load staff directory for sender name
-                    staff = load_config("staff-directory") or {}
-                    staff_list = staff.get("staff", [])
+                    staff_list = load_config("staff-directory") or []
+                    staff_list = [m for m in staff_list if m.get("visible", True)]
                     sender_name = "O'Brien Immigration Law"
                     if staff_list:
                         s = staff_list[0]

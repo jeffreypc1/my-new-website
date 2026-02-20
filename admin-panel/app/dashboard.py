@@ -1721,6 +1721,8 @@ def _editor_client_banner():
 
 def _editor_firm_info():
     """Manage firm-level settings used across tools (cover pages, briefs, etc.)."""
+    import time
+
     st.subheader("Firm Info")
     st.caption(
         "Firm name and address are used in cover pages, briefs, and other documents. "
@@ -1729,20 +1731,83 @@ def _editor_firm_info():
 
     _global = load_config("global-settings") or {}
     cur_name = _global.get("firm_name", "O'Brien Immigration Law")
-    cur_addr = _global.get("firm_address", "")
 
     new_name = st.text_input("Firm Name", value=cur_name, key="_firm_name")
-    new_addr = st.text_area("Firm Address", value=cur_addr, key="_firm_address", height=100)
-
-    if new_name != cur_name or new_addr != cur_addr:
-        if st.button("Save Firm Info", type="primary", key="_firm_save"):
+    if new_name != cur_name:
+        if st.button("Save Firm Name", type="primary", key="_firm_name_save"):
             _global["firm_name"] = new_name
-            _global["firm_address"] = new_addr
             save_config("global-settings", _global)
-            st.toast("Firm info saved!")
+            st.toast("Firm name saved!")
             st.rerun()
-    else:
-        st.caption("No changes to save.")
+
+    # ── Locations manager ────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("**Office Locations**")
+    st.caption("Manage office locations. The first location's address is used as the default firm address.")
+
+    locations = load_config("firm-locations") or []
+
+    # Seed from existing firm_address on first load
+    if not locations and _global.get("firm_address", "").strip():
+        locations = [{
+            "id": f"loc_{int(time.time() * 1000)}",
+            "name": "Main Office",
+            "address": _global["firm_address"].strip(),
+        }]
+        save_config("firm-locations", locations)
+        st.rerun()
+
+    # Add new location
+    with st.expander("Add Location", expanded=not locations):
+        loc_name = st.text_input("Location Name", key="_loc_new_name", placeholder="e.g. Stockton")
+        loc_addr = st.text_area("Address", key="_loc_new_addr", height=80)
+        if st.button("Add Location", type="primary", key="_loc_add"):
+            if not loc_name.strip():
+                st.warning("Location name is required.")
+            else:
+                locations.append({
+                    "id": f"loc_{int(time.time() * 1000)}",
+                    "name": loc_name.strip(),
+                    "address": loc_addr.strip(),
+                })
+                save_config("firm-locations", locations)
+                # Keep firm_address in sync with first location
+                _global["firm_address"] = locations[0]["address"]
+                save_config("global-settings", _global)
+                st.toast(f"Added location: {loc_name.strip()}")
+                st.rerun()
+
+    # List existing locations
+    loc_changed = False
+    locs_to_delete = []
+
+    for li, loc in enumerate(locations):
+        with st.expander(f"{loc.get('name', 'Unnamed')}"):
+            ln = st.text_input("Name", value=loc.get("name", ""), key=f"_loc_n_{li}")
+            la = st.text_area("Address", value=loc.get("address", ""), key=f"_loc_a_{li}", height=80)
+            if ln != loc.get("name", "") or la != loc.get("address", ""):
+                loc["name"] = ln
+                loc["address"] = la
+                loc_changed = True
+            if st.button("Delete Location", key=f"_loc_del_{li}"):
+                locs_to_delete.append(li)
+
+    if locs_to_delete:
+        for li in sorted(locs_to_delete, reverse=True):
+            removed = locations.pop(li)
+            st.toast(f"Removed location: {removed.get('name', '')}")
+        save_config("firm-locations", locations)
+        _global["firm_address"] = locations[0]["address"] if locations else ""
+        save_config("global-settings", _global)
+        st.rerun()
+
+    if loc_changed:
+        if st.button("Save Location Changes", type="primary", key="_loc_save"):
+            save_config("firm-locations", locations)
+            _global["firm_address"] = locations[0]["address"] if locations else ""
+            save_config("global-settings", _global)
+            st.toast("Locations saved!")
+            st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1752,6 +1817,8 @@ def _editor_firm_info():
 
 def _editor_staff_directory():
     """Manage office staff members — names, contact info for document generation."""
+    import time
+
     st.subheader("Staff Directory")
     st.caption(
         "Add staff members so their info can be pulled into cover pages, briefs, "
@@ -1759,6 +1826,64 @@ def _editor_staff_directory():
     )
 
     staff = load_config("staff-directory") or []
+    locations = load_config("firm-locations") or []
+    loc_names = ["(None)"] + [loc.get("name", "Unnamed") for loc in locations]
+    loc_ids = [""] + [loc.get("id", "") for loc in locations]
+
+    # --- Sync from Salesforce ---
+    if st.button("Sync Staff from Salesforce", key="_staff_sync"):
+        with st.spinner("Pulling active users from Salesforce..."):
+            try:
+                from shared.salesforce_client import get_sf_users
+                sf_users = get_sf_users()
+            except Exception as e:
+                st.error(f"Salesforce sync failed: {e}")
+                sf_users = []
+
+            if sf_users:
+                added, updated = 0, 0
+                for sfu in sf_users:
+                    sf_id = sfu.get("Id", "")
+                    sf_email = (sfu.get("Email") or "").strip().lower()
+                    # Match by sf_user_id first, then by email
+                    match = None
+                    for m in staff:
+                        if m.get("sf_user_id") and m["sf_user_id"] == sf_id:
+                            match = m
+                            break
+                    if not match and sf_email:
+                        for m in staff:
+                            if (m.get("email") or "").strip().lower() == sf_email:
+                                match = m
+                                break
+                    if match:
+                        match["first_name"] = sfu.get("FirstName") or match.get("first_name", "")
+                        match["last_name"] = sfu.get("LastName") or match.get("last_name", "")
+                        match["email"] = sfu.get("Email") or match.get("email", "")
+                        match["phone"] = sfu.get("Phone") or match.get("phone", "")
+                        match["bar_number"] = sfu.get("Bar_Number__c") or match.get("bar_number", "")
+                        match["sf_user_id"] = sf_id
+                        updated += 1
+                    else:
+                        staff.append({
+                            "id": f"staff_{int(time.time() * 1000)}",
+                            "first_name": sfu.get("FirstName") or "",
+                            "last_name": sfu.get("LastName") or "",
+                            "email": sfu.get("Email") or "",
+                            "phone": sfu.get("Phone") or "",
+                            "bar_number": sfu.get("Bar_Number__c") or "",
+                            "address": "",
+                            "location_id": "",
+                            "visible": True,
+                            "sf_user_id": sf_id,
+                        })
+                        added += 1
+                        time.sleep(0.001)  # ensure unique timestamp ids
+                save_config("staff-directory", staff)
+                st.success(f"Sync complete — added {added}, updated {updated} staff members.")
+                st.rerun()
+            elif not sf_users:
+                st.info("No active Salesforce users found.")
 
     # --- Add new staff member ---
     with st.expander("Add New Staff Member", expanded=not staff):
@@ -1771,12 +1896,13 @@ def _editor_staff_directory():
             new_phone = st.text_input("Phone", key="_staff_new_phone")
             new_bar = st.text_input("Bar Number", key="_staff_new_bar")
             new_address = st.text_area("Address", key="_staff_new_address", height=100)
+        new_loc_idx = st.selectbox("Location", range(len(loc_names)), format_func=lambda i: loc_names[i], key="_staff_new_loc")
+        new_visible = st.toggle("Visible in app picklists", value=True, key="_staff_new_visible")
 
         if st.button("Add Staff Member", type="primary", key="_staff_add"):
             if not new_first.strip() or not new_last.strip():
                 st.warning("First and last name are required.")
             else:
-                import time
                 staff.append({
                     "id": f"staff_{int(time.time() * 1000)}",
                     "first_name": new_first.strip(),
@@ -1785,6 +1911,9 @@ def _editor_staff_directory():
                     "phone": new_phone.strip(),
                     "bar_number": new_bar.strip(),
                     "address": new_address.strip(),
+                    "location_id": loc_ids[new_loc_idx],
+                    "visible": new_visible,
+                    "sf_user_id": "",
                 })
                 save_config("staff-directory", staff)
                 st.toast(f"Added {new_first.strip()} {new_last.strip()}")
@@ -1792,7 +1921,7 @@ def _editor_staff_directory():
 
     # --- List existing staff ---
     if not staff:
-        st.info("No staff members yet. Add one above.")
+        st.info("No staff members yet. Add one above or sync from Salesforce.")
         return
 
     st.markdown(f"**{len(staff)} staff member{'s' if len(staff) != 1 else ''}**")
@@ -1802,7 +1931,9 @@ def _editor_staff_directory():
 
     for idx, member in enumerate(staff):
         display_name = f"{member.get('first_name', '')} {member.get('last_name', '')}".strip() or "Unnamed"
-        with st.expander(f"{display_name} — {member.get('email', '')}"):
+        badge = " (SF)" if member.get("sf_user_id") else ""
+        vis_label = "" if member.get("visible", True) else " [Hidden]"
+        with st.expander(f"{display_name}{badge}{vis_label} — {member.get('email', '')}"):
             c1, c2 = st.columns(2)
             with c1:
                 first = st.text_input("First Name", value=member.get("first_name", ""), key=f"_staff_f_{idx}")
@@ -1813,16 +1944,39 @@ def _editor_staff_directory():
                 bar_num = st.text_input("Bar Number", value=member.get("bar_number", ""), key=f"_staff_b_{idx}")
                 address = st.text_area("Address", value=member.get("address", ""), key=f"_staff_a_{idx}", height=100)
 
+            # Location picklist
+            cur_loc_id = member.get("location_id", "")
+            try:
+                sel_loc_idx = loc_ids.index(cur_loc_id)
+            except ValueError:
+                sel_loc_idx = 0
+            new_loc_idx = st.selectbox(
+                "Location", range(len(loc_names)),
+                format_func=lambda i: loc_names[i],
+                index=sel_loc_idx,
+                key=f"_staff_loc_{idx}",
+            )
+
+            # Visible toggle
+            vis = st.toggle("Visible in app picklists", value=member.get("visible", True), key=f"_staff_vis_{idx}")
+
+            if member.get("sf_user_id"):
+                st.caption("Synced from Salesforce")
+
             if (first != member.get("first_name", "") or last != member.get("last_name", "") or
                     email != member.get("email", "") or phone != member.get("phone", "") or
                     bar_num != member.get("bar_number", "") or
-                    address != member.get("address", "")):
+                    address != member.get("address", "") or
+                    loc_ids[new_loc_idx] != cur_loc_id or
+                    vis != member.get("visible", True)):
                 member["first_name"] = first
                 member["last_name"] = last
                 member["email"] = email
                 member["phone"] = phone
                 member["bar_number"] = bar_num
                 member["address"] = address
+                member["location_id"] = loc_ids[new_loc_idx]
+                member["visible"] = vis
                 staff_changed = True
 
             if st.button("Delete", key=f"_staff_del_{idx}"):

@@ -139,6 +139,8 @@ LEGAL_CASE_FIELDS = [
     "Application_Priority_Date__c", "Outcome_Date__c",
     "Submitted_Date__c", "Watch_Date__c", "Watch_Date_Picklist__c",
     "Type_of_next_date__c", "Next_Government_Date__c",
+    # EOIR court / service fields
+    "Location_City__c", "Address_of_next_hearing__c", "DHS_Address__c",
 ]
 
 # Relationship fields to resolve names for reference lookups
@@ -183,6 +185,27 @@ def get_legal_cases(contact_sf_id: str) -> list[dict]:
         )
     records = result.get("records", [])
     return [_flatten_lc_record(r) for r in records]
+
+
+def get_beneficiaries(legal_case_sf_id: str) -> list[dict]:
+    """Fetch LC_Contact__c records for a Legal Case (beneficiaries/derivatives)."""
+    sf = _sf_conn()
+    query = (
+        f"SELECT Id, Contact__r.Name, Contact__r.A_Number__c, Type__c "
+        f"FROM LC_Contact__c "
+        f"WHERE Legal_Case__c = '{legal_case_sf_id}' "
+        f"ORDER BY Type__c, Contact__r.Name"
+    )
+    result = sf.query(query)
+    out = []
+    for r in result.get("records", []):
+        contact = r.get("Contact__r") or {}
+        out.append({
+            "Name": contact.get("Name", ""),
+            "A_Number": contact.get("A_Number__c", ""),
+            "Type": r.get("Type__c", ""),
+        })
+    return out
 
 
 def get_legal_case_field_metadata() -> dict:
@@ -323,6 +346,27 @@ def upload_file_to_contact(
         "FirstPublishLocationId": contact_sf_id,
     })
     return result["id"]
+
+
+def get_sf_users() -> list[dict]:
+    """Fetch active Salesforce users (standard + custom bar number)."""
+    sf = _sf_conn()
+    base_fields = "Id, FirstName, LastName, Email, Phone, IsActive"
+    try:
+        result = sf.query(
+            f"SELECT {base_fields}, Bar_Number__c "
+            f"FROM User WHERE IsActive = true AND UserType = 'Standard' "
+            f"ORDER BY LastName, FirstName"
+        )
+    except Exception:
+        # Bar_Number__c may not exist on User — fall back
+        result = sf.query(
+            f"SELECT {base_fields} "
+            f"FROM User WHERE IsActive = true AND UserType = 'Standard' "
+            f"ORDER BY LastName, FirstName"
+        )
+    records = result.get("records", [])
+    return [{k: v for k, v in r.items() if k != "attributes"} for r in records]
 
 
 def get_field_metadata(field_names: list[str] | None = None) -> dict:

@@ -423,6 +423,7 @@ def _show_email_compose(client_record: dict, sf_available: bool):
     st.markdown(f"**To:** {client_name} ({client_email})")
 
     staff = load_config("staff-directory") or []
+    staff = [m for m in staff if m.get("visible", True)]
     staff_options = []
     for member in staff:
         first = member.get("first_name", "")
