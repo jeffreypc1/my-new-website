@@ -788,3 +788,147 @@ def render_cover_letter(
         lines.append(tpl["certificate_of_service"].format(date=today))
 
     return "\n".join(lines)
+
+
+def render_eoir_submission(
+    attorney_name: str,
+    bar_number: str,
+    firm_name: str,
+    firm_address: str,
+    firm_phone: str = "",
+    firm_fax: str = "",
+    firm_email: str = "",
+    court_location: str = "",
+    court_address: str = "",
+    applicant_name: str = "",
+    a_number: str = "",
+    case_type: str = "",
+    beneficiaries: list[dict] | None = None,
+    submission_type: str = "",
+    document_list: list[dict[str, str]] | None = None,
+    dhs_address: str = "",
+    service_method: str = "first-class mail",
+) -> str:
+    """Render an EOIR submission cover page as plain text.
+
+    Returns the same kind of plain-text string as render_cover_letter()
+    so it works with _build_docx() and _build_cover_letter_pdf().
+    """
+    today = date.today().strftime("%m/%d/%Y")
+    lines: list[str] = []
+
+    # ── Attorney header ──────────────────────────────────────────────────────
+    if attorney_name:
+        lines.append(attorney_name)
+    if bar_number:
+        lines.append(f"Bar No. {bar_number}")
+    if firm_name:
+        lines.append(firm_name)
+    if firm_address:
+        for addr_line in firm_address.strip().splitlines():
+            lines.append(addr_line)
+    contact_parts: list[str] = []
+    if firm_phone:
+        contact_parts.append(f"Tel: {firm_phone}")
+    if firm_fax:
+        contact_parts.append(f"Fax: {firm_fax}")
+    if contact_parts:
+        lines.append(" | ".join(contact_parts))
+    if firm_email:
+        lines.append(f"Email: {firm_email}")
+    lines.append("")
+
+    # ── Court header ─────────────────────────────────────────────────────────
+    lines.append("UNITED STATES DEPARTMENT OF JUSTICE")
+    lines.append("EXECUTIVE OFFICE FOR IMMIGRATION REVIEW")
+    lines.append("IMMIGRATION COURT")
+    if court_location:
+        lines.append(court_location)
+    if court_address:
+        for addr_line in court_address.strip().splitlines():
+            lines.append(addr_line)
+    lines.append("")
+
+    # ── Parties ──────────────────────────────────────────────────────────────
+    lines.append("IN THE MATTERS OF:")
+    lines.append("")
+    if applicant_name:
+        a_num_str = f"A# {a_number}" if a_number else ""
+        lines.append(f"{applicant_name:<40s}{a_num_str}")
+        if case_type:
+            lines.append(f"{'':<40s}{case_type}")
+    if beneficiaries:
+        for ben in beneficiaries:
+            ben_name = ben.get("Name", "")
+            ben_anum = ben.get("A_Number", "")
+            ben_type = ben.get("Type", "")
+            a_str = f"A# {ben_anum}" if ben_anum else ""
+            if ben_type:
+                lines.append(f"{ben_name:<40s}{a_str:<24s}{ben_type}")
+            else:
+                lines.append(f"{ben_name:<40s}{a_str}")
+    lines.append("")
+
+    # ── Submission header ────────────────────────────────────────────────────
+    lines.append("RESPONDENT'S SUBMISSION")
+    lines.append("")
+    if submission_type:
+        lines.append(submission_type)
+        lines.append("")
+    lines.append(today)
+    lines.append("")
+
+    # ── Document list ────────────────────────────────────────────────────────
+    lines.append(
+        "The following documents are respectfully submitted to the Immigration Court"
+    )
+    lines.append("on behalf of the above-named respondent:")
+    lines.append("")
+    if document_list:
+        for idx, doc in enumerate(document_list, start=1):
+            name = doc.get("name", "")
+            desc = doc.get("description", "")
+            if desc:
+                lines.append(f"    {idx}. {name} -- {desc}")
+            else:
+                lines.append(f"    {idx}. {name}")
+    else:
+        lines.append("    [No documents listed]")
+    lines.append("")
+
+    # ── Signature ────────────────────────────────────────────────────────────
+    lines.append("Respectfully submitted,")
+    lines.append("")
+    lines.append("____________________________")
+    if attorney_name:
+        lines.append(attorney_name)
+    if firm_name:
+        lines.append(firm_name)
+    lines.append("Counsel for Respondent")
+
+    # ── Certificate of service ───────────────────────────────────────────────
+    lines.append("")
+    lines.append("")
+    lines.append("CERTIFICATE OF SERVICE")
+    lines.append("")
+    lines.append(
+        f"I hereby certify that on {today}, a copy of the foregoing submission and all"
+    )
+    lines.append(
+        "enclosed documents was served upon the Office of the Chief Counsel,"
+    )
+    lines.append(
+        f"Department of Homeland Security, by {service_method}, at the following address:"
+    )
+    lines.append("")
+    if dhs_address:
+        for addr_line in dhs_address.strip().splitlines():
+            lines.append(addr_line)
+    else:
+        lines.append("[DHS Address]")
+    lines.append("")
+    lines.append("____________________________")
+    if attorney_name:
+        lines.append(attorney_name)
+
+    return "\n".join(lines)
