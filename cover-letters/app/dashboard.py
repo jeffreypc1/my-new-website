@@ -659,27 +659,32 @@ def _build_cover_letter_pdf(letter_text: str) -> bytes:
     pdf.add_page()
     pdf.set_font("Times", "", 12)
 
+    # Explicit width avoids fpdf2 w=0 edge cases on page breaks
+    _w = pdf.w - pdf.l_margin - pdf.r_margin
+    _w_indent = _w - 10
+
     for line in letter_text.split("\n"):
+        pdf.set_x(pdf.l_margin)
         if not line.strip():
             pdf.ln(6)
         elif line.startswith("RE: "):
             pdf.set_font("Times", "B", 12)
-            pdf.multi_cell(0, 6, line)
+            pdf.multi_cell(_w, 6, line, new_x="LMARGIN", new_y="NEXT")
             pdf.set_font("Times", "", 12)
         elif line == "CERTIFICATE OF SERVICE":
             pdf.ln(6)
             pdf.set_font("Times", "B", 12)
-            pdf.multi_cell(0, 6, line)
+            pdf.multi_cell(_w, 6, line, new_x="LMARGIN", new_y="NEXT")
             pdf.set_font("Times", "", 12)
             pdf.ln(3)
         elif line.startswith("____"):
             pdf.ln(6)
-            pdf.multi_cell(0, 6, line)
+            pdf.multi_cell(_w, 6, line, new_x="LMARGIN", new_y="NEXT")
         elif line.startswith("    "):
             pdf.set_x(pdf.l_margin + 10)
-            pdf.multi_cell(0, 6, line.strip())
+            pdf.multi_cell(_w_indent, 6, line.strip(), new_x="LMARGIN", new_y="NEXT")
         else:
-            pdf.multi_cell(0, 6, line)
+            pdf.multi_cell(_w, 6, line, new_x="LMARGIN", new_y="NEXT")
 
     buf = io.BytesIO()
     pdf.output(buf)
