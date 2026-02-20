@@ -1326,7 +1326,10 @@ with _footer_right:
 
         if _sf_contact_id_export and _gd_template and render_google_doc_button:
             # Full export: Google Doc + Salesforce Google_Doc__c record
-            _sf_legal_case_id = _sf_client.get("Legal_Case__c") if _sf_client else None
+            _selected_lc = _sf_client.get("selected_legal_case") if _sf_client else None
+            _sf_legal_case_id = _selected_lc.get("Id") if _selected_lc else (
+                _sf_client.get("Legal_Case__c") if _sf_client else None
+            )
             render_google_doc_button(
                 template_id=_gd_template,
                 file_name=export_file_name,

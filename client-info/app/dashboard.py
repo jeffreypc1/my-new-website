@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html as html_mod
 import sys
+from datetime import date as _date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,9 +23,12 @@ from shared.config_store import get_config_value
 from shared.salesforce_client import (
     get_client,
     get_field_metadata,
+    get_legal_cases,
+    get_legal_case_field_metadata,
     load_active_client,
     save_active_client,
     update_client,
+    update_legal_case,
 )
 try:
     from shared.tool_help import render_tool_help
@@ -85,6 +89,33 @@ div[data-testid="stToolbar"] { display: none !important; }
     text-transform: uppercase; letter-spacing: 0.04em;
     margin-bottom: 4px; margin-top: 16px;
 }
+
+/* Read-only fields: plain text labels */
+.ro-field { margin-bottom: 14px; }
+.ro-label {
+    font-size: 0.82rem; font-weight: 500; color: #5a6a85;
+    margin-bottom: 2px;
+}
+.ro-value {
+    font-size: 0.95rem; color: #1a2744; font-weight: 500;
+    padding: 6px 0 4px 0;
+    border-bottom: 1px solid #e8ecf1;
+    min-height: 1.4em;
+}
+
+/* Editable fields: active border */
+[data-testid="stTextInput"] input:not(:disabled),
+[data-testid="stNumberInput"] input:not(:disabled),
+[data-testid="stTextArea"] textarea:not(:disabled),
+[data-testid="stDateInput"] input {
+    border: 1.5px solid #4A90D9 !important;
+    background: #ffffff !important;
+}
+[data-testid="stSelectbox"] > div > div > div,
+[data-testid="stMultiSelect"] > div > div > div {
+    border-color: #4A90D9 !important;
+    background: #ffffff !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -128,9 +159,9 @@ with st.sidebar:
         if box_fid:
             st.markdown(f"[Open Box Folder](https://app.box.com/folder/{box_fid})")
     st.markdown("---")
-    st.caption("Scroll to view field groups:")
-    for gn in ["Identity", "Contact Information", "Immigration Details", "Family", "Case Information"]:
-        st.markdown(f"- {gn}")
+    st.caption("Tabs:")
+    st.markdown("- Contact Fields")
+    st.markdown("- Legal Cases")
     try:
         from shared.tool_notes import render_tool_notes
         render_tool_notes("client-info")
@@ -159,6 +190,8 @@ if not st.session_state.get("_ci_loaded"):
         if active:
             st.session_state.sf_client = active
             st.session_state.sf_id = active.get("Id", "")
+            st.session_state.sf_legal_cases = active.get("legal_cases", [])
+            st.session_state.sf_legal_case = active.get("selected_legal_case")
             st.session_state._ci_loaded = True
 
 if do_pull and customer_id:
@@ -172,6 +205,21 @@ if do_pull and customer_id:
             st.session_state.sf_client = record
             st.session_state.sf_id = record.get("Id", "")
             st.session_state._ci_loaded = True
+            # Fetch Legal Cases
+            sf_id = record.get("Id", "")
+            if sf_id:
+                try:
+                    cases = get_legal_cases(sf_id)
+                except Exception:
+                    cases = []
+                st.session_state.sf_legal_cases = cases
+                # Auto-select: match Contact's Legal_Case__c lookup, or sole case
+                lc_lookup = record.get("Legal_Case__c")
+                match = next((c for c in cases if c["Id"] == lc_lookup), None) if lc_lookup else None
+                st.session_state.sf_legal_case = match or (cases[0] if len(cases) == 1 else None)
+                # Persist for cross-tool access
+                record["legal_cases"] = cases
+                record["selected_legal_case"] = st.session_state.sf_legal_case
             save_active_client(record)
             st.rerun()
         else:
@@ -234,107 +282,330 @@ except Exception:
 st.markdown(f"### {html_mod.escape(sf.get('Name', ''))}")
 st.caption(f"Customer ID: {sf.get('Customer_ID__c', '')} · Salesforce ID: {sf.get('Id', '')}")
 
-# -- Editable fields ----------------------------------------------------------
+# -- Helpers for field rendering ----------------------------------------------
 
-edited_values = {}
+def _parse_sf_date(val) -> _date | None:
+    """Parse a Salesforce date/datetime string to a Python date."""
+    if not val:
+        return None
+    s = str(val)[:10]  # YYYY-MM-DD portion
+    try:
+        return _date.fromisoformat(s)
+    except (ValueError, TypeError):
+        return None
 
-col_left, col_right = st.columns(2, gap="large")
+def _format_date_display(val) -> str:
+    """Format a date value as MM/DD/YYYY for read-only display."""
+    d = _parse_sf_date(val) if not isinstance(val, _date) else val
+    return d.strftime("%m/%d/%Y") if d else ""
 
-group_names = list(FIELD_GROUPS.keys())
-left_groups = group_names[:3]
-right_groups = group_names[3:]
+def _render_ro_field(label: str, value: str):
+    """Render a read-only field as a styled plain-text label."""
+    v = html_mod.escape(str(value)) if value else "\u2014"
+    st.markdown(
+        f'<div class="ro-field">'
+        f'<div class="ro-label">{html_mod.escape(label)}</div>'
+        f'<div class="ro-value">{v}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
-for col, groups in [(col_left, left_groups), (col_right, right_groups)]:
-    with col:
-        for group_name in groups:
-            api_names = FIELD_GROUPS[group_name]
-            st.markdown(f'<div class="section-label">{group_name}</div>', unsafe_allow_html=True)
+# -- Tabs ---------------------------------------------------------------------
 
-            for api_name in api_names:
-                meta = field_meta.get(api_name, {})
-                label = meta.get("label", api_name)
-                ftype = meta.get("type", "string")
-                picklist_vals = meta.get("picklistValues", [])
-                current_val = sf.get(api_name)
-                display_val = str(current_val) if current_val is not None else ""
-                key = f"fld_{api_name}"
+tab_contact, tab_cases = st.tabs(["Contact Fields", "Legal Cases"])
 
-                # Choose widget based on Salesforce field type
-                if ftype == "picklist" and picklist_vals:
-                    options = [""] + [pv["value"] for pv in picklist_vals]
-                    try:
-                        idx = options.index(display_val)
-                    except ValueError:
-                        # Current value not in picklist — add it
-                        if display_val:
-                            options.insert(1, display_val)
-                            idx = 1
+# -- Contact Fields tab -------------------------------------------------------
+
+with tab_contact:
+    edited_values = {}
+
+    col_left, col_right = st.columns(2, gap="large")
+
+    group_names = list(FIELD_GROUPS.keys())
+    left_groups = group_names[:3]
+    right_groups = group_names[3:]
+
+    for col, groups in [(col_left, left_groups), (col_right, right_groups)]:
+        with col:
+            for group_name in groups:
+                api_names = FIELD_GROUPS[group_name]
+                st.markdown(f'<div class="section-label">{group_name}</div>', unsafe_allow_html=True)
+
+                for api_name in api_names:
+                    meta = field_meta.get(api_name, {})
+                    label = meta.get("label", api_name)
+                    ftype = meta.get("type", "string")
+                    picklist_vals = meta.get("picklistValues", [])
+                    current_val = sf.get(api_name)
+                    display_val = str(current_val) if current_val is not None else ""
+                    key = f"fld_{api_name}"
+                    edit_label = f"\u270f\ufe0f {label}"
+
+                    # Choose widget based on Salesforce field type
+                    if ftype == "picklist" and picklist_vals:
+                        options = [""] + [pv["value"] for pv in picklist_vals]
+                        try:
+                            idx = options.index(display_val)
+                        except ValueError:
+                            if display_val:
+                                options.insert(1, display_val)
+                                idx = 1
+                            else:
+                                idx = 0
+                        new_val = st.selectbox(edit_label, options=options, index=idx, key=key)
+
+                    elif ftype == "multipicklist" and picklist_vals:
+                        all_opts = [pv["value"] for pv in picklist_vals]
+                        current_selected = [v.strip() for v in display_val.split(";")] if display_val else []
+                        selected = st.multiselect(edit_label, options=all_opts, default=current_selected, key=key)
+                        new_val = ";".join(selected) if selected else ""
+
+                    elif ftype == "textarea":
+                        new_val = st.text_area(edit_label, value=display_val, key=key, height=80)
+
+                    elif ftype == "boolean":
+                        new_val = st.checkbox(edit_label, value=display_val.lower() == "true", key=key)
+                        bool_str = str(new_val).lower()
+                        if bool_str != display_val.lower():
+                            edited_values[api_name] = new_val
+                        continue
+
+                    elif ftype == "date":
+                        parsed = _parse_sf_date(current_val)
+                        new_date = st.date_input(edit_label, value=parsed, format="MM/DD/YYYY", key=key)
+                        orig_str = str(current_val)[:10] if current_val else None
+                        new_str = new_date.strftime("%Y-%m-%d") if new_date else None
+                        if new_str != orig_str:
+                            edited_values[api_name] = new_str
+                        continue
+
+                    else:
+                        new_val = st.text_input(edit_label, value=display_val, key=key)
+
+                    if new_val != display_val:
+                        edited_values[api_name] = new_val if new_val else None
+
+    # -- Push to Salesforce ---------------------------------------------------
+
+    st.markdown("---")
+    push_cols = st.columns([1, 2, 1])
+    with push_cols[1]:
+        if edited_values:
+            st.info(f"{len(edited_values)} field(s) changed")
+
+        if st.button(
+            "Push to Salesforce",
+            type="primary",
+            use_container_width=True,
+            disabled=not edited_values,
+        ):
+            sf_id = st.session_state.get("sf_id", "")
+            if not sf_id:
+                st.error("No Salesforce record ID found. Pull the client again.")
+            else:
+                try:
+                    # Remove any disabled fields as safety net
+                    push_values = {k: v for k, v in edited_values.items() if k not in _disabled_fields}
+                    update_client(sf_id, push_values)
+                    # Refresh the record
+                    record = get_client(sf.get("Customer_ID__c", ""))
+                    if record:
+                        st.session_state.sf_client = record
+                        save_active_client(record)
+                    # Clear widget keys so they reload with fresh values
+                    for key in list(st.session_state.keys()):
+                        if key.startswith("fld_"):
+                            del st.session_state[key]
+                    st.success(f"Updated {len(push_values)} field(s) in Salesforce")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Push failed: {e}")
+
+        if not edited_values:
+            st.caption("Edit any field above, then push changes back to Salesforce.")
+
+# -- Legal Cases tab ----------------------------------------------------------
+
+# Field groups for the Legal Case tab layout
+_LC_FIELD_GROUPS = {
+    "Case Identity": [
+        "Name", "Legal_Case_Full_Name__c", "Primary_CID__c",
+        "A_number_dashed__c", "Id", "CreatedDate", "LastModifiedDate",
+    ],
+    "Case Details": [
+        "Legal_Case_Type__c", "Bar_Number__c",
+        "EOIR_Email_Subject__c", "Make_Service_Request__c",
+    ],
+    "People": [
+        "Primary_Applicant__c", "Primary_Attorney__c",
+        "Primary_Assistant__c", "Hearing_Attorney__c",
+    ],
+    "Dates": [
+        "Application_Priority_Date__c", "Submitted_Date__c",
+        "Outcome_Date__c", "Next_Government_Date__c",
+        "Type_of_next_date__c", "Watch_Date__c", "Watch_Date_Picklist__c",
+    ],
+}
+
+# Reference fields: show resolved name instead of raw ID
+_LC_REF_NAME_MAP = {
+    "Primary_Applicant__c": "Primary_Applicant__r_Name",
+    "Primary_Attorney__c": "Primary_Attorney__r_Name",
+    "Primary_Assistant__c": "Primary_Assistant__r_Name",
+    "Hearing_Attorney__c": "Hearing_Attorney__r_Name",
+}
+
+with tab_cases:
+    legal_cases = st.session_state.get("sf_legal_cases", [])
+
+    if not legal_cases:
+        st.info("No Legal Cases found for this client.")
+    else:
+        st.caption(f"{len(legal_cases)} legal case(s) found")
+
+        lc_options = [c.get("Name", "?") for c in legal_cases]
+        current_lc = st.session_state.get("sf_legal_case")
+        current_idx = 0
+        if current_lc:
+            for i, c in enumerate(legal_cases):
+                if c["Id"] == current_lc.get("Id"):
+                    current_idx = i
+                    break
+
+        selected_idx = st.selectbox(
+            "Select Legal Case",
+            range(len(lc_options)),
+            format_func=lambda i: lc_options[i],
+            index=current_idx,
+            key="lc_select",
+        )
+
+        selected_case = legal_cases[selected_idx]
+
+        # Persist selection if it changed
+        if st.session_state.sf_legal_case != selected_case:
+            st.session_state.sf_legal_case = selected_case
+            sf["selected_legal_case"] = selected_case
+            save_active_client(sf)
+
+        # Load field metadata for smart widgets
+        try:
+            lc_meta = get_legal_case_field_metadata()
+        except Exception:
+            lc_meta = {}
+
+        st.markdown("---")
+
+        lc_edited = {}
+        lc_col_left, lc_col_right = st.columns(2, gap="large")
+        lc_group_names = list(_LC_FIELD_GROUPS.keys())
+
+        for col, groups in [(lc_col_left, lc_group_names[:2]), (lc_col_right, lc_group_names[2:])]:
+            with col:
+                for group_name in groups:
+                    api_names = _LC_FIELD_GROUPS[group_name]
+                    st.markdown(f'<div class="section-label">{group_name}</div>', unsafe_allow_html=True)
+
+                    for api_name in api_names:
+                        meta = lc_meta.get(api_name, {})
+                        label = meta.get("label", api_name)
+                        ftype = meta.get("type", "string")
+                        is_formula = meta.get("formula", False)
+                        is_updateable = meta.get("updateable", False)
+                        picklist_vals = meta.get("picklistValues", [])
+                        is_ref = api_name in _LC_REF_NAME_MAP
+                        key = f"lc_{api_name}"
+
+                        # Reference fields → plain text with resolved name
+                        if is_ref:
+                            name_key = _LC_REF_NAME_MAP[api_name]
+                            display = selected_case.get(name_key) or selected_case.get(api_name) or ""
+                            _render_ro_field(label, display)
+                            continue
+
+                        current_val = selected_case.get(api_name)
+                        display_val = str(current_val) if current_val is not None else ""
+                        read_only = not is_updateable or is_formula
+
+                        # Read-only → plain text label
+                        if read_only:
+                            if ftype in ("date", "datetime"):
+                                _render_ro_field(label, _format_date_display(current_val))
+                            else:
+                                _render_ro_field(label, display_val)
+                            continue
+
+                        edit_label = f"\u270f\ufe0f {label}"
+
+                        if ftype == "picklist" and picklist_vals:
+                            options = [""] + [pv["value"] for pv in picklist_vals]
+                            try:
+                                idx = options.index(display_val)
+                            except ValueError:
+                                if display_val:
+                                    options.insert(1, display_val)
+                                    idx = 1
+                                else:
+                                    idx = 0
+                            new_val = st.selectbox(edit_label, options=options, index=idx, key=key)
+
+                        elif ftype == "date":
+                            parsed = _parse_sf_date(current_val)
+                            new_date = st.date_input(edit_label, value=parsed, format="MM/DD/YYYY", key=key)
+                            orig_str = str(current_val)[:10] if current_val else None
+                            new_str = new_date.strftime("%Y-%m-%d") if new_date else None
+                            if new_str != orig_str:
+                                lc_edited[api_name] = new_str
+                            continue
+
                         else:
-                            idx = 0
-                    new_val = st.selectbox(label, options=options, index=idx, key=key)
+                            new_val = st.text_input(edit_label, value=display_val, key=key)
 
-                elif ftype == "multipicklist" and picklist_vals:
-                    all_opts = [pv["value"] for pv in picklist_vals]
-                    current_selected = [v.strip() for v in display_val.split(";")] if display_val else []
-                    selected = st.multiselect(label, options=all_opts, default=current_selected, key=key)
-                    new_val = ";".join(selected) if selected else ""
+                        if new_val != display_val:
+                            lc_edited[api_name] = new_val if new_val else None
 
-                elif ftype == "textarea":
-                    new_val = st.text_area(label, value=display_val, key=key, height=80)
+        # -- Push Legal Case changes ------------------------------------------
+        st.markdown("---")
+        lc_push_cols = st.columns([1, 2, 1])
+        with lc_push_cols[1]:
+            if lc_edited:
+                st.info(f"{len(lc_edited)} field(s) changed")
 
-                elif ftype == "boolean":
-                    new_val = st.checkbox(label, value=display_val.lower() == "true", key=key)
-                    # Convert back to compare
-                    bool_str = str(new_val).lower()
-                    if bool_str != display_val.lower():
-                        edited_values[api_name] = new_val
-                    continue
-
+            if st.button(
+                "Push Legal Case to Salesforce",
+                type="primary",
+                use_container_width=True,
+                disabled=not lc_edited,
+                key="lc_push",
+            ):
+                case_id = selected_case.get("Id", "")
+                if not case_id:
+                    st.error("No Legal Case record ID found.")
                 else:
-                    # string, email, phone, date, etc. — text input
-                    new_val = st.text_input(label, value=display_val, key=key)
+                    try:
+                        update_legal_case(case_id, lc_edited)
+                        # Re-fetch all cases to refresh data
+                        sf_id = st.session_state.get("sf_id", "")
+                        if sf_id:
+                            cases = get_legal_cases(sf_id)
+                            st.session_state.sf_legal_cases = cases
+                            # Re-select the same case
+                            updated = next((c for c in cases if c["Id"] == case_id), None)
+                            st.session_state.sf_legal_case = updated
+                            sf["legal_cases"] = cases
+                            sf["selected_legal_case"] = updated
+                            save_active_client(sf)
+                        # Clear lc widget keys
+                        for wkey in list(st.session_state.keys()):
+                            if wkey.startswith("lc_"):
+                                del st.session_state[wkey]
+                        st.success(f"Updated {len(lc_edited)} field(s) on Legal Case")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Push failed: {e}")
 
-                if new_val != display_val:
-                    edited_values[api_name] = new_val if new_val else None
-
-# -- Push to Salesforce -------------------------------------------------------
-
-st.markdown("---")
-push_cols = st.columns([1, 2, 1])
-with push_cols[1]:
-    if edited_values:
-        st.info(f"{len(edited_values)} field(s) changed")
-
-    if st.button(
-        "Push to Salesforce",
-        type="primary",
-        use_container_width=True,
-        disabled=not edited_values,
-    ):
-        sf_id = st.session_state.get("sf_id", "")
-        if not sf_id:
-            st.error("No Salesforce record ID found. Pull the client again.")
-        else:
-            try:
-                # Remove any disabled fields as safety net
-                push_values = {k: v for k, v in edited_values.items() if k not in _disabled_fields}
-                update_client(sf_id, push_values)
-                # Refresh the record
-                record = get_client(sf.get("Customer_ID__c", ""))
-                if record:
-                    st.session_state.sf_client = record
-                    save_active_client(record)
-                # Clear widget keys so they reload with fresh values
-                for key in list(st.session_state.keys()):
-                    if key.startswith("fld_"):
-                        del st.session_state[key]
-                st.success(f"Updated {len(push_values)} field(s) in Salesforce")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Push failed: {e}")
-
-    if not edited_values:
-        st.caption("Edit any field above, then push changes back to Salesforce.")
+            if not lc_edited:
+                st.caption("Edit any field above, then push changes back to Salesforce.")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BOX DOCUMENT BROWSER

@@ -125,6 +125,103 @@ def get_lc_tasks(contact_sf_id: str) -> list[dict]:
     ]
 
 
+LEGAL_CASE_FIELDS = [
+    # Identity / read-only
+    "Id", "Name", "CreatedDate", "LastModifiedDate",
+    # Formula fields (read-only)
+    "Primary_CID__c", "A_number_dashed__c", "EOIR_Email_Subject__c",
+    "Make_Service_Request__c", "Legal_Case_Full_Name__c",
+    # References (display names via relationships)
+    "Primary_Applicant__c", "Primary_Attorney__c",
+    "Primary_Assistant__c", "Hearing_Attorney__c",
+    # Editable fields
+    "Legal_Case_Type__c", "Bar_Number__c",
+    "Application_Priority_Date__c", "Outcome_Date__c",
+    "Submitted_Date__c", "Watch_Date__c", "Watch_Date_Picklist__c",
+    "Type_of_next_date__c", "Next_Government_Date__c",
+]
+
+# Relationship fields to resolve names for reference lookups
+_LC_RELATIONSHIP_FIELDS = [
+    "Primary_Applicant__r.Name",
+    "Primary_Attorney__r.Name",
+    "Primary_Assistant__r.Name",
+    "Hearing_Attorney__r.Name",
+]
+
+
+def _flatten_lc_record(record: dict) -> dict:
+    """Flatten relationship fields into display-friendly keys."""
+    flat = {k: v for k, v in record.items() if k != "attributes"}
+    # Convert nested relationship dicts → "FieldName__r_Name" keys
+    for key in list(flat.keys()):
+        if isinstance(flat[key], dict) and "Name" in flat[key]:
+            flat[f"{key}_Name"] = flat[key]["Name"]
+            del flat[key]
+        elif isinstance(flat[key], dict):
+            del flat[key]
+    return flat
+
+
+def get_legal_cases(contact_sf_id: str) -> list[dict]:
+    """Fetch Legal_Case__c records related to a Contact."""
+    sf = _sf_conn()
+    all_fields = LEGAL_CASE_FIELDS + _LC_RELATIONSHIP_FIELDS
+    field_list = ", ".join(all_fields)
+    query = (
+        f"SELECT {field_list} FROM Legal_Case__c "
+        f"WHERE Primary_Applicant__c = '{contact_sf_id}' "
+        f"ORDER BY CreatedDate DESC"
+    )
+    try:
+        result = sf.query(query)
+    except Exception:
+        # Fallback if field names don't match this org's schema
+        result = sf.query(
+            f"SELECT Id, Name FROM Legal_Case__c "
+            f"WHERE Primary_Applicant__c = '{contact_sf_id}' ORDER BY Name"
+        )
+    records = result.get("records", [])
+    return [_flatten_lc_record(r) for r in records]
+
+
+def get_legal_case_field_metadata() -> dict:
+    """Return metadata for Legal_Case__c fields including picklist values.
+
+    Returns a dict keyed by API name with type, label, updateable, picklistValues.
+    """
+    global _lc_field_meta_cache
+    if _lc_field_meta_cache is not None:
+        return _lc_field_meta_cache
+
+    sf = _sf_conn()
+    desc = sf.Legal_Case__c.describe()
+    meta = {}
+    for f in desc["fields"]:
+        meta[f["name"]] = {
+            "label": f["label"],
+            "type": f["type"],
+            "updateable": f.get("updateable", False),
+            "formula": bool(f.get("calculatedFormula")),
+            "picklistValues": [
+                {"label": pv["label"], "value": pv["value"]}
+                for pv in f.get("picklistValues", [])
+                if pv.get("active", True)
+            ],
+        }
+    _lc_field_meta_cache = meta
+    return meta
+
+
+_lc_field_meta_cache = None
+
+
+def update_legal_case(case_sf_id: str, updates: dict) -> None:
+    """Push field updates to a Legal_Case__c record."""
+    sf = _sf_conn()
+    sf.Legal_Case__c.update(case_sf_id, updates)
+
+
 def create_lc_task(contact_sf_id: str, description: str) -> str:
     """Create a new LC_Task__c record linked to a Contact.
 
@@ -338,4 +435,5 @@ DEFAULT_FIELDS = [
     "Nexus__c",
     "PSG__c",
     "Box_Folder_ID__c",
+    "Legal_Case__c",
 ]
