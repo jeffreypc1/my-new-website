@@ -808,6 +808,8 @@ def render_eoir_submission(
     document_list: list[dict[str, str]] | None = None,
     dhs_address: str = "",
     service_method: str = "first-class mail",
+    served_by_name: str = "",
+    served_by_bar: str = "",
 ) -> str:
     """Render an EOIR submission cover page as plain text.
 
@@ -928,7 +930,262 @@ def render_eoir_submission(
         lines.append("[DHS Address]")
     lines.append("")
     lines.append("____________________________")
-    if attorney_name:
-        lines.append(attorney_name)
+    _cert_name = served_by_name or attorney_name
+    if _cert_name:
+        lines.append(_cert_name)
+    if served_by_bar:
+        lines.append(served_by_bar)
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# EOIR Cover Page — template engine
+# ---------------------------------------------------------------------------
+
+DEFAULT_EOIR_COVER_TEMPLATE = """\
+{attorney_name}
+{bar_number}
+{firm_name}
+{firm_address}
+{contact_line}
+{email_line}
+
+UNITED STATES DEPARTMENT OF JUSTICE
+EXECUTIVE OFFICE FOR IMMIGRATION REVIEW
+IMMIGRATION COURT
+{court_location}
+{court_address}
+
+IN THE MATTERS OF:
+
+{party_block}
+
+RESPONDENT'S SUBMISSION
+{submission_line_1}
+{submission_sub_line}
+
+{submission_type}
+
+{date}
+
+The following documents are respectfully submitted to the Immigration Court
+on behalf of the above-named respondent:
+
+{document_list}
+
+Respectfully submitted,
+
+____________________________
+{attorney_name}
+{firm_name}
+Counsel for Respondent
+
+
+CERTIFICATE OF SERVICE
+
+I hereby certify that on {date}, a copy of the foregoing submission and all
+enclosed documents was served upon the Office of the Chief Counsel,
+Department of Homeland Security, by {service_method}, at the following address:
+
+{dhs_address}
+
+____________________________
+{served_by_name}
+{served_by_bar}
+"""
+
+
+def _compute_contact_line(phone: str, fax: str) -> str:
+    """Build 'Tel: X | Fax: Y' string, omitting blanks."""
+    parts: list[str] = []
+    if phone:
+        parts.append(f"Tel: {phone}")
+    if fax:
+        parts.append(f"Fax: {fax}")
+    return " | ".join(parts)
+
+
+def _compute_email_line(email: str) -> str:
+    """Build 'Email: X' or empty string."""
+    return f"Email: {email}" if email else ""
+
+
+def _compute_party_block(
+    applicant: str,
+    a_number: str,
+    case_type: str,
+    beneficiaries: list[dict] | None,
+) -> str:
+    """Column-formatted applicant line + each beneficiary."""
+    lines: list[str] = []
+    if applicant:
+        a_str = f"A# {a_number}" if a_number else ""
+        lines.append(f"{applicant:<40s}{a_str}")
+        if case_type:
+            lines.append(f"{'':<40s}{case_type}")
+    if beneficiaries:
+        for ben in beneficiaries:
+            ben_name = ben.get("Name", "")
+            ben_anum = ben.get("A_Number", "")
+            ben_type = ben.get("Type", "")
+            a_str = f"A# {ben_anum}" if ben_anum else ""
+            if ben_type:
+                lines.append(f"{ben_name:<40s}{a_str:<24s}{ben_type}")
+            else:
+                lines.append(f"{ben_name:<40s}{a_str}")
+    return "\n".join(lines)
+
+
+def _compute_document_list(docs: list[dict[str, str]] | None) -> str:
+    """Numbered indented list of enclosed documents."""
+    if not docs:
+        return "    [No documents listed]"
+    lines: list[str] = []
+    for idx, doc in enumerate(docs, start=1):
+        name = doc.get("name", "")
+        desc = doc.get("description", "")
+        if desc:
+            lines.append(f"    {idx}. {name} -- {desc}")
+        else:
+            lines.append(f"    {idx}. {name}")
+    return "\n".join(lines)
+
+
+def _clean_blank_lines(text: str) -> str:
+    """Collapse 3+ consecutive blank lines to 2."""
+    import re
+    return re.sub(r"\n{4,}", "\n\n\n", text)
+
+
+def render_eoir_from_template(
+    attorney_name: str,
+    bar_number: str,
+    firm_name: str,
+    firm_address: str,
+    firm_phone: str = "",
+    firm_fax: str = "",
+    firm_email: str = "",
+    court_location: str = "",
+    court_address: str = "",
+    applicant_name: str = "",
+    a_number: str = "",
+    case_type: str = "",
+    beneficiaries: list[dict] | None = None,
+    submission_type: str = "",
+    submission_line_1: str = "",
+    submission_sub_line: str = "",
+    document_list: list[dict[str, str]] | None = None,
+    dhs_address: str = "",
+    service_method: str = "first-class mail",
+    served_by_name: str = "",
+    served_by_bar: str = "",
+    template_override: str | None = None,
+) -> str:
+    """Render EOIR cover page from a template with {variable} placeholders.
+
+    Uses template_override if provided, otherwise DEFAULT_EOIR_COVER_TEMPLATE.
+    """
+    template = template_override if template_override else DEFAULT_EOIR_COVER_TEMPLATE
+    today = date.today().strftime("%m/%d/%Y")
+
+    # Build computed values
+    contact_line = _compute_contact_line(firm_phone, firm_fax)
+    email_line = _compute_email_line(firm_email)
+    party_block = _compute_party_block(applicant_name, a_number, case_type, beneficiaries)
+    doc_list_text = _compute_document_list(document_list)
+
+    # Format multi-line firm_address
+    addr_text = "\n".join(firm_address.strip().splitlines()) if firm_address else ""
+
+    # Format multi-line court_address
+    court_addr_text = "\n".join(court_address.strip().splitlines()) if court_address else ""
+
+    # Format multi-line dhs_address
+    dhs_addr_text = ""
+    if dhs_address:
+        dhs_addr_text = "\n".join(dhs_address.strip().splitlines())
+    else:
+        dhs_addr_text = "[DHS Address]"
+
+    # Bar number formatting
+    bar_text = f"Bar No. {bar_number}" if bar_number else ""
+
+    replacements = {
+        "{attorney_name}": attorney_name or "",
+        "{bar_number}": bar_text,
+        "{firm_name}": firm_name or "",
+        "{firm_address}": addr_text,
+        "{firm_phone}": firm_phone or "",
+        "{firm_fax}": firm_fax or "",
+        "{firm_email}": firm_email or "",
+        "{contact_line}": contact_line,
+        "{email_line}": email_line,
+        "{court_location}": court_location or "",
+        "{court_address}": court_addr_text,
+        "{applicant_name}": applicant_name or "",
+        "{a_number}": a_number or "",
+        "{case_type}": case_type or "",
+        "{party_block}": party_block,
+        "{submission_type}": submission_type or "",
+        "{submission_line_1}": submission_line_1 or "",
+        "{submission_sub_line}": submission_sub_line or "",
+        "{date}": today,
+        "{document_list}": doc_list_text,
+        "{dhs_address}": dhs_addr_text,
+        "{service_method}": service_method or "first-class mail",
+        "{served_by_name}": served_by_name or "",
+        "{served_by_bar}": served_by_bar or "",
+    }
+
+    result = template
+    for placeholder, value in replacements.items():
+        result = result.replace(placeholder, value)
+
+    return _clean_blank_lines(result)
+
+
+# ---------------------------------------------------------------------------
+# Split rendered EOIR text into named blocks for the interactive canvas
+# ---------------------------------------------------------------------------
+
+_EOIR_BLOCK_MARKERS = [
+    ("court_caption", "UNITED STATES DEPARTMENT OF JUSTICE", "Court Caption"),
+    ("party_table", "IN THE MATTERS OF:", "Respondent/Derivative Table"),
+    ("submission_body", "RESPONDENT'S SUBMISSION", "Submission Description"),
+    ("signature", "Respectfully submitted,", "Signature Block"),
+    ("cert_of_service", "CERTIFICATE OF SERVICE", "Certificate of Service"),
+]
+
+
+def split_eoir_into_blocks(text: str) -> list[dict]:
+    """Split rendered EOIR text into named, editable blocks.
+
+    Returns list of ``{"id": str, "label": str, "content": str}``.
+    """
+    if not text:
+        return []
+
+    found: list[tuple[int, str, str]] = []
+    for block_id, marker, label in _EOIR_BLOCK_MARKERS:
+        idx = text.find(marker)
+        if idx >= 0:
+            found.append((idx, block_id, label))
+
+    if not found:
+        return [{"id": "full_document", "label": "Full Document", "content": text.strip()}]
+
+    found.sort(key=lambda x: x[0])
+    blocks: list[dict] = []
+
+    # Attorney header = everything before first marker
+    first_pos = found[0][0]
+    header_text = text[:first_pos].strip()
+    if header_text:
+        blocks.append({"id": "attorney_header", "label": "Attorney/Firm Header", "content": header_text})
+
+    for i, (pos, block_id, label) in enumerate(found):
+        end = found[i + 1][0] if i + 1 < len(found) else len(text)
+        blocks.append({"id": block_id, "label": label, "content": text[pos:end].strip()})
+
+    return blocks

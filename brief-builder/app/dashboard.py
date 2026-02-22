@@ -27,6 +27,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
+from shared.theme import render_theme_css, render_nav_bar
+from shared.config_store import is_component_enabled
+try:
+    from shared.box_folder_browser import render_box_folder_browser
+    from shared.box_client import parse_folder_id as _parse_folder_id
+except ImportError:
+    render_box_folder_browser = None
+    _parse_folder_id = None
+try:
+    from shared.preview_modal import show_preview_modal
+except ImportError:
+    show_preview_modal = None
 try:
     from shared.draft_box import render_draft_box
 except ImportError:
@@ -50,165 +62,14 @@ st.set_page_config(
 
 # -- CSS ----------------------------------------------------------------------
 
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-/* Hide Streamlit chrome */
-#MainMenu, footer,
-div[data-testid="stToolbar"] { display: none !important; }
-
-.stApp {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* Navigation bar */
-.nav-bar {
-    display: flex;
-    align-items: center;
-    padding: 10px 4px;
-    margin: -1rem 0 1.2rem 0;
-    border-bottom: 1px solid rgba(0,0,0,0.07);
-}
-.nav-back {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #0066CC;
-    text-decoration: none;
-    min-width: 150px;
-}
-.nav-back:hover { color: #004499; text-decoration: underline; }
-.nav-title {
-    flex: 1;
-    text-align: center;
-    font-family: 'Inter', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #1a2744;
-    letter-spacing: -0.02em;
-}
-.nav-firm {
-    font-weight: 400;
-    color: #86868b;
-    font-size: 0.85rem;
-    margin-left: 8px;
-}
-.nav-spacer { min-width: 150px; }
-
-/* Section labels */
-.section-label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #5a6a85;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 4px;
-    margin-top: 12px;
-}
-
-/* Boilerplate block */
-.boilerplate-block {
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 0.84rem;
-    line-height: 1.55;
-    margin-bottom: 8px;
-    color: #78630d;
-}
-
-/* Preview panel (legal brief style) */
-.preview-panel {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 0.88rem;
-    line-height: 1.8;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 28px 32px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    max-height: 75vh;
-    overflow-y: auto;
-}
-.preview-panel .brief-title {
-    text-align: center;
-    font-weight: bold;
-    font-size: 1.05rem;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-}
-.preview-panel .brief-caption {
-    text-align: center;
-    font-size: 0.85rem;
-    margin-bottom: 16px;
-    line-height: 1.5;
-}
-.preview-panel .brief-heading {
-    font-weight: bold;
-    margin-top: 16px;
-    margin-bottom: 4px;
-}
-.preview-panel .brief-subheading {
-    font-weight: bold;
-    font-style: italic;
-    margin-top: 10px;
-    margin-bottom: 4px;
-    padding-left: 16px;
-}
-.preview-panel .brief-body {
-    text-align: justify;
-    margin-bottom: 8px;
-    text-indent: 32px;
-}
-.preview-panel .brief-sig {
-    margin-top: 28px;
-    line-height: 2;
-}
-
-/* Draft badge */
-.draft-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    background: #e8f0fe;
-    color: #1a73e8;
-    border-radius: 12px;
-    margin-bottom: 8px;
-}
-
-/* Saved confirmation */
-.saved-toast {
-    font-size: 0.8rem;
-    color: #2e7d32;
-    font-weight: 600;
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
+render_theme_css()
 
 from shared.auth import require_auth, render_logout
 require_auth()
 
 # -- Navigation bar -----------------------------------------------------------
 
-st.markdown(
-    """
-<div class="nav-bar">
-    <a href="http://localhost:8502" class="nav-back">&#8592; Staff Dashboard</a>
-    <div class="nav-title">Brief Builder<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
-    <div class="nav-spacer"></div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
+render_nav_bar("Brief Builder")
 render_logout()
 
 render_client_banner()
@@ -246,6 +107,21 @@ if _sf_client:
         _sf_court = _sf_client.get("Immigration_Court__c", "")
         if _sf_court:
             st.session_state["inp_court_or_office"] = _sf_court
+        # Pull from active legal case
+        _sf_legal_case = _sf_client.get("selected_legal_case", {})
+        if _sf_legal_case:
+            _sf_judge = _sf_legal_case.get("Immigration_Judge__c", "")
+            if _sf_judge:
+                st.session_state["inp_ij_name"] = _sf_judge
+            _sf_hearing = _sf_legal_case.get("Next_Government_Date__c", "")
+            if _sf_hearing:
+                # Format as MM/DD/YYYY if it comes as YYYY-MM-DD
+                try:
+                    from datetime import datetime as _dt
+                    _parsed = _dt.strptime(_sf_hearing, "%Y-%m-%d")
+                    st.session_state["inp_hearing_date"] = _parsed.strftime("%m/%d/%Y")
+                except (ValueError, TypeError):
+                    st.session_state["inp_hearing_date"] = _sf_hearing
         st.session_state["_sf_autofill_cid"] = _sf_cid
 
 # Roman numeral helper
@@ -328,9 +204,31 @@ def _do_new() -> None:
     for k in (
         "inp_client_name", "inp_a_number", "inp_court_or_office",
         "inp_ij_name", "inp_hearing_date", "inp_brief_type",
+        "_preview_edited_text", "_show_preview",
     ):
         if k in st.session_state:
             del st.session_state[k]
+
+
+def _open_preview_modal():
+    """Gather current brief data and open the shared preview modal."""
+    brief_type = st.session_state.get("inp_brief_type", list(get_brief_types().keys())[0])
+    case_info = {
+        "client_name": st.session_state.get("inp_client_name", ""),
+        "a_number": st.session_state.get("inp_a_number", ""),
+        "court_or_office": st.session_state.get("inp_court_or_office", ""),
+        "ij_name": st.session_state.get("inp_ij_name", ""),
+        "hearing_date": st.session_state.get("inp_hearing_date", ""),
+    }
+    sections_content = _collect_section_content(brief_type)
+    preview_html = _build_preview_html(brief_type, case_info, sections_content)
+    plain_text = _build_plain_text(brief_type, case_info, sections_content)
+    show_preview_modal(
+        title="Brief Preview",
+        preview_html=preview_html,
+        plain_text=plain_text,
+        tool_name="brief-builder",
+    )
 
 
 def _build_preview_html(
@@ -674,51 +572,47 @@ with st.sidebar:
 
     st.divider()
 
-    # Brief type
+    # Box folder browser
+    if render_box_folder_browser and _parse_folder_id:
+        _sf = st.session_state.get("sf_client")
+        _box_raw = (_sf.get("Box_Folder_Id__c", "") or "") if _sf else ""
+        if _box_raw:
+            render_box_folder_browser(
+                _parse_folder_id(_box_raw),
+                mode="viewer",
+                key_prefix="_bb_box",
+                header_label="Client Documents",
+            )
+            st.divider()
+
+    render_tool_notes("brief-builder")
+
+
+
+# -- Brief Type (main area, top) -----------------------------------------------
+
+_bt_col, _preview_btn_col = st.columns([3, 1])
+
+with _bt_col:
     brief_type = st.selectbox(
         "Brief Type",
         options=list(get_brief_types().keys()),
         key="inp_brief_type",
     )
 
-    # If brief type changed, clear section content for fresh start
-    if st.session_state.prev_brief_type is not None and st.session_state.prev_brief_type != brief_type:
-        _clear_all_content_keys()
-    st.session_state.prev_brief_type = brief_type
+# If brief type changed, clear section content for fresh start
+if st.session_state.prev_brief_type is not None and st.session_state.prev_brief_type != brief_type:
+    _clear_all_content_keys()
+    # Also clear any edited preview text
+    if "_preview_edited_text" in st.session_state:
+        del st.session_state["_preview_edited_text"]
+st.session_state.prev_brief_type = brief_type
 
-    st.divider()
-
-    # Case information
-    st.markdown("#### Case Information")
-    client_name = st.text_input(
-        "Client Name",
-        key="inp_client_name",
-        placeholder="e.g. Maria Garcia-Lopez",
-    )
-    a_number = st.text_input(
-        "A-Number",
-        key="inp_a_number",
-        placeholder="e.g. A 012-345-678",
-    )
-    court_or_office = st.text_input(
-        "Court / Office",
-        key="inp_court_or_office",
-        placeholder="e.g. San Francisco Immigration Court",
-    )
-    ij_name = st.text_input(
-        "Immigration Judge",
-        key="inp_ij_name",
-        placeholder="e.g. Hon. Jane Smith",
-    )
-    hearing_date = st.text_input(
-        "Hearing Date",
-        key="inp_hearing_date",
-        placeholder="e.g. 03/15/2026",
-    )
-
-    render_tool_notes("brief-builder")
-
-
+with _preview_btn_col:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("View Full Preview", type="primary", use_container_width=True):
+        st.session_state["_show_preview"] = True
+        st.rerun()
 
 # -- Handle save (after sidebar renders) --------------------------------------
 
@@ -726,18 +620,23 @@ if save_clicked:
     _do_save(brief_type)
     st.rerun()
 
+# -- Preview dialog trigger ----------------------------------------------------
+
+if st.session_state.get("_show_preview"):
+    st.session_state["_show_preview"] = False
+    if show_preview_modal and is_component_enabled("preview_modal", "brief-builder"):
+        _open_preview_modal()
 
 # -- Main area ----------------------------------------------------------------
 
 sections = load_sections(brief_type)
 
-edit_col, preview_col = st.columns([3, 2], gap="large")
+edit_col, right_col = st.columns([3, 2], gap="large")
 
 # -- Left column: Section editing ---------------------------------------------
 
 with edit_col:
     st.markdown('<div class="section-label">Brief Sections</div>', unsafe_allow_html=True)
-    st.caption(f"Drafting: {brief_type}")
 
     for section in sections:
         section_key = section["key"]
@@ -804,10 +703,11 @@ with edit_col:
                     label_visibility="collapsed",
                 )
 
-# -- Right column: Live preview + export --------------------------------------
+# -- Right column: Info summary + Draft Box + Export ---------------------------
 
-with preview_col:
-    st.markdown('<div class="section-label">Brief Preview</div>', unsafe_allow_html=True)
+with right_col:
+    # Info summary (replaces the old static preview)
+    st.markdown('<div class="section-label">Brief Info</div>', unsafe_allow_html=True)
 
     # Gather current case info
     case_info = {
@@ -824,17 +724,24 @@ with preview_col:
     # Check if there is any content at all
     has_content = any(v.strip() for v in sections_content.values())
 
-    if not case_info["client_name"]:
-        st.info("Enter the client's name in the sidebar to see the live preview.")
-    else:
-        preview_html = _build_preview_html(brief_type, case_info, sections_content)
-        st.markdown(
-            f'<div class="preview-panel">{preview_html}</div>',
-            unsafe_allow_html=True,
-        )
+    _info_parts = [f"**Type:** {brief_type}"]
+    if case_info["client_name"]:
+        _info_parts.append(f"**Client:** {case_info['client_name']}")
+    if case_info["a_number"]:
+        _info_parts.append(f"**A-Number:** {case_info['a_number']}")
+    if case_info["court_or_office"]:
+        _info_parts.append(f"**Court:** {case_info['court_or_office']}")
+    if case_info["ij_name"]:
+        _info_parts.append(f"**Judge:** {case_info['ij_name']}")
+    if case_info["hearing_date"]:
+        _info_parts.append(f"**Hearing:** {case_info['hearing_date']}")
+    st.markdown("  \n".join(_info_parts))
+
+    if st.session_state.get("_preview_edited_text"):
+        st.caption("Preview text has been edited. Exports will use your edits.")
 
     # Draft Box
-    if render_draft_box is not None:
+    if render_draft_box is not None and is_component_enabled("draft_box", "brief-builder"):
         plain_for_draft = _build_plain_text(brief_type, case_info, sections_content) if has_content else ""
         render_draft_box("brief-builder", {
             "document_type": "legal brief",
@@ -852,7 +759,10 @@ with preview_col:
     exp_cols = st.columns(2)
     with exp_cols[0]:
         if has_content and case_info["client_name"]:
-            plain_text = _build_plain_text(brief_type, case_info, sections_content)
+            if st.session_state.get("_preview_edited_text"):
+                plain_text = st.session_state["_preview_edited_text"]
+            else:
+                plain_text = _build_plain_text(brief_type, case_info, sections_content)
             st.download_button(
                 "Download .txt",
                 data=plain_text,
@@ -865,7 +775,11 @@ with preview_col:
 
     with exp_cols[1]:
         if has_content and case_info["client_name"]:
-            docx_bytes = _build_docx(brief_type, case_info, sections_content)
+            if st.session_state.get("_preview_edited_text"):
+                # Build docx from edited plain text
+                docx_bytes = _build_docx(brief_type, case_info, sections_content)
+            else:
+                docx_bytes = _build_docx(brief_type, case_info, sections_content)
             st.download_button(
                 "Download .docx",
                 data=docx_bytes,
