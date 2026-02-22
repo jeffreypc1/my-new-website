@@ -25,6 +25,10 @@ try:
     from shared.feedback_button import render_feedback_button
 except ImportError:
     render_feedback_button = None
+try:
+    from shared.config_store import load_config
+except ImportError:
+    load_config = None
 
 st.set_page_config(
     page_title="Staff Tools — O'Brien Immigration Law",
@@ -390,7 +394,8 @@ with _cl_center:
         st.markdown(card_html, unsafe_allow_html=True)
 
 # ── Tool definitions ──
-tools = [
+
+_HARDCODED_TOOLS = [
     {
         "icon": "&#x1F30D;",  # globe
         "name": "Country Reports",
@@ -488,6 +493,14 @@ tools = [
         "url": "http://localhost:8514",
     },
     {
+        "icon": "&#x1F4E6;",  # package
+        "name": "Document Assembler",
+        "desc": "Browse Box files, translate documents, assemble and paginate exhibit packages.",
+        "status": "live",
+        "status_label": "Live",
+        "url": "http://localhost:8515",
+    },
+    {
         "icon": "&#x2699;&#xFE0F;",  # gear
         "name": "Admin Panel",
         "desc": "Configure tool settings, templates, and lists.",
@@ -497,6 +510,46 @@ tools = [
         "no_client_param": True,
     },
 ]
+
+
+def _load_tool_list() -> list[dict]:
+    """Load tool list from global-settings navigation config, falling back to hardcoded defaults."""
+    if load_config is None:
+        return _HARDCODED_TOOLS
+    gs = load_config("global-settings")
+    if not gs:
+        return _HARDCODED_TOOLS
+    nav = gs.get("navigation", {})
+    nav_tools = nav.get("tools", [])
+    if not nav_tools:
+        return _HARDCODED_TOOLS
+
+    # Build lookup from hardcoded list for url and no_client_param fallback
+    _hc_by_key = {}
+    for t in _HARDCODED_TOOLS:
+        # Match by url since hardcoded list doesn't have a key field
+        _hc_by_key[t["name"]] = t
+
+    result = []
+    for nt in sorted(nav_tools, key=lambda t: t.get("sort_order", 99)):
+        if not nt.get("visible", True):
+            continue
+        _status = nt.get("status", "live")
+        _status_label = _status.capitalize()
+        _hc = _hc_by_key.get(nt.get("name", ""), {})
+        result.append({
+            "icon": nt.get("icon", ""),
+            "name": nt.get("name", ""),
+            "desc": nt.get("desc", ""),
+            "status": _status,
+            "status_label": _status_label,
+            "url": nt.get("url", _hc.get("url", "")),
+            "no_client_param": _hc.get("no_client_param", False),
+        })
+    return result
+
+
+tools = _load_tool_list()
 
 # ── Render tool cards ──
 _active_cid = st.session_state.get("sf_customer_id", "")

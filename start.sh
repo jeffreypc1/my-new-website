@@ -116,6 +116,10 @@ start_app "Hearing Prep           :8514" \
     "$BASE/hearing-prep" \
     "uv run streamlit run app/dashboard.py --server.port 8514 --server.headless true"
 
+start_app "Document Assembler     :8515" \
+    "$BASE/evidence-indexer" \
+    "uv run streamlit run app/assembler.py --server.port 8515 --server.headless true"
+
 # --- Summary ---
 echo ""
 echo "================================================"

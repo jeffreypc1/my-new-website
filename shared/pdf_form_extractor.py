@@ -71,7 +71,7 @@ SF_FIELD_LABELS: dict[str, str] = {
     "Client_Case_Strategy__c": "Case Strategy",
     "Nexus__c": "Nexus",
     "PSG__c": "Particular Social Group",
-    "Box_Folder_ID__c": "Box Folder ID",
+    "Box_Folder_Id__c": "Box Folder ID",
 }
 
 

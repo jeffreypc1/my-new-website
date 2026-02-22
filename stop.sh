@@ -19,7 +19,7 @@ echo ""
 KILLED=0
 
 # Kill streamlit processes running on our ports
-for port in 8000 8501 8502 8503 8504 8505 8506 8507 8508 8509 8510 8511 8512 8513; do
+for port in 8000 8501 8502 8503 8504 8505 8506 8507 8508 8509 8510 8511 8512 8513 8514 8515; do
     pids=$(lsof -ti :$port 2>/dev/null)
     if [ -n "$pids" ]; then
         echo "$pids" | xargs kill 2>/dev/null

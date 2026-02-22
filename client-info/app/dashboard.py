@@ -155,7 +155,7 @@ with st.sidebar:
     active = load_active_client()
     if active:
         st.caption(f"**{active.get('Name', '')}** #{active.get('Customer_ID__c', '')}")
-        box_fid = active.get("Box_Folder_ID__c", "")
+        box_fid = active.get("Box_Folder_Id__c", "")
         if box_fid:
             st.markdown(f"[Open Box Folder](https://app.box.com/folder/{box_fid})")
     st.markdown("---")
@@ -259,7 +259,7 @@ FIELD_GROUPS = {
     ],
     "Case Information": [
         "CaseNumber__c", "Client_Case_Strategy__c", "Nexus__c", "PSG__c",
-        "Box_Folder_ID__c",
+        "Box_Folder_Id__c",
     ],
 }
 
@@ -623,11 +623,11 @@ except ImportError:
 st.markdown("---")
 st.subheader("Client Documents (Box)")
 
-_folder_id_raw = sf.get("Box_Folder_ID__c", "") or ""
+_folder_id_raw = sf.get("Box_Folder_Id__c", "") or ""
 _folder_id = parse_folder_id(_folder_id_raw) if (_box_available and _folder_id_raw) else _folder_id_raw
 
 if not _folder_id:
-    st.info("No Box folder linked. Enter the Box Folder ID in the **Box_Folder_ID__c** field above and push to Salesforce.")
+    st.info("No Box folder linked. Enter the Box Folder ID in the **Box_Folder_Id__c** field above and push to Salesforce.")
 elif not _box_available:
     st.warning("Box SDK not installed. Run `uv sync` in the client-info directory.")
 else:

@@ -187,7 +187,9 @@ LEGAL_CASE_FIELDS = [
     "Application_Priority_Date__c", "Outcome_Date__c",
     "Submitted_Date__c", "Watch_Date__c", "Watch_Date_Picklist__c",
     "Type_of_next_date__c", "Next_Government_Date__c",
-    "Immigration_Judge__c", "Electronic_Service__c",
+    "Immigration_Judge__c",
+    "EOIR_Submission_Type__c", "Paper_or_eRop__c",
+    "EOIR_Submission_Line_1__c",
     # EOIR court / service fields
     "Location_City__c", "Address_of_next_hearing__c", "DHS_Address__c",
 ]
@@ -257,27 +259,57 @@ def get_beneficiaries(legal_case_sf_id: str) -> list[dict]:
     return out
 
 
+def describe_case_contact_relationships() -> list[dict]:
+    """Describe Case_Contact__c to find its lookup fields to Legal_Case__c.
+
+    Returns list of field dicts that reference Legal_Case__c.
+    Useful for debugging child relationship configuration.
+    """
+    sf = _sf_conn()
+    desc = sf.Case_Contact__c.describe()
+    refs = []
+    for f in desc.get("fields", []):
+        for ref in (f.get("referenceTo") or []):
+            if ref == "Legal_Case__c":
+                refs.append({
+                    "name": f["name"],
+                    "label": f.get("label", ""),
+                    "relationshipName": f.get("relationshipName", ""),
+                    "type": f.get("type", ""),
+                })
+    return refs
+
+
 def get_case_beneficiaries(legal_case_sf_id: str) -> list[dict]:
     """Fetch Case_Contact__c records (derivatives/beneficiaries) for a Legal Case.
 
-    Returns list of dicts with Id, First_Name__c, Last_Name__c,
-    Relationship__c, Alien_Number__c, Date_of_Birth__c.
+    Returns list of flattened dicts with Id, Contact_Name, Role__c,
+    Alien_Number_Dashed__c, DOB__c.
     """
     sf = _sf_conn()
     fields = (
-        "Id, First_Name__c, Last_Name__c, Relationship__c, "
-        "Alien_Number__c, Date_of_Birth__c"
+        "Id, Contact__r.Name, Role__c, "
+        "Alien_Number_Dashed__c, DOB__c"
     )
     query = (
         f"SELECT {fields} FROM Case_Contact__c "
         f"WHERE Legal_Case__c = '{legal_case_sf_id}' "
-        f"ORDER BY Relationship__c, Last_Name__c"
+        f"ORDER BY Role__c, Contact__r.Name"
     )
+    print(f"[SF] get_case_beneficiaries SOQL: {query}")
     result = sf.query(query)
-    return [
-        {k: v for k, v in r.items() if k != "attributes"}
-        for r in result.get("records", [])
-    ]
+    records = []
+    for r in result.get("records", []):
+        contact = r.get("Contact__r") or {}
+        records.append({
+            "Id": r.get("Id", ""),
+            "Contact_Name": contact.get("Name", ""),
+            "Role__c": r.get("Role__c", ""),
+            "Alien_Number_Dashed__c": r.get("Alien_Number_Dashed__c", ""),
+            "DOB__c": r.get("DOB__c", ""),
+        })
+    print(f"[SF] get_case_beneficiaries result: {len(records)} records")
+    return records
 
 
 def update_case_beneficiary(record_id: str, updates: dict) -> None:
@@ -556,6 +588,6 @@ DEFAULT_FIELDS = [
     "Client_Case_Strategy__c",
     "Nexus__c",
     "PSG__c",
-    "Box_Folder_ID__c",
+    "Box_Folder_Id__c",
     "Legal_Case__c",
 ]

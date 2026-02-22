@@ -142,7 +142,7 @@ def _show_client_files(client_record: dict):
     """Dialog with two tabs: Documents (LC_Task__c CRUD) and Box Files."""
     client_name = client_record.get("Name", "Client")
     contact_sf_id = client_record.get("Id", "")
-    folder_id = client_record.get("Box_Folder_ID__c", "")
+    folder_id = client_record.get("Box_Folder_Id__c", "")
 
     tab_docs, tab_box = st.tabs(["Documents", "Box Files"])
 
@@ -308,7 +308,7 @@ def _show_client_files(client_record: dict):
     with tab_box:
         if not folder_id:
             st.info("No Box folder configured for this client. "
-                    "Set the Box_Folder_ID__c field in Salesforce to enable file browsing.")
+                    "Set the Box_Folder_Id__c field in Salesforce to enable file browsing.")
         else:
             try:
                 from shared.box_client import list_folder_items, get_folder_name, parse_folder_id
