@@ -44,6 +44,12 @@ try:
     from shared.feedback_button import render_feedback_button
 except ImportError:
     render_feedback_button = None
+try:
+    from shared.box_folder_browser import render_box_folder_browser
+    from shared.box_client import parse_folder_id as _parse_folder_id
+except ImportError:
+    render_box_folder_browser = None
+    _parse_folder_id = None
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -563,12 +569,21 @@ with st.sidebar:
 
     st.divider()
 
-    # Declarant info
-    st.markdown("#### Declarant")
-    declarant_name = st.text_input("Full Legal Name", key="inp_name")
-    country = st.text_input("Country of Origin", key="inp_country")
-    a_number = st.text_input("A-Number", placeholder="e.g. 123-456-789", key="inp_anumber")
+    # Box folder browser
+    if render_box_folder_browser and _parse_folder_id:
+        _sf = st.session_state.get("sf_client")
+        _box_raw = (_sf.get("Box_Folder_Id__c", "") or "") if _sf else ""
+        if _box_raw:
+            render_box_folder_browser(
+                _parse_folder_id(_box_raw),
+                mode="viewer",
+                key_prefix="_dd_box",
+                header_label="Client Documents",
+            )
+            st.divider()
 
+    # Language / interpreter
+    st.markdown("#### Language")
     LANGUAGES = [
         "English", "Spanish", "French", "Portuguese", "Arabic",
         "Mandarin", "Cantonese", "Hindi", "Urdu", "Bengali",
