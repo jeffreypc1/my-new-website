@@ -24,23 +24,40 @@ if _ENV_PATH.exists():
 
 
 def parse_folder_id(value: str) -> str:
-    """Extract a numeric Box folder ID from a URL or bare ID.
+    """Extract a numeric Box folder ID from a URL, shared link, or bare ID.
 
     Accepts:
         "163957038141"
         "https://app.box.com/folder/163957038141"
         "https://app.box.com/folder/163957038141?s=abc123"
-    Returns the numeric folder ID string, or the original value if no match.
+        "https://obrienimmigration.box.com/s/kzvskknqp42ftv3ddwbgf7sync8vpz1i"
+    Returns the numeric folder ID string. For shared links, resolves via
+    the Box API to get the actual folder ID.
     """
     value = value.strip()
-    # Try to extract from URL pattern
+    # Try to extract from URL pattern (direct folder link)
     m = re.search(r"folder/(\d+)", value)
     if m:
         return m.group(1)
     # Already a bare numeric ID
     if value.isdigit():
         return value
+    # Shared link URL — resolve via Box API
+    if "box.com/s/" in value:
+        try:
+            return _resolve_shared_link(value)
+        except Exception:
+            pass
     return value
+
+
+def _resolve_shared_link(shared_url: str) -> str:
+    """Resolve a Box shared link URL to the underlying folder ID."""
+    client = get_box_client()
+    item = client.shared_links_folders.find_folder_for_shared_link(
+        boxapi=f"shared_link={shared_url}",
+    )
+    return item.id
 
 
 # Module-level cache for the Box client
@@ -48,17 +65,25 @@ _client = None
 
 
 def get_box_client():
-    """Authenticate with Box using Client Credentials Grant. Cached."""
+    """Authenticate with Box using Client Credentials Grant. Cached.
+
+    If BOX_USER_ID is set, impersonates that user via CCG as-user auth
+    so the client can access the user's folders (not just the service
+    account's own content).
+    """
     global _client
     if _client is not None:
         return _client
 
     from box_sdk_gen import BoxCCGAuth, BoxClient, CCGConfig
 
+    user_id = os.environ.get("BOX_USER_ID", "")
+
     config = CCGConfig(
         client_id=os.environ["BOX_CLIENT_ID"],
         client_secret=os.environ["BOX_CLIENT_SECRET"],
         enterprise_id=os.environ["BOX_ENTERPRISE_ID"],
+        user_id=user_id if user_id else None,
     )
     auth = BoxCCGAuth(config=config)
     _client = BoxClient(auth=auth)

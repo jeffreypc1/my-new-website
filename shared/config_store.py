@@ -38,3 +38,17 @@ def get_config_value(tool_name: str, key: str, default: Any) -> Any:
     if config is None:
         return default
     return config.get(key, default)
+
+
+def is_component_enabled(component_name: str, tool_name: str, default: bool = True) -> bool:
+    """Check whether *component_name* is enabled for *tool_name*.
+
+    Reads ``global-settings.json`` → ``component_toggles`` → *component_name*
+    → *tool_name*.  Returns *default* when no config exists.
+    """
+    gs = load_config("global-settings")
+    if not gs:
+        return default
+    toggles = gs.get("component_toggles", {})
+    component = toggles.get(component_name, {})
+    return component.get(tool_name, default)
