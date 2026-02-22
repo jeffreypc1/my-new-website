@@ -157,9 +157,6 @@ def _load_defaults(tool_name: str) -> dict:
         if tool_name == "case-checklist":
             mod = _load_module("case-checklist", "checklists.py")
             return {"case_types": mod.CASE_TYPES, "templates": mod._TEMPLATES}
-        elif tool_name == "brief-builder":
-            mod = _load_module("brief-builder", "sections.py")
-            return {"brief_types": mod.BRIEF_TYPES, "boilerplate": mod._BOILERPLATE}
         elif tool_name == "cover-letters":
             mod = _load_module("cover-letters", "templates.py")
             return {"filing_offices": mod.FILING_OFFICES, "templates": mod.TEMPLATES}
@@ -276,117 +273,6 @@ def _editor_case_checklist():
     if st.button("Save Case Checklist Config", type="primary", key="cc_save"):
         save_config("case-checklist", {"case_types": edited_types, "templates": templates})
         st.toast("Case Checklist config saved!")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# BRIEF BUILDER
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def _editor_brief_builder():
-    cfg = _get_tool_config("brief-builder")
-    brief_types: dict = cfg.get("brief_types", {})
-    boilerplate: dict = cfg.get("boilerplate", {})
-
-    st.subheader("Brief Types & Sections")
-
-    type_names = list(brief_types.keys())
-
-    # Add new brief type
-    c1, c2 = st.columns([4, 1])
-    with c1:
-        new_bt = st.text_input("New brief type", key="bb_new_type", placeholder="e.g. SIJS Brief")
-    with c2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Add", key="bb_add_type") and new_bt.strip():
-            if new_bt.strip() not in type_names:
-                type_names.append(new_bt.strip())
-                brief_types[new_bt.strip()] = []
-                boilerplate.setdefault(new_bt.strip(), {})
-
-    # Delete brief type
-    to_delete = []
-    for i, tn in enumerate(type_names):
-        c1, c2 = st.columns([8, 1])
-        with c1:
-            st.text(tn)
-        with c2:
-            if st.button("X", key=f"bb_del_{i}"):
-                to_delete.append(tn)
-    for d in to_delete:
-        type_names.remove(d)
-        brief_types.pop(d, None)
-        boilerplate.pop(d, None)
-
-    st.divider()
-    st.subheader("Sections & Boilerplate")
-
-    if type_names:
-        sel_bt = st.selectbox("Select brief type", type_names, key="bb_sel_type")
-        sections = brief_types.get(sel_bt, [])
-        bp = boilerplate.get(sel_bt, {})
-
-        sec_to_delete = []
-        for idx, sec in enumerate(sections):
-            with st.expander(f"{sec.get('heading', 'Section')} ({sec.get('key', '')})"):
-                heading = st.text_input("Heading", value=sec.get("heading", ""), key=f"bb_sec_h_{sel_bt}_{idx}")
-                key = st.text_input("Key", value=sec.get("key", ""), key=f"bb_sec_k_{sel_bt}_{idx}")
-                sec["heading"] = heading
-                sec["key"] = key
-
-                # Boilerplate for this section
-                bp_text = bp.get(key, "")
-                new_bp = st.text_area("Boilerplate", value=bp_text, key=f"bb_bp_{sel_bt}_{idx}", height=120)
-                if new_bp.strip():
-                    bp[key] = new_bp
-                elif key in bp:
-                    del bp[key]
-
-                # Subsections
-                subs = sec.get("subsections", [])
-                if subs:
-                    st.caption("Subsections:")
-                    sub_to_delete = []
-                    for si, sub in enumerate(subs):
-                        c1, c2, c3 = st.columns([3, 3, 1])
-                        with c1:
-                            sub["heading"] = st.text_input("Sub heading", value=sub.get("heading", ""), key=f"bb_sub_h_{sel_bt}_{idx}_{si}")
-                        with c2:
-                            sub["key"] = st.text_input("Sub key", value=sub.get("key", ""), key=f"bb_sub_k_{sel_bt}_{idx}_{si}")
-                        with c3:
-                            st.markdown("<br>", unsafe_allow_html=True)
-                            if st.button("X", key=f"bb_sub_del_{sel_bt}_{idx}_{si}"):
-                                sub_to_delete.append(si)
-                        sub_bp = bp.get(sub["key"], "")
-                        new_sub_bp = st.text_area("Sub boilerplate", value=sub_bp, key=f"bb_sub_bp_{sel_bt}_{idx}_{si}", height=100)
-                        if new_sub_bp.strip():
-                            bp[sub["key"]] = new_sub_bp
-                        elif sub["key"] in bp:
-                            del bp[sub["key"]]
-                    for si in sorted(sub_to_delete, reverse=True):
-                        subs.pop(si)
-
-                # Add subsection button
-                if st.button("+ Add subsection", key=f"bb_sub_add_{sel_bt}_{idx}"):
-                    subs.append({"heading": "", "key": ""})
-                sec["subsections"] = subs
-
-                # Delete section button
-                if st.button("Delete section", key=f"bb_sec_del_{sel_bt}_{idx}"):
-                    sec_to_delete.append(idx)
-
-        for idx in sorted(sec_to_delete, reverse=True):
-            sections.pop(idx)
-
-        # Add section
-        if st.button("+ Add section", key=f"bb_sec_add_{sel_bt}"):
-            sections.append({"heading": "", "key": "", "subsections": []})
-
-        boilerplate[sel_bt] = bp
-        brief_types[sel_bt] = sections
-
-    if st.button("Save Brief Builder Config", type="primary", key="bb_save"):
-        save_config("brief-builder", {"brief_types": brief_types, "boilerplate": boilerplate})
-        st.toast("Brief Builder config saved!")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1238,7 +1124,7 @@ _CLIENT_INFO_FIELD_GROUPS = {
     ],
     "Case Information": [
         "CaseNumber__c", "Client_Case_Strategy__c", "Nexus__c", "PSG__c",
-        "Box_Folder_ID__c",
+        "Box_Folder_Id__c",
     ],
 }
 
@@ -1424,8 +1310,9 @@ def _editor_components():
     st.subheader("Components")
     st.caption("Configure shared UI components that appear across multiple tools.")
 
-    comp_tab_db, comp_tab_sp, comp_tab_recip, comp_tab_docs, comp_tab_cd = st.tabs([
+    comp_tab_db, comp_tab_sp, comp_tab_recip, comp_tab_docs, comp_tab_cd, comp_tab_eoir = st.tabs([
         "Draft Box", "System Prompts", "Recipients", "Document Manager", "Case Details",
+        "EOIR Cover Template",
     ])
 
     with comp_tab_db:
@@ -1443,6 +1330,135 @@ def _editor_components():
     with comp_tab_cd:
         _editor_comp_case_details()
 
+    with comp_tab_eoir:
+        _editor_comp_eoir_template()
+
+
+def _editor_comp_eoir_template():
+    """Configure the EOIR cover page template used by the Filing Assembler."""
+    _DEFAULT_EOIR_TPL = """\
+{attorney_name}
+{bar_number}
+{firm_name}
+{firm_address}
+{contact_line}
+{email_line}
+
+UNITED STATES DEPARTMENT OF JUSTICE
+EXECUTIVE OFFICE FOR IMMIGRATION REVIEW
+IMMIGRATION COURT
+{court_location}
+{court_address}
+
+IN THE MATTERS OF:
+
+{party_block}
+
+RESPONDENT'S SUBMISSION
+{submission_line_1}
+{submission_sub_line}
+
+{submission_type}
+
+{date}
+
+The following documents are respectfully submitted to the Immigration Court
+on behalf of the above-named respondent:
+
+{document_list}
+
+Respectfully submitted,
+
+____________________________
+{attorney_name}
+{firm_name}
+Counsel for Respondent
+
+
+CERTIFICATE OF SERVICE
+
+I hereby certify that on {date}, a copy of the foregoing submission and all
+enclosed documents was served upon the Office of the Chief Counsel,
+Department of Homeland Security, by {service_method}, at the following address:
+
+{dhs_address}
+
+____________________________
+{served_by_name}
+{served_by_bar}
+"""
+
+    st.markdown("### EOIR Cover Page Template")
+    st.caption(
+        "Customize the EOIR submission cover page layout using `{variable}` placeholders. "
+        "The Filing Assembler replaces placeholders with live case data."
+    )
+
+    config = load_config("components") or {}
+    saved_tpl = config.get("eoir_cover_template", "") or ""
+    current_tpl = saved_tpl if saved_tpl else _DEFAULT_EOIR_TPL
+
+    _reset_col, _ = st.columns([1, 3])
+    with _reset_col:
+        if st.button("Reset to Default Template", key="_eoir_tpl_reset"):
+            config.pop("eoir_cover_template", None)
+            save_config("components", config)
+            st.toast("Template reset to default. Restart Filing Assembler to apply.")
+            st.rerun()
+
+    if "inp_admin_eoir_tpl" not in st.session_state:
+        st.session_state["inp_admin_eoir_tpl"] = current_tpl
+    _edited_tpl = st.text_area(
+        "Template",
+        key="inp_admin_eoir_tpl",
+        height=600,
+        label_visibility="collapsed",
+    )
+
+    with st.expander("Available Variables"):
+        st.markdown(
+            "| Placeholder | Description |\n"
+            "|---|---|\n"
+            "| `{attorney_name}` | Attorney full name |\n"
+            "| `{bar_number}` | Bar number (formatted as 'Bar No. X') |\n"
+            "| `{firm_name}` | Firm name |\n"
+            "| `{firm_address}` | Firm street address (multi-line) |\n"
+            "| `{firm_phone}` | Firm phone number |\n"
+            "| `{firm_fax}` | Firm fax number |\n"
+            "| `{firm_email}` | Firm email address |\n"
+            "| `{contact_line}` | Auto: 'Tel: X \\| Fax: Y' (omits blanks) |\n"
+            "| `{email_line}` | Auto: 'Email: X' or blank |\n"
+            "| `{court_location}` | Court city from Verify Case Details |\n"
+            "| `{court_address}` | Court address from case data |\n"
+            "| `{applicant_name}` | Primary applicant name |\n"
+            "| `{a_number}` | A-Number |\n"
+            "| `{case_type}` | Legal case type |\n"
+            "| `{party_block}` | Auto: formatted applicant + beneficiaries block |\n"
+            "| `{submission_type}` | Submission description text |\n"
+            "| `{submission_line_1}` | Submission Line 1 (SF picklist: EOIR_Submission_Line_1__c) |\n"
+            "| `{submission_sub_line}` | Custom sub-line / motion title (local field) |\n"
+            "| `{date}` | Today's date (MM/DD/YYYY) |\n"
+            "| `{document_list}` | Auto: numbered list of enclosed documents |\n"
+            "| `{dhs_address}` | DHS office address for certificate of service |\n"
+            "| `{service_method}` | Service method (mail, hand delivery, etc.) |\n"
+            "| `{served_by_name}` | Name of person serving documents |\n"
+            "| `{served_by_bar}` | Bar number of person serving documents |\n"
+        )
+        st.info(
+            "The EOIR preview in Filing Assembler detects EOIR content by looking for "
+            "'EXECUTIVE OFFICE FOR IMMIGRATION REVIEW' in the output. Make sure your "
+            "template includes this text."
+        )
+
+    if st.button("Save Template", type="primary", key="_eoir_tpl_save"):
+        # Save only if different from default; clear if matches default
+        if _edited_tpl.strip() == _DEFAULT_EOIR_TPL.strip():
+            config.pop("eoir_cover_template", None)
+        else:
+            config["eoir_cover_template"] = _edited_tpl
+        save_config("components", config)
+        st.toast("EOIR cover template saved! Restart Filing Assembler to apply.")
+
 
 _CASE_DETAIL_FIELD_OPTIONS = [
     ("Editable", [
@@ -1450,10 +1466,9 @@ _CASE_DETAIL_FIELD_OPTIONS = [
         ("Type_of_next_date__c", "Next Date Type", "picklist"),
         ("Next_Government_Date__c", "Next Govt Date", "date"),
         ("Immigration_Judge__c", "Immigration Judge", "picklist"),
-        ("Electronic_Service__c", "Electronic Service", "toggle"),
-    ]),
-    ("Derived / Manual", [
-        ("_asst_initials", "Assistant Initials", "text"),
+        ("EOIR_Submission_Type__c", "EOIR Submission Type", "picklist"),
+        ("EOIR_Submission_Line_1__c", "Submission Line 1", "picklist"),
+        ("Paper_or_eRop__c", "Filing Method", "picklist"),
     ]),
     ("Read-Only", [
         ("Primary_Applicant__r_Name", "Primary Applicant", "readonly"),
@@ -1464,7 +1479,8 @@ _CASE_DETAIL_FIELD_OPTIONS = [
 
 _CASE_DETAIL_DEFAULTS = [
     "Location_City__c", "Type_of_next_date__c", "Next_Government_Date__c",
-    "Immigration_Judge__c", "Electronic_Service__c", "_asst_initials",
+    "Immigration_Judge__c",
+    "EOIR_Submission_Type__c", "EOIR_Submission_Line_1__c", "Paper_or_eRop__c",
     "Primary_Applicant__r_Name", "Primary_Attorney__r_Name", "A_number_dashed__c",
 ]
 
@@ -1781,6 +1797,189 @@ def _editor_client_banner():
 # ═══════════════════════════════════════════════════════════════════════════════
 # Firm Info
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+_DEFAULT_FIRM_HEADER_TEMPLATE = """\
+{attorney_name}
+{bar_number}
+{firm_name}
+{firm_address}
+{contact_line}
+{email_line}"""
+
+_DEFAULT_COURT_CAPTION_TEMPLATE = """\
+UNITED STATES DEPARTMENT OF JUSTICE
+EXECUTIVE OFFICE FOR IMMIGRATION REVIEW
+IMMIGRATION COURT
+{court_location}
+{court_address}"""
+
+_DOC_TEMPLATE_VARIABLES = {
+    "Firm Header": [
+        ("{attorney_name}", "Attorney full name"),
+        ("{bar_number}", "Bar number (formatted as 'Bar No. X')"),
+        ("{firm_name}", "Firm name from global settings"),
+        ("{firm_address}", "Firm street address (multi-line)"),
+        ("{firm_phone}", "Firm phone number"),
+        ("{firm_fax}", "Firm fax number"),
+        ("{firm_email}", "Firm email address"),
+        ("{contact_line}", "Auto: 'Tel: X | Fax: Y' (omits blanks)"),
+        ("{email_line}", "Auto: 'Email: X' or blank"),
+    ],
+    "Court Caption": [
+        ("{court_location}", "Court city from Verify Case Details"),
+        ("{court_address}", "Court address from case data"),
+    ],
+}
+
+
+def _editor_document_templates():
+    """Edit global document block templates used across filings."""
+    st.subheader("Document Templates")
+    st.caption(
+        "Define the layout for reusable document blocks. These templates use "
+        "`{variable}` placeholders and are applied globally to all new filings."
+    )
+
+    config = load_config("document-templates") or {}
+
+    # ── Firm Header block ────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Firm Header Block")
+    st.caption("Attorney/firm header that appears at the top of EOIR cover pages and filings.")
+
+    _saved_fh = config.get("firm_header_template", "")
+    _current_fh = _saved_fh if _saved_fh else _DEFAULT_FIRM_HEADER_TEMPLATE
+
+    if "inp_admin_fh_tpl" not in st.session_state:
+        st.session_state["inp_admin_fh_tpl"] = _current_fh
+
+    # Layout settings
+    _fh_layout = config.get("firm_header_layout", {})
+    _fh_lc, _fh_rc = st.columns(2)
+    with _fh_lc:
+        _fh_align = st.selectbox(
+            "Text Alignment",
+            ["left", "center", "right"],
+            index=["left", "center", "right"].index(_fh_layout.get("align", "left")),
+            key="_fh_align",
+        )
+    with _fh_rc:
+        _fh_margin = st.number_input(
+            "Top Margin (px)",
+            min_value=0, max_value=100,
+            value=_fh_layout.get("margin_top", 0),
+            key="_fh_margin",
+        )
+
+    _edited_fh = st.text_area(
+        "Firm Header Template",
+        key="inp_admin_fh_tpl",
+        height=200,
+        label_visibility="collapsed",
+    )
+
+    with st.expander("Available Variables — Firm Header"):
+        _rows = "\n".join(
+            f"| `{v}` | {d} |" for v, d in _DOC_TEMPLATE_VARIABLES["Firm Header"]
+        )
+        st.markdown(f"| Variable | Description |\n|---|---|\n{_rows}")
+
+    _fh_c1, _fh_c2, _ = st.columns([1, 1, 3])
+    with _fh_c1:
+        if st.button("Save Firm Header", type="primary", key="_fh_save"):
+            if _edited_fh.strip() == _DEFAULT_FIRM_HEADER_TEMPLATE.strip():
+                config.pop("firm_header_template", None)
+            else:
+                config["firm_header_template"] = _edited_fh
+            config["firm_header_layout"] = {
+                "align": _fh_align,
+                "margin_top": _fh_margin,
+            }
+            save_config("document-templates", config)
+            st.toast("Firm header template saved! Restart Filing Assembler to apply.")
+    with _fh_c2:
+        if st.button("Reset to Default", key="_fh_reset"):
+            config.pop("firm_header_template", None)
+            config.pop("firm_header_layout", None)
+            save_config("document-templates", config)
+            if "inp_admin_fh_tpl" in st.session_state:
+                del st.session_state["inp_admin_fh_tpl"]
+            st.toast("Firm header reset to default.")
+            st.rerun()
+
+    # ── Court Caption block ──────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Court Caption Block")
+    st.caption("Court header that appears on EOIR submission cover pages.")
+
+    _saved_cc = config.get("court_caption_template", "")
+    _current_cc = _saved_cc if _saved_cc else _DEFAULT_COURT_CAPTION_TEMPLATE
+
+    if "inp_admin_cc_tpl" not in st.session_state:
+        st.session_state["inp_admin_cc_tpl"] = _current_cc
+
+    # Layout settings
+    _cc_layout = config.get("court_caption_layout", {})
+    _cc_lc, _cc_rc = st.columns(2)
+    with _cc_lc:
+        _cc_align = st.selectbox(
+            "Text Alignment",
+            ["left", "center", "right"],
+            index=["left", "center", "right"].index(_cc_layout.get("align", "center")),
+            key="_cc_align",
+        )
+    with _cc_rc:
+        _cc_margin = st.number_input(
+            "Top Margin (px)",
+            min_value=0, max_value=100,
+            value=_cc_layout.get("margin_top", 0),
+            key="_cc_margin",
+        )
+
+    _edited_cc = st.text_area(
+        "Court Caption Template",
+        key="inp_admin_cc_tpl",
+        height=180,
+        label_visibility="collapsed",
+    )
+
+    with st.expander("Available Variables — Court Caption"):
+        _rows = "\n".join(
+            f"| `{v}` | {d} |" for v, d in _DOC_TEMPLATE_VARIABLES["Court Caption"]
+        )
+        st.markdown(f"| Variable | Description |\n|---|---|\n{_rows}")
+
+    _cc_c1, _cc_c2, _ = st.columns([1, 1, 3])
+    with _cc_c1:
+        if st.button("Save Court Caption", type="primary", key="_cc_save"):
+            if _edited_cc.strip() == _DEFAULT_COURT_CAPTION_TEMPLATE.strip():
+                config.pop("court_caption_template", None)
+            else:
+                config["court_caption_template"] = _edited_cc
+            config["court_caption_layout"] = {
+                "align": _cc_align,
+                "margin_top": _cc_margin,
+            }
+            save_config("document-templates", config)
+            st.toast("Court caption template saved! Restart Filing Assembler to apply.")
+    with _cc_c2:
+        if st.button("Reset to Default", key="_cc_reset"):
+            config.pop("court_caption_template", None)
+            config.pop("court_caption_layout", None)
+            save_config("document-templates", config)
+            if "inp_admin_cc_tpl" in st.session_state:
+                del st.session_state["inp_admin_cc_tpl"]
+            st.toast("Court caption reset to default.")
+            st.rerun()
+
+    # ── Layout persistence note ──────────────────────────────────────────
+    st.markdown("---")
+    st.info(
+        "Layout settings (alignment, margins) are saved to "
+        "`data/config/document-templates.json` and persist across sessions. "
+        "These settings affect export formatting for DOCX and PDF output."
+    )
 
 
 def _editor_firm_info():
@@ -2438,7 +2637,6 @@ def _editor_email_templates():
 
 _TOOL_EDITORS = {
     "Case Checklist": _editor_case_checklist,
-    "Brief Builder": _editor_brief_builder,
     "Filing Assembler": _editor_cover_letters,
     "Declaration Drafter": _editor_declaration_drafter,
     "Legal Research": _editor_legal_research,
@@ -2466,7 +2664,7 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components"],
+        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components", "Document Templates"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
@@ -2480,6 +2678,8 @@ with tab_integrations:
         _editor_client_banner()
     elif int_sub == "Salesforce Fields":
         _editor_salesforce_fields()
+    elif int_sub == "Document Templates":
+        _editor_document_templates()
     else:
         _editor_components()
 
@@ -2502,10 +2702,10 @@ _SIDEBAR_TOOLS = [
 ]
 
 with tab_governance:
-    st.caption("Feature locking, sidebar visibility, security, and tool governance.")
+    st.caption("Feature locking, sidebar visibility, navigation, component toggles, and security.")
     gov_sub = st.radio(
         "Section",
-        ["Feature Registry", "Sidebar Visibility", "Security"],
+        ["Feature Registry", "Sidebar Visibility", "Navigation", "Component Toggles", "Security"],
         horizontal=True,
         key="_tab_gov_radio",
         label_visibility="collapsed",
@@ -2514,6 +2714,134 @@ with tab_governance:
 
     if gov_sub == "Feature Registry":
         _editor_feature_registry()
+    elif gov_sub == "Navigation":
+        # ── Navigation Manager ────────────────────────────────────────
+        st.subheader("Navigation Manager")
+        st.caption(
+            "Configure which tools appear on the Staff Dashboard, their display order, "
+            "icons, descriptions, and visibility. Changes take effect on dashboard restart."
+        )
+
+        _global_nav = load_config("global-settings") or {}
+        _nav_cfg = _global_nav.get("navigation", {})
+        _nav_tools = _nav_cfg.get("tools", [])
+
+        # Default tool definitions (used when no config exists)
+        _DEFAULT_NAV_TOOLS = [
+            {"key": "country-reports", "name": "Country Reports", "icon": "&#x1F30D;", "desc": "Search indexed country condition reports, curate citations, and compile exhibit bundles.", "url": "http://localhost:8501", "sort_order": 1, "visible": True, "status": "live"},
+            {"key": "cover-letters", "name": "Filing Assembler", "icon": "&#x2709;&#xFE0F;", "desc": "Generate and customize cover pages for filings and correspondence.", "url": "http://localhost:8504", "sort_order": 2, "visible": True, "status": "live"},
+            {"key": "brief-builder", "name": "Brief Builder", "icon": "&#x1F4DC;", "desc": "Assemble legal briefs with templated sections, arguments, and citations.", "url": "http://localhost:8507", "sort_order": 3, "visible": True, "status": "live"},
+            {"key": "declaration-drafter", "name": "Declaration Drafter", "icon": "&#x1F58A;&#xFE0F;", "desc": "Guided templates for asylum declarations, personal statements, and witness affidavits.", "url": "http://localhost:8503", "sort_order": 4, "visible": True, "status": "live"},
+            {"key": "timeline-builder", "name": "Timeline Builder", "icon": "&#x1F4C5;", "desc": "Build visual chronologies of persecution events, travel history, and case milestones.", "url": "http://localhost:8505", "sort_order": 5, "visible": True, "status": "live"},
+            {"key": "legal-research", "name": "Legal Research", "icon": "&#x2696;&#xFE0F;", "desc": "Search case law, BIA decisions, and circuit court opinions for relevant precedent.", "url": "http://localhost:8508", "sort_order": 6, "visible": True, "status": "live"},
+            {"key": "forms-assistant", "name": "Forms Assistant", "icon": "&#x1F4DD;", "desc": "Prepare and review I-589, I-130, I-485, and other immigration forms.", "url": "http://localhost:8509", "sort_order": 7, "visible": True, "status": "live"},
+            {"key": "case-checklist", "name": "Case Checklist", "icon": "&#x1F4CB;", "desc": "Track filing requirements, deadlines, and document checklists per case type.", "url": "http://localhost:8506", "sort_order": 8, "visible": True, "status": "live"},
+            {"key": "templates", "name": "Templates", "icon": "&#x1F4C4;", "desc": "Manage email, cover letter, government filing, and EOIR templates.", "url": "http://localhost:8510", "sort_order": 9, "visible": True, "status": "live"},
+            {"key": "document-translator", "name": "Document Translator", "icon": "&#x1F310;", "desc": "Upload documents in any language, auto-translate to English, and export to Google Docs.", "url": "http://localhost:8511", "sort_order": 10, "visible": True, "status": "live"},
+            {"key": "client-info", "name": "Client Info", "icon": "&#x1F464;", "desc": "View and edit Salesforce contact data. Pull client details and push updates back.", "url": "http://localhost:8512", "sort_order": 11, "visible": True, "status": "live"},
+            {"key": "hearing-prep", "name": "Hearing Prep", "icon": "&#x1F3A4;", "desc": "Oral Q&A simulation for ICE cross-examination practice with audio recording and AI evaluation.", "url": "http://localhost:8514", "sort_order": 12, "visible": True, "status": "live"},
+            {"key": "document-assembler", "name": "Document Assembler", "icon": "&#x1F4E6;", "desc": "Browse Box files, translate documents, assemble and paginate exhibit packages.", "url": "http://localhost:8515", "sort_order": 13, "visible": True, "status": "live"},
+            {"key": "admin-panel", "name": "Admin Panel", "icon": "&#x2699;&#xFE0F;", "desc": "Configure tool settings, templates, and lists.", "url": "http://localhost:8513", "sort_order": 14, "visible": True, "status": "live"},
+        ]
+
+        if not _nav_tools:
+            _nav_tools = [dict(t) for t in _DEFAULT_NAV_TOOLS]
+
+        _STATUS_OPTIONS = ["live", "planned", "idea"]
+
+        _nav_changed = False
+        for _nt in sorted(_nav_tools, key=lambda t: t.get("sort_order", 99)):
+            _nk = _nt["key"]
+            with st.expander(f"{_nt.get('name', _nk)}", expanded=False):
+                _c1, _c2 = st.columns(2)
+                with _c1:
+                    _new_name = st.text_input("Display Name", value=_nt.get("name", ""), key=f"_nav_name_{_nk}")
+                    _new_icon = st.text_input("Icon (HTML entity)", value=_nt.get("icon", ""), key=f"_nav_icon_{_nk}")
+                with _c2:
+                    _new_order = st.number_input("Sort Order", value=_nt.get("sort_order", 99), min_value=1, max_value=99, key=f"_nav_order_{_nk}")
+                    _cur_status = _nt.get("status", "live")
+                    _si = _STATUS_OPTIONS.index(_cur_status) if _cur_status in _STATUS_OPTIONS else 0
+                    _new_status = st.selectbox("Status", options=_STATUS_OPTIONS, index=_si, key=f"_nav_status_{_nk}")
+                _new_desc = st.text_area("Description", value=_nt.get("desc", ""), height=68, key=f"_nav_desc_{_nk}")
+                _new_vis = st.toggle("Visible on Dashboard", value=_nt.get("visible", True), key=f"_nav_vis_{_nk}")
+
+                if (
+                    _new_name != _nt.get("name", "")
+                    or _new_icon != _nt.get("icon", "")
+                    or _new_order != _nt.get("sort_order", 99)
+                    or _new_status != _nt.get("status", "live")
+                    or _new_desc != _nt.get("desc", "")
+                    or _new_vis != _nt.get("visible", True)
+                ):
+                    _nt["name"] = _new_name
+                    _nt["icon"] = _new_icon
+                    _nt["sort_order"] = _new_order
+                    _nt["status"] = _new_status
+                    _nt["desc"] = _new_desc
+                    _nt["visible"] = _new_vis
+                    _nav_changed = True
+
+        if _nav_changed:
+            _global_nav.setdefault("navigation", {})["tools"] = _nav_tools
+            save_config("global-settings", _global_nav)
+            st.toast("Navigation settings saved!")
+            st.rerun()
+
+    elif gov_sub == "Component Toggles":
+        # ── Component Toggles ────────────────────────────────────────
+        st.subheader("Component Toggles")
+        st.caption(
+            "Enable or disable shared UI components per tool. "
+            "Changes take effect on tool restart."
+        )
+
+        _COMPONENTS = [
+            ("draft_box", "Draft Box"),
+            ("preview_modal", "Preview Modal"),
+            ("feedback_button", "Feedback Button"),
+            ("tool_help", "Tool Help"),
+            ("tool_notes", "Tool Notes"),
+        ]
+        _TOGGLE_TOOLS = [
+            ("country-reports", "Country Reports"),
+            ("cover-letters", "Filing Assembler"),
+            ("brief-builder", "Brief Builder"),
+            ("declaration-drafter", "Declaration Drafter"),
+            ("timeline-builder", "Timeline Builder"),
+            ("legal-research", "Legal Research"),
+            ("forms-assistant", "Forms Assistant"),
+            ("case-checklist", "Case Checklist"),
+            ("evidence-indexer", "Templates"),
+            ("document-translator", "Document Translator"),
+            ("client-info", "Client Info"),
+            ("hearing-prep", "Hearing Prep"),
+            ("document-assembler", "Document Assembler"),
+        ]
+
+        _global_ct = load_config("global-settings") or {}
+        _ct = _global_ct.get("component_toggles", {})
+        _ct_changed = False
+
+        for _comp_key, _comp_label in _COMPONENTS:
+            with st.expander(_comp_label, expanded=False):
+                _comp_cfg = _ct.get(_comp_key, {})
+                for _tk, _tl in _TOGGLE_TOOLS:
+                    _val = st.toggle(
+                        _tl,
+                        value=_comp_cfg.get(_tk, True),
+                        key=f"_ct_{_comp_key}_{_tk}",
+                    )
+                    if _val != _comp_cfg.get(_tk, True):
+                        _comp_cfg[_tk] = _val
+                        _ct_changed = True
+                _ct[_comp_key] = _comp_cfg
+
+        if _ct_changed:
+            _global_ct["component_toggles"] = _ct
+            save_config("global-settings", _global_ct)
+            st.toast("Component toggle settings saved!")
+            st.rerun()
+
     elif gov_sub == "Sidebar Visibility":
         st.subheader("Sidebar Visibility")
         st.caption(
