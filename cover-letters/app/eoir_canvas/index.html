@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1e293b;overflow-x:hidden}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
+.toolbar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 10px;background:#f1f5f9;border:1px solid #e2e8f0;
+  border-radius:6px 6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+}
+.toolbar-hint{font-size:11px;color:#64748b}
+.toolbar-right{display:flex;gap:4px}
+.toolbar button{
+  background:#fff;border:1px solid #e2e8f0;border-radius:4px;
+  padding:3px 10px;cursor:pointer;font-size:11px;
+  font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;color:#475569;
+  transition:background .15s,border-color .15s;
+}
+.toolbar button:hover{background:#e2e8f0;border-color:#cbd5e1}
+
+/* ── Canvas ──────────────────────────────────────────────────────────── */
+.canvas{
+  background:#fff;border:1px solid #e2e8f0;border-top:none;
+  border-radius:0 0 6px 6px;padding:24px 28px;min-height:300px;
+}
+
+/* ── Block ───────────────────────────────────────────────────────────── */
+.block{
+  position:relative;padding:8px 10px;margin:4px 0;
+  border:1.5px dashed transparent;border-radius:5px;
+  cursor:default;transition:border-color .15s,background .15s,box-shadow .15s;
+}
+.block:hover{border-color:#93c5fd;background:#f0f7ff}
+.block.editing{
+  border:1.5px solid #3b82f6;background:#f0f7ff;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);cursor:text;
+}
+.block.dragging{opacity:.35}
+.block.drag-over-top{border-top:3px solid #3b82f6}
+.block.drag-over-bottom{border-bottom:3px solid #3b82f6}
+
+/* ── Block controls (visible on hover) ───────────────────────────────── */
+.block-controls{
+  display:none;position:absolute;top:-11px;left:6px;right:6px;
+  justify-content:space-between;align-items:center;z-index:10;
+  pointer-events:none;
+}
+.block-controls>*{pointer-events:auto}
+.block:hover .block-controls,.block.editing .block-controls{display:flex}
+.block-label{
+  font-size:9px;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+  background:#3b82f6;color:#fff;padding:1px 7px;border-radius:3px;white-space:nowrap;
+}
+.block-actions{display:flex;gap:2px}
+.block-actions button{
+  background:#fff;border:1px solid #d1d5db;border-radius:3px;
+  width:19px;height:19px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:9px;color:#64748b;padding:0;transition:all .1s;
+}
+.block-actions button:hover{background:#f1f5f9;color:#1e293b}
+
+/* ── Drag handle ─────────────────────────────────────────────────────── */
+.drag-handle{
+  cursor:grab;color:#94a3b8;font-size:13px;margin-right:5px;
+  user-select:none;line-height:1;
+}
+.drag-handle:active{cursor:grabbing}
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+.block-content{
+  white-space:pre-wrap;font-size:11.5px;line-height:1.5;outline:none;
+  word-wrap:break-word;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.empty-state{
+  display:flex;align-items:center;justify-content:center;
+  min-height:200px;color:#94a3b8;font-style:italic;
+  font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-hint">Click to edit &middot; Drag to reorder</span>
+  <div class="toolbar-right">
+    <button id="resetBtn" title="Regenerate all blocks from template">&#x21bb; Regenerate</button>
+    <button id="expandBtn" title="Open full-screen editor">&#x26F6; Expand View</button>
+  </div>
+</div>
+<div id="canvas" class="canvas">
+  <div class="empty-state">Fill in the submission description to see the document.</div>
+</div>
+
+<script>
+// ── Streamlit communication ──────────────────────────────────────────
+function sendMsg(type,data){
+  window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},data),"*");
+}
+function setHeight(){
+  sendMsg("streamlit:setFrameHeight",{height:document.body.scrollHeight+10});
+}
+function setValue(val){
+  sendMsg("streamlit:setComponentValue",{value:val});
+}
+
+// ── State ────────────────────────────────────────────────────────────
+var blocks=[];       // [{id,label,content}] — default content from Python
+var blockOrder=[];   // current display order (block IDs)
+var blockEdits={};   // {block_id: edited_text} — only user-changed blocks
+var editingId=null;
+var draggedId=null;
+
+// ── Render blocks ────────────────────────────────────────────────────
+function render(){
+  var canvas=document.getElementById("canvas");
+  if(!blocks.length||!blockOrder.length){
+    canvas.innerHTML='<div class="empty-state">Fill in the submission description to see the document.</div>';
+    setHeight();return;
+  }
+  canvas.innerHTML="";
+  blockOrder.forEach(function(id,idx){
+    var blk=null;
+    for(var i=0;i<blocks.length;i++){if(blocks[i].id===id){blk=blocks[i];break;}}
+    if(!blk)return;
+    var content=(blockEdits[id]!=null)?blockEdits[id]:blk.content;
+
+    var el=document.createElement("div");
+    el.className="block"+(editingId===id?" editing":"");
+    el.setAttribute("data-id",id);
+    el.draggable=true;
+
+    // Controls
+    var controls=document.createElement("div");
+    controls.className="block-controls";
+    var left=document.createElement("span");
+    left.style.cssText="display:flex;align-items:center";
+    var handle=document.createElement("span");
+    handle.className="drag-handle";handle.textContent="\u2807";
+    var label=document.createElement("span");
+    label.className="block-label";label.textContent=blk.label;
+    left.appendChild(handle);left.appendChild(label);
+
+    var actions=document.createElement("span");
+    actions.className="block-actions";
+    if(idx>0){
+      var up=document.createElement("button");up.innerHTML="&#9650;";up.title="Move up";
+      (function(bid){up.addEventListener("click",function(e){e.stopPropagation();moveBlock(bid,-1);});})(id);
+      actions.appendChild(up);
+    }
+    if(idx<blockOrder.length-1){
+      var dn=document.createElement("button");dn.innerHTML="&#9660;";dn.title="Move down";
+      (function(bid){dn.addEventListener("click",function(e){e.stopPropagation();moveBlock(bid,1);});})(id);
+      actions.appendChild(dn);
+    }
+    controls.appendChild(left);controls.appendChild(actions);
+    el.appendChild(controls);
+
+    // Content
+    var ce=document.createElement("div");
+    ce.className="block-content";
+    ce.textContent=content;
+    if(editingId===id)ce.setAttribute("contenteditable","true");
+    el.appendChild(ce);
+
+    // Click to edit
+    (function(bid,elem,contentElem){
+      elem.addEventListener("click",function(){
+        if(editingId===bid)return;
+        finishEditing();
+        editingId=bid;
+        render();
+        var active=document.querySelector('[data-id="'+bid+'"] .block-content');
+        if(active){
+          active.focus();
+          try{
+            var r=document.createRange();r.selectNodeContents(active);r.collapse(false);
+            var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+          }catch(e){}
+        }
+      });
+    })(id,el,ce);
+
+    // Drag events
+    (function(bid,elem){
+      elem.addEventListener("dragstart",function(e){
+        draggedId=bid;elem.classList.add("dragging");
+        e.dataTransfer.effectAllowed="move";
+        e.dataTransfer.setData("text/plain",bid);
+      });
+      elem.addEventListener("dragend",function(){
+        draggedId=null;
+        var ds=document.querySelectorAll(".dragging,.drag-over-top,.drag-over-bottom");
+        for(var i=0;i<ds.length;i++)ds[i].classList.remove("dragging","drag-over-top","drag-over-bottom");
+      });
+      elem.addEventListener("dragover",function(e){
+        if(draggedId===bid)return;
+        e.preventDefault();e.dataTransfer.dropEffect="move";
+        var rect=elem.getBoundingClientRect();
+        var mid=rect.top+rect.height/2;
+        elem.classList.remove("drag-over-top","drag-over-bottom");
+        elem.classList.add(e.clientY<mid?"drag-over-top":"drag-over-bottom");
+      });
+      elem.addEventListener("dragleave",function(){
+        elem.classList.remove("drag-over-top","drag-over-bottom");
+      });
+      elem.addEventListener("drop",function(e){
+        e.preventDefault();
+        elem.classList.remove("drag-over-top","drag-over-bottom");
+        if(!draggedId||draggedId===bid)return;
+        var rect=elem.getBoundingClientRect();
+        var mid=rect.top+rect.height/2;
+        reorderDrop(draggedId,bid,e.clientY<mid);
+      });
+    })(id,el);
+
+    canvas.appendChild(el);
+  });
+  setHeight();
+}
+
+// ── Editing helpers ──────────────────────────────────────────────────
+function finishEditing(){
+  if(!editingId)return;
+  var el=document.querySelector('[data-id="'+editingId+'"] .block-content');
+  if(el){
+    var blk=null;
+    for(var i=0;i<blocks.length;i++){if(blocks[i].id===editingId){blk=blocks[i];break;}}
+    var edited=el.innerText;
+    // Only store if user actually changed the content
+    if(blk&&edited!==blk.content){
+      blockEdits[editingId]=edited;
+    }
+  }
+  editingId=null;
+  emitState();
+}
+
+function moveBlock(id,dir){
+  finishEditing();
+  var idx=blockOrder.indexOf(id);
+  var ni=idx+dir;
+  if(ni<0||ni>=blockOrder.length)return;
+  blockOrder.splice(idx,1);
+  blockOrder.splice(ni,0,id);
+  emitState();render();
+}
+
+function reorderDrop(fromId,toId,before){
+  finishEditing();
+  var fi=blockOrder.indexOf(fromId);
+  blockOrder.splice(fi,1);
+  var ti=blockOrder.indexOf(toId);
+  if(!before)ti++;
+  blockOrder.splice(ti,0,fromId);
+  emitState();render();
+}
+
+function emitState(){
+  setValue({block_order:blockOrder,block_edits:blockEdits});
+}
+
+// ── Click outside to deselect ────────────────────────────────────────
+document.getElementById("canvas").addEventListener("click",function(e){
+  if(e.target===this){finishEditing();render();}
+});
+
+// ── Toolbar buttons ──────────────────────────────────────────────────
+document.getElementById("resetBtn").addEventListener("click",function(){
+  finishEditing();
+  setValue({block_order:blockOrder,block_edits:blockEdits,action:"regenerate"});
+});
+document.getElementById("expandBtn").addEventListener("click",function(){
+  finishEditing();
+  setValue({block_order:blockOrder,block_edits:blockEdits,action:"expand"});
+});
+
+// ── Receive data from Streamlit ──────────────────────────────────────
+window.addEventListener("message",function(event){
+  if(!event.data||event.data.type!=="streamlit:render")return;
+  var args=event.data.args;
+  blocks=args.blocks||[];
+
+  if(args.reset){
+    blockOrder=args.block_order||blocks.map(function(b){return b.id;});
+    blockEdits={};
+    editingId=null;
+    // Emit immediately so Python gets the fresh state
+    render();
+    emitState();
+  }else{
+    // Preserve user order and edits; just update default block content
+    if(!blockOrder.length){
+      blockOrder=args.block_order||blocks.map(function(b){return b.id;});
+    }
+    if(args.block_edits){
+      var keys=Object.keys(args.block_edits);
+      for(var i=0;i<keys.length;i++){
+        if(!(keys[i] in blockEdits)){
+          blockEdits[keys[i]]=args.block_edits[keys[i]];
+        }
+      }
+    }
+    render();
+  }
+});
+
+// Ready
+sendMsg("streamlit:componentReady",{apiVersion:1});
+setHeight();
+</script>
+</body>
+</html>
