@@ -20,6 +20,8 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.client_banner import render_client_banner
 from shared.tool_notes import render_tool_notes
+import streamlit.components.v1 as st_components
+
 from app.templates_store import (
     EOIR_CATEGORIES,
     get_client_letter_templates,
@@ -30,6 +32,18 @@ from app.templates_store import (
     save_email_templates,
     save_eoir_templates,
     save_govt_letter_templates,
+)
+from app.brief_sections_store import (
+    MERGE_FIELDS,
+    get_boilerplate,
+    get_brief_types,
+    resolve_merge_fields,
+    save_brief_config,
+)
+
+_brief_canvas_component = st_components.declare_component(
+    "brief_sections_canvas",
+    path=str(Path(__file__).resolve().parent / "brief_sections_canvas"),
 )
 
 try:
@@ -142,7 +156,8 @@ def _esc(text: str) -> str:
 with st.sidebar:
     st.markdown("#### Templates")
     st.caption(
-        "Manage all template types from one place. Changes are saved to config "
+        "Manage all template types — including email, cover letters, EOIR filings, "
+        "and brief sections — from one place. Changes are saved to config "
         "and shared with other tools automatically."
     )
     render_tool_notes("evidence-indexer")
@@ -150,11 +165,12 @@ with st.sidebar:
 
 # -- Tabs ---------------------------------------------------------------------
 
-tab_email, tab_client, tab_govt, tab_eoir = st.tabs([
+tab_email, tab_client, tab_govt, tab_eoir, tab_brief = st.tabs([
     "Email Templates",
     "Client Cover Letters",
     "Government Cover Letters",
     "EOIR Templates",
+    "Brief Sections",
 ])
 
 
@@ -473,3 +489,285 @@ def _render_eoir_templates() -> None:
 
 with tab_eoir:
     _render_eoir_templates()
+
+
+# =============================================================================
+# Tab 5: Brief Sections
+# =============================================================================
+
+def _render_brief_config_editor() -> None:
+    """Manage brief types, sections, and boilerplate — migrated from Admin Panel."""
+    brief_types: dict = get_brief_types()
+    boilerplate: dict = get_boilerplate()
+
+    # -- Merge field reference --
+    with st.expander("Merge field reference"):
+        rows = "| Placeholder | Description |\n|---|---|\n"
+        for ph, desc in MERGE_FIELDS.items():
+            rows += f"| `{ph}` | {desc} |\n"
+        st.markdown(rows)
+
+    st.subheader("Brief Types & Sections")
+
+    type_names = list(brief_types.keys())
+
+    # Add new brief type
+    c1, c2 = st.columns([4, 1])
+    with c1:
+        new_bt = st.text_input("New brief type", key="_bs_new_type", placeholder="e.g. SIJS Brief")
+    with c2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Add", key="_bs_add_type") and new_bt.strip():
+            if new_bt.strip() not in type_names:
+                type_names.append(new_bt.strip())
+                brief_types[new_bt.strip()] = []
+                boilerplate.setdefault(new_bt.strip(), {})
+
+    # Delete brief type
+    to_delete = []
+    for i, tn in enumerate(type_names):
+        c1, c2 = st.columns([8, 1])
+        with c1:
+            n_secs = len(brief_types.get(tn, []))
+            st.text(f"{tn}  ({n_secs} section{'s' if n_secs != 1 else ''})")
+        with c2:
+            if st.button("X", key=f"_bs_del_{i}"):
+                to_delete.append(tn)
+    for d in to_delete:
+        type_names.remove(d)
+        brief_types.pop(d, None)
+        boilerplate.pop(d, None)
+
+    st.divider()
+    st.subheader("Sections & Boilerplate")
+
+    if type_names:
+        sel_bt = st.selectbox("Select brief type", type_names, key="_bs_sel_type")
+        sections = brief_types.get(sel_bt, [])
+        bp = boilerplate.get(sel_bt, {})
+
+        sec_to_delete = []
+        for idx, sec in enumerate(sections):
+            with st.expander(f"{sec.get('heading', 'Section')} ({sec.get('key', '')})"):
+                heading = st.text_input("Heading", value=sec.get("heading", ""), key=f"_bs_sec_h_{sel_bt}_{idx}")
+                key = st.text_input("Key", value=sec.get("key", ""), key=f"_bs_sec_k_{sel_bt}_{idx}")
+                sec["heading"] = heading
+                sec["key"] = key
+
+                # Boilerplate for this section
+                bp_text = bp.get(key, "")
+                new_bp = st.text_area("Boilerplate", value=bp_text, key=f"_bs_bp_{sel_bt}_{idx}", height=120)
+                if new_bp.strip():
+                    bp[key] = new_bp
+                elif key in bp:
+                    del bp[key]
+
+                # Subsections
+                subs = sec.get("subsections", [])
+                if subs:
+                    st.caption("Subsections:")
+                    sub_to_delete = []
+                    for si, sub in enumerate(subs):
+                        c1, c2, c3 = st.columns([3, 3, 1])
+                        with c1:
+                            sub["heading"] = st.text_input("Sub heading", value=sub.get("heading", ""), key=f"_bs_sub_h_{sel_bt}_{idx}_{si}")
+                        with c2:
+                            sub["key"] = st.text_input("Sub key", value=sub.get("key", ""), key=f"_bs_sub_k_{sel_bt}_{idx}_{si}")
+                        with c3:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            if st.button("X", key=f"_bs_sub_del_{sel_bt}_{idx}_{si}"):
+                                sub_to_delete.append(si)
+                        sub_bp = bp.get(sub["key"], "")
+                        new_sub_bp = st.text_area("Sub boilerplate", value=sub_bp, key=f"_bs_sub_bp_{sel_bt}_{idx}_{si}", height=100)
+                        if new_sub_bp.strip():
+                            bp[sub["key"]] = new_sub_bp
+                        elif sub["key"] in bp:
+                            del bp[sub["key"]]
+                    for si in sorted(sub_to_delete, reverse=True):
+                        subs.pop(si)
+
+                # Add subsection button
+                if st.button("+ Add subsection", key=f"_bs_sub_add_{sel_bt}_{idx}"):
+                    subs.append({"heading": "", "key": ""})
+                sec["subsections"] = subs
+
+                # Delete section button
+                if st.button("Delete section", key=f"_bs_sec_del_{sel_bt}_{idx}"):
+                    sec_to_delete.append(idx)
+
+        for idx in sorted(sec_to_delete, reverse=True):
+            sections.pop(idx)
+
+        # Add section
+        if st.button("+ Add section", key=f"_bs_sec_add_{sel_bt}"):
+            sections.append({"heading": "", "key": "", "subsections": []})
+
+        boilerplate[sel_bt] = bp
+        brief_types[sel_bt] = sections
+
+    if st.button("Save Brief Builder Config", type="primary", key="_bs_save"):
+        save_brief_config(brief_types, boilerplate)
+        st.toast("Brief Builder config saved!")
+
+
+def _render_brief_assembler() -> None:
+    """Assemble a brief draft from sections with drag-and-drop canvas."""
+
+    brief_types = get_brief_types()
+    all_boilerplate = get_boilerplate()
+    type_names = list(brief_types.keys())
+
+    if not type_names:
+        st.info("No brief types defined. Switch to Manage Templates to create one.")
+        return
+
+    selected_type = st.selectbox("Brief type", type_names, key="_bs_assemble_type")
+
+    # Detect brief type change → reset canvas
+    prev_type = st.session_state.get("_bs_prev_type", "")
+    type_changed = selected_type != prev_type
+    if type_changed:
+        st.session_state["_bs_prev_type"] = selected_type
+        st.session_state.pop("_bs_canvas_order", None)
+        st.session_state.pop("_bs_canvas_edits", None)
+        st.session_state.pop("_bs_disabled_ids", None)
+
+    # Build flat block list from sections + subsections
+    sections = brief_types.get(selected_type, [])
+    bp = all_boilerplate.get(selected_type, {})
+    canvas_blocks = []
+    for sec in sections:
+        content = bp.get(sec["key"], "")
+        canvas_blocks.append({
+            "id": sec["key"],
+            "label": sec["heading"],
+            "heading": sec["heading"],
+            "content": content,
+            "depth": 0,
+        })
+        for sub in sec.get("subsections", []):
+            sub_content = bp.get(sub["key"], "")
+            canvas_blocks.append({
+                "id": sub["key"],
+                "label": sub["heading"],
+                "heading": sub["heading"],
+                "content": sub_content,
+                "depth": 1,
+            })
+
+    # Merge field values
+    with st.expander("Merge field values", expanded=False):
+        field_values = {}
+        for ph, desc in MERGE_FIELDS.items():
+            field_key = f"_bs_field_{ph}"
+            val = st.text_input(desc, key=field_key, placeholder=ph)
+            if val.strip():
+                field_values[ph] = val.strip()
+
+    # Two-column layout: toggle list + canvas
+    col_toggle, col_canvas = st.columns([1, 3])
+
+    disabled_ids = list(st.session_state.get("_bs_disabled_ids", []))
+
+    with col_toggle:
+        st.caption("Sections")
+        for blk in canvas_blocks:
+            enabled = blk["id"] not in disabled_ids
+            new_val = st.checkbox(
+                blk["label"],
+                value=enabled,
+                key=f"_bs_toggle_{blk['id']}",
+            )
+            if new_val and blk["id"] in disabled_ids:
+                disabled_ids.remove(blk["id"])
+            elif not new_val and blk["id"] not in disabled_ids:
+                disabled_ids.append(blk["id"])
+        st.session_state["_bs_disabled_ids"] = disabled_ids
+
+    with col_canvas:
+        canvas_result = _brief_canvas_component(
+            blocks=canvas_blocks,
+            block_order=st.session_state.get("_bs_canvas_order"),
+            block_edits=st.session_state.get("_bs_canvas_edits", {}),
+            disabled_ids=disabled_ids,
+            reset=type_changed,
+            height=600,
+            key="_bs_canvas",
+        )
+
+    # Process canvas result
+    if canvas_result:
+        if isinstance(canvas_result, dict):
+            action = canvas_result.get("action")
+            if action == "reset":
+                st.session_state.pop("_bs_canvas_order", None)
+                st.session_state.pop("_bs_canvas_edits", None)
+                st.session_state["_bs_disabled_ids"] = []
+                st.rerun()
+            st.session_state["_bs_canvas_order"] = canvas_result.get("block_order")
+            st.session_state["_bs_canvas_edits"] = canvas_result.get("block_edits", {})
+            if canvas_result.get("disabled_ids") is not None:
+                st.session_state["_bs_disabled_ids"] = canvas_result["disabled_ids"]
+
+    # -- Assembled output preview --
+    st.divider()
+    st.subheader("Assembled Output")
+
+    order = st.session_state.get("_bs_canvas_order") or [b["id"] for b in canvas_blocks]
+    edits = st.session_state.get("_bs_canvas_edits", {})
+    final_disabled = st.session_state.get("_bs_disabled_ids", [])
+
+    block_map = {b["id"]: b for b in canvas_blocks}
+    assembled_parts = []
+    for bid in order:
+        if bid in final_disabled:
+            continue
+        blk = block_map.get(bid)
+        if not blk:
+            continue
+        content = edits.get(bid) if edits.get(bid) is not None else blk["content"]
+        if field_values:
+            content = resolve_merge_fields(content, field_values)
+        heading = blk["heading"]
+        if field_values:
+            heading = resolve_merge_fields(heading, field_values)
+        prefix = "    " if blk.get("depth", 0) >= 1 else ""
+        assembled_parts.append(f"{prefix}{heading}\n\n{prefix}{content}")
+
+    assembled_text = "\n\n\n".join(assembled_parts)
+
+    if assembled_text.strip():
+        st.text_area("Preview", value=assembled_text, height=400, disabled=True, key="_bs_preview")
+        st.download_button(
+            "Download .txt",
+            data=assembled_text,
+            file_name=f"{selected_type.replace(' ', '_').lower()}_draft.txt",
+            mime="text/plain",
+            key="_bs_download",
+        )
+    else:
+        st.info("Enable sections and add content to see the assembled output.")
+
+
+def _render_brief_sections() -> None:
+    """Brief Sections tab — mode toggle between config editor and assembler."""
+    st.caption(
+        "Manage brief type templates and assemble draft briefs. "
+        "Use {variable} placeholders for merge fields."
+    )
+
+    mode = st.radio(
+        "Mode",
+        ["Manage Templates", "Assemble Brief"],
+        horizontal=True,
+        key="_bs_mode",
+    )
+
+    if mode == "Manage Templates":
+        _render_brief_config_editor()
+    else:
+        _render_brief_assembler()
+
+
+with tab_brief:
+    _render_brief_sections()

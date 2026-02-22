@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Times New Roman',Times,serif;background:transparent;color:#1e293b;overflow-x:hidden}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
+.toolbar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 10px;background:#f1f5f9;border:1px solid #e2e8f0;
+  border-radius:6px 6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+}
+.toolbar-hint{font-size:11px;color:#64748b}
+.toolbar-right{display:flex;gap:4px}
+.toolbar button{
+  background:#fff;border:1px solid #e2e8f0;border-radius:4px;
+  padding:3px 10px;cursor:pointer;font-size:11px;
+  font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;color:#475569;
+  transition:background .15s,border-color .15s;
+}
+.toolbar button:hover{background:#e2e8f0;border-color:#cbd5e1}
+
+/* ── Canvas ──────────────────────────────────────────────────────────── */
+.canvas{
+  background:#fff;border:1px solid #e2e8f0;border-top:none;
+  border-radius:0 0 6px 6px;padding:24px 28px;min-height:300px;
+}
+
+/* ── Block ───────────────────────────────────────────────────────────── */
+.block{
+  position:relative;padding:8px 10px;margin:4px 0;
+  border:1.5px dashed transparent;border-radius:5px;
+  cursor:default;transition:border-color .15s,background .15s,box-shadow .15s;
+}
+.block:hover{border-color:#93c5fd;background:#f0f7ff}
+.block.editing{
+  border:1.5px solid #3b82f6;background:#f0f7ff;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);cursor:text;
+}
+.block.dragging{opacity:.35}
+.block.drag-over-top{border-top:3px solid #3b82f6}
+.block.drag-over-bottom{border-bottom:3px solid #3b82f6}
+
+/* Disabled block */
+.block.disabled{
+  opacity:.45;border:1.5px dotted #cbd5e1;background:#f8fafc;
+}
+.block.disabled .block-content{pointer-events:none}
+
+/* Subsection indent */
+.block.depth-1{margin-left:24px;border-left:3px solid #cbd5e1;padding-left:14px}
+
+/* ── Block controls (visible on hover) ───────────────────────────────── */
+.block-controls{
+  display:none;position:absolute;top:-11px;left:6px;right:6px;
+  justify-content:space-between;align-items:center;z-index:10;
+  pointer-events:none;
+}
+.block-controls>*{pointer-events:auto}
+.block:hover .block-controls,.block.editing .block-controls{display:flex}
+.block-label{
+  font-size:9px;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+  background:#3b82f6;color:#fff;padding:1px 7px;border-radius:3px;white-space:nowrap;
+}
+.block.disabled .block-label{background:#94a3b8}
+.block-actions{display:flex;gap:2px}
+.block-actions button{
+  background:#fff;border:1px solid #d1d5db;border-radius:3px;
+  width:19px;height:19px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:9px;color:#64748b;padding:0;transition:all .1s;
+}
+.block-actions button:hover{background:#f1f5f9;color:#1e293b}
+
+/* ── Drag handle ─────────────────────────────────────────────────────── */
+.drag-handle{
+  cursor:grab;color:#94a3b8;font-size:13px;margin-right:5px;
+  user-select:none;line-height:1;
+}
+.drag-handle:active{cursor:grabbing}
+
+/* ── Section heading ─────────────────────────────────────────────────── */
+.block-heading{
+  font-weight:bold;font-size:13px;margin-bottom:4px;
+  font-family:'Times New Roman',Times,serif;
+}
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+.block-content{
+  white-space:pre-wrap;font-size:12px;line-height:1.6;outline:none;
+  word-wrap:break-word;
+}
+
+/* ── Variable pills ──────────────────────────────────────────────────── */
+.var-pill{
+  display:inline;background:#dbeafe;color:#1d4ed8;border-radius:3px;
+  padding:0 4px;font-size:11px;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.empty-state{
+  display:flex;align-items:center;justify-content:center;
+  min-height:200px;color:#94a3b8;font-style:italic;
+  font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-hint">Click to edit &middot; Drag to reorder</span>
+  <div class="toolbar-right">
+    <button id="toggleAllBtn" title="Toggle all sections on/off">Toggle All</button>
+    <button id="resetBtn" title="Reset order and edits">&#x21bb; Reset</button>
+    <button id="expandBtn" title="Open full-screen editor">&#x26F6; Expand View</button>
+  </div>
+</div>
+<div id="canvas" class="canvas">
+  <div class="empty-state">Select a brief type to begin.</div>
+</div>
+
+<script>
+// ── Streamlit communication ──────────────────────────────────────────
+function sendMsg(type,data){
+  window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},data),"*");
+}
+function setHeight(){
+  sendMsg("streamlit:setFrameHeight",{height:document.body.scrollHeight+10});
+}
+function setValue(val){
+  sendMsg("streamlit:setComponentValue",{value:val});
+}
+
+// ── State ────────────────────────────────────────────────────────────
+var blocks=[];         // [{id,label,heading,content,depth}]
+var blockOrder=[];     // current display order (block IDs)
+var blockEdits={};     // {block_id: edited_text}
+var disabledIds=[];    // IDs of disabled/toggled-off blocks
+var editingId=null;
+var draggedId=null;
+
+// ── Highlight {variables} in text ────────────────────────────────────
+function highlightVars(text){
+  return text.replace(/\{([^}]+)\}/g,'<span class="var-pill">{$1}</span>');
+}
+
+// ── Render blocks ────────────────────────────────────────────────────
+function render(){
+  var canvas=document.getElementById("canvas");
+  if(!blocks.length||!blockOrder.length){
+    canvas.innerHTML='<div class="empty-state">Select a brief type to begin.</div>';
+    setHeight();return;
+  }
+  canvas.innerHTML="";
+  blockOrder.forEach(function(id,idx){
+    var blk=null;
+    for(var i=0;i<blocks.length;i++){if(blocks[i].id===id){blk=blocks[i];break;}}
+    if(!blk)return;
+    var isDisabled=disabledIds.indexOf(id)>=0;
+    var content=(blockEdits[id]!=null)?blockEdits[id]:blk.content;
+
+    var cls="block";
+    if(editingId===id)cls+=" editing";
+    if(isDisabled)cls+=" disabled";
+    if((blk.depth||0)>=1)cls+=" depth-1";
+
+    var el=document.createElement("div");
+    el.className=cls;
+    el.setAttribute("data-id",id);
+    if(!isDisabled)el.draggable=true;
+
+    // Controls
+    var controls=document.createElement("div");
+    controls.className="block-controls";
+    var left=document.createElement("span");
+    left.style.cssText="display:flex;align-items:center";
+    var handle=document.createElement("span");
+    handle.className="drag-handle";handle.textContent="\u2807";
+    var label=document.createElement("span");
+    label.className="block-label";label.textContent=blk.label;
+    left.appendChild(handle);left.appendChild(label);
+
+    var actions=document.createElement("span");
+    actions.className="block-actions";
+    if(idx>0){
+      var up=document.createElement("button");up.innerHTML="&#9650;";up.title="Move up";
+      (function(bid){up.addEventListener("click",function(e){e.stopPropagation();moveBlock(bid,-1);});})(id);
+      actions.appendChild(up);
+    }
+    if(idx<blockOrder.length-1){
+      var dn=document.createElement("button");dn.innerHTML="&#9660;";dn.title="Move down";
+      (function(bid){dn.addEventListener("click",function(e){e.stopPropagation();moveBlock(bid,1);});})(id);
+      actions.appendChild(dn);
+    }
+    controls.appendChild(left);controls.appendChild(actions);
+    el.appendChild(controls);
+
+    // Section heading
+    if(blk.heading){
+      var hd=document.createElement("div");
+      hd.className="block-heading";
+      hd.textContent=blk.heading;
+      el.appendChild(hd);
+    }
+
+    // Content
+    var ce=document.createElement("div");
+    ce.className="block-content";
+    if(editingId===id&&!isDisabled){
+      ce.textContent=content;
+      ce.setAttribute("contenteditable","true");
+    }else{
+      ce.innerHTML=highlightVars(escapeHtml(content));
+    }
+    el.appendChild(ce);
+
+    // Click to edit (only if enabled)
+    if(!isDisabled){
+      (function(bid,elem){
+        elem.addEventListener("click",function(){
+          if(editingId===bid)return;
+          finishEditing();
+          editingId=bid;
+          render();
+          var active=document.querySelector('[data-id="'+bid+'"] .block-content');
+          if(active){
+            active.focus();
+            try{
+              var r=document.createRange();r.selectNodeContents(active);r.collapse(false);
+              var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+            }catch(e){}
+          }
+        });
+      })(id,el);
+
+      // Drag events
+      (function(bid,elem){
+        elem.addEventListener("dragstart",function(e){
+          draggedId=bid;elem.classList.add("dragging");
+          e.dataTransfer.effectAllowed="move";
+          e.dataTransfer.setData("text/plain",bid);
+        });
+        elem.addEventListener("dragend",function(){
+          draggedId=null;
+          var ds=document.querySelectorAll(".dragging,.drag-over-top,.drag-over-bottom");
+          for(var i=0;i<ds.length;i++)ds[i].classList.remove("dragging","drag-over-top","drag-over-bottom");
+        });
+        elem.addEventListener("dragover",function(e){
+          if(draggedId===bid)return;
+          e.preventDefault();e.dataTransfer.dropEffect="move";
+          var rect=elem.getBoundingClientRect();
+          var mid=rect.top+rect.height/2;
+          elem.classList.remove("drag-over-top","drag-over-bottom");
+          elem.classList.add(e.clientY<mid?"drag-over-top":"drag-over-bottom");
+        });
+        elem.addEventListener("dragleave",function(){
+          elem.classList.remove("drag-over-top","drag-over-bottom");
+        });
+        elem.addEventListener("drop",function(e){
+          e.preventDefault();
+          elem.classList.remove("drag-over-top","drag-over-bottom");
+          if(!draggedId||draggedId===bid)return;
+          var rect=elem.getBoundingClientRect();
+          var mid=rect.top+rect.height/2;
+          reorderDrop(draggedId,bid,e.clientY<mid);
+        });
+      })(id,el);
+    }
+
+    canvas.appendChild(el);
+  });
+  setHeight();
+}
+
+function escapeHtml(t){
+  var d=document.createElement("div");d.textContent=t;return d.innerHTML;
+}
+
+// ── Editing helpers ──────────────────────────────────────────────────
+function finishEditing(){
+  if(!editingId)return;
+  var el=document.querySelector('[data-id="'+editingId+'"] .block-content');
+  if(el){
+    var blk=null;
+    for(var i=0;i<blocks.length;i++){if(blocks[i].id===editingId){blk=blocks[i];break;}}
+    var edited=el.innerText;
+    if(blk&&edited!==blk.content){
+      blockEdits[editingId]=edited;
+    }
+  }
+  editingId=null;
+  emitState();
+}
+
+function moveBlock(id,dir){
+  finishEditing();
+  var idx=blockOrder.indexOf(id);
+  var ni=idx+dir;
+  if(ni<0||ni>=blockOrder.length)return;
+  blockOrder.splice(idx,1);
+  blockOrder.splice(ni,0,id);
+  emitState();render();
+}
+
+function reorderDrop(fromId,toId,before){
+  finishEditing();
+  var fi=blockOrder.indexOf(fromId);
+  blockOrder.splice(fi,1);
+  var ti=blockOrder.indexOf(toId);
+  if(!before)ti++;
+  blockOrder.splice(ti,0,fromId);
+  emitState();render();
+}
+
+function emitState(){
+  setValue({block_order:blockOrder,block_edits:blockEdits,disabled_ids:disabledIds});
+}
+
+// ── Click outside to deselect ────────────────────────────────────────
+document.getElementById("canvas").addEventListener("click",function(e){
+  if(e.target===this){finishEditing();render();}
+});
+
+// ── Toolbar buttons ──────────────────────────────────────────────────
+document.getElementById("toggleAllBtn").addEventListener("click",function(){
+  finishEditing();
+  // If any are enabled, disable all; otherwise enable all
+  if(disabledIds.length<blockOrder.length){
+    disabledIds=blockOrder.slice();
+  }else{
+    disabledIds=[];
+  }
+  emitState();render();
+});
+
+document.getElementById("resetBtn").addEventListener("click",function(){
+  finishEditing();
+  setValue({block_order:blockOrder,block_edits:blockEdits,disabled_ids:disabledIds,action:"reset"});
+});
+
+document.getElementById("expandBtn").addEventListener("click",function(){
+  finishEditing();
+  setValue({block_order:blockOrder,block_edits:blockEdits,disabled_ids:disabledIds,action:"expand"});
+});
+
+// ── Receive data from Streamlit ──────────────────────────────────────
+window.addEventListener("message",function(event){
+  if(!event.data||event.data.type!=="streamlit:render")return;
+  var args=event.data.args;
+  blocks=args.blocks||[];
+
+  if(args.reset){
+    blockOrder=args.block_order||blocks.map(function(b){return b.id;});
+    blockEdits={};
+    disabledIds=args.disabled_ids||[];
+    editingId=null;
+    render();
+    emitState();
+  }else{
+    if(!blockOrder.length){
+      blockOrder=args.block_order||blocks.map(function(b){return b.id;});
+    }
+    if(args.disabled_ids!=null){
+      disabledIds=args.disabled_ids;
+    }
+    if(args.block_edits){
+      var keys=Object.keys(args.block_edits);
+      for(var i=0;i<keys.length;i++){
+        if(!(keys[i] in blockEdits)){
+          blockEdits[keys[i]]=args.block_edits[keys[i]];
+        }
+      }
+    }
+    render();
+  }
+});
+
+// Ready
+sendMsg("streamlit:componentReady",{apiVersion:1});
+setHeight();
+</script>
+</body>
+</html>
