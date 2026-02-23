@@ -15,6 +15,9 @@ import pytest
 # Patch DATA_DIR before importing the module so it doesn't create dirs at import time
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "evidence-indexer"))
+for _k in list(sys.modules.keys()):
+    if _k == "app" or _k.startswith("app."):
+        del sys.modules[_k]
 
 import app.evidence as evidence_mod
 from app.evidence import (
