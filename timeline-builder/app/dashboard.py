@@ -15,6 +15,7 @@ from datetime import date
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
@@ -34,6 +35,7 @@ from app.events import (
     parsed_date_to_display,
     save_timeline,
 )
+from app.doc_extractor import compile_exhibit_pdf, extract_events_from_documents, extract_pages_from_pdf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.google_upload import upload_to_google_docs
@@ -178,121 +180,6 @@ div[data-testid="stToolbar"] { display: none !important; }
     margin-left: 2px;
 }
 
-/* Timeline */
-.timeline {
-    position: relative;
-    padding: 20px 0;
-    margin-left: 8px;
-}
-.timeline::before {
-    content: '';
-    position: absolute;
-    left: 30px;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: #e2e8f0;
-    border-radius: 2px;
-}
-.timeline-event {
-    position: relative;
-    margin-left: 60px;
-    margin-bottom: 20px;
-    padding: 16px 20px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    transition: box-shadow 0.15s ease;
-}
-.timeline-event:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-.timeline-dot {
-    position: absolute;
-    left: -38px;
-    top: 20px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 2px currentColor;
-    background: currentColor;
-}
-.timeline-date {
-    font-size: 0.82rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-.timeline-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #1a2744;
-    margin-bottom: 4px;
-    line-height: 1.3;
-}
-.timeline-desc {
-    font-size: 0.88rem;
-    color: #4a5568;
-    line-height: 1.5;
-    margin-bottom: 6px;
-}
-.timeline-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    border-radius: 12px;
-    color: #fff;
-}
-.timeline-date-range {
-    font-size: 0.75rem;
-    color: #86868b;
-    font-weight: 500;
-    margin-left: 8px;
-}
-.timeline-delete {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    background: none;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    color: #a0aec0;
-    cursor: pointer;
-    font-size: 0.75rem;
-    padding: 2px 7px;
-    line-height: 1;
-    transition: all 0.15s ease;
-}
-.timeline-delete:hover {
-    color: #dc3545;
-    border-color: #dc3545;
-    background: #fff5f5;
-}
-
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #a0aec0;
-}
-.empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 12px;
-    opacity: 0.5;
-}
-.empty-state-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #5a6a85;
-    margin-bottom: 4px;
-}
-.empty-state-text {
-    font-size: 0.88rem;
-    color: #a0aec0;
-}
-
 /* Saved toast */
 .saved-toast {
     font-size: 0.8rem;
@@ -312,8 +199,7 @@ div[data-testid="stToolbar"] { display: none !important; }
 
 /* Print-friendly styles */
 @media print {
-    .nav-bar, .stSidebar, .timeline-delete { display: none !important; }
-    .timeline-event { break-inside: avoid; }
+    .nav-bar, .stSidebar { display: none !important; }
     .stApp { background: #fff !important; }
 }
 </style>
@@ -350,21 +236,13 @@ _DEFAULTS: dict = {
     "timeline_id": None,
     "timeline": None,
     "last_saved_msg": "",
+    "extracted_events": [],
+    "extraction_selections": {},
+    "box_docs": [],
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
         st.session_state[_k] = _v
-
-# -- SF auto-fill for client fields -------------------------------------------
-_sf_client = st.session_state.get("sf_client")
-if _sf_client:
-    _sf_cid = _sf_client.get("Id", "")
-    _prev_cid = st.session_state.get("_sf_autofill_cid", "")
-    if _sf_cid and _sf_cid != _prev_cid:
-        _sf_name = _sf_client.get("Name", "")
-        if _sf_name:
-            st.session_state["inp_client_name"] = _sf_name
-        st.session_state["_sf_autofill_cid"] = _sf_cid
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -379,13 +257,23 @@ def _ensure_timeline() -> dict:
     return st.session_state.timeline
 
 
+def _get_client_name() -> str:
+    """Get the client name from SF data or the current timeline."""
+    sf = st.session_state.get("sf_client")
+    if sf:
+        return sf.get("Name", "")
+    tl = st.session_state.get("timeline")
+    if tl:
+        return tl.get("client_name", "")
+    return ""
+
+
 def _do_save() -> None:
     """Save the current timeline to disk."""
     tl = _ensure_timeline()
-    tl["case_name"] = st.session_state.get("inp_case_name", "")
-    tl["client_name"] = st.session_state.get("inp_client_name", "")
+    tl["client_name"] = _get_client_name()
     save_timeline(tl)
-    label = tl["client_name"] or tl["case_name"] or "timeline"
+    label = tl["client_name"] or "timeline"
     st.session_state.last_saved_msg = f"Saved — {label}"
 
 
@@ -395,9 +283,6 @@ def _do_new() -> None:
     st.session_state.timeline_id = tl["id"]
     st.session_state.timeline = tl
     st.session_state.last_saved_msg = ""
-    for k in ("inp_case_name", "inp_client_name"):
-        if k in st.session_state:
-            del st.session_state[k]
 
 
 def _do_load(timeline_id: str) -> None:
@@ -408,8 +293,6 @@ def _do_load(timeline_id: str) -> None:
     st.session_state.timeline_id = tl["id"]
     st.session_state.timeline = tl
     st.session_state.last_saved_msg = ""
-    st.session_state.inp_case_name = tl.get("case_name", "")
-    st.session_state.inp_client_name = tl.get("client_name", "")
 
 
 def _do_delete_event(event_id: str) -> None:
@@ -418,49 +301,18 @@ def _do_delete_event(event_id: str) -> None:
     delete_event(tl, event_id)
 
 
-def _build_timeline_html(events: list[dict]) -> str:
-    """Render a professional vertical timeline as HTML."""
-    esc = html_mod.escape
-
-    if not events:
-        return (
-            '<div class="empty-state">'
-            '<div class="empty-state-icon">&#128197;</div>'
-            '<div class="empty-state-title">No events yet</div>'
-            '<div class="empty-state-text">Use the sidebar form to add the first event to this timeline.</div>'
-            "</div>"
-        )
-
-    parts: list[str] = ['<div class="timeline">']
-
-    for ev in events:
-        cat = ev.get("category", "Personal")
-        color = EVENT_CATEGORIES.get(cat, "#6c757d")
-        date_text = esc(ev.get("date_text", ""))
-        title = esc(ev.get("title", ""))
-        desc = esc(ev.get("description", ""))
-        end_date = ev.get("end_date_text", "")
-        event_id = ev.get("id", "")
-
-        date_range_html = ""
-        if end_date:
-            date_range_html = f'<span class="timeline-date-range">to {esc(end_date)}</span>'
-
-        desc_html = ""
-        if desc:
-            desc_html = f'<div class="timeline-desc">{desc}</div>'
-
-        parts.append(f"""
-        <div class="timeline-event" style="border-left: 4px solid {color};" data-event-id="{event_id}">
-            <div class="timeline-dot" style="color: {color};"></div>
-            <div class="timeline-date" style="color: {color};">{date_text}{date_range_html}</div>
-            <div class="timeline-title">{title}</div>
-            {desc_html}
-            <span class="timeline-badge" style="background: {color};">{esc(cat)}</span>
-        </div>""")
-
-    parts.append("</div>")
-    return "\n".join(parts)
+_STATS_CSS = """\
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+body { margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; }
+.stats-row { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 20px; min-width: 140px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: #1a2744; line-height: 1.2; }
+.stat-label { font-size: 0.78rem; color: #5a6a85; font-weight: 500; margin-top: 2px; }
+.cat-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.cat-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #5a6a85; font-weight: 500; }
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.cat-count { background: #f0f4fa; border-radius: 10px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; color: #4a7ddb; margin-left: 2px; }
+"""
 
 
 def _build_stats_html(events: list[dict]) -> str:
@@ -512,7 +364,7 @@ def _build_stats_html(events: list[dict]) -> str:
             )
     parts.append("</div>")
 
-    return "\n".join(parts)
+    return f"<style>{_STATS_CSS}</style>" + "".join(parts)
 
 
 def _build_docx(timeline: dict) -> bytes:
@@ -650,6 +502,7 @@ def _build_plain_text(timeline: dict) -> str:
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
 tl = _ensure_timeline()
+client_name = _get_client_name()
 
 with st.sidebar:
     # Timeline management
@@ -692,22 +545,6 @@ with st.sidebar:
             f'<div class="saved-toast">{html_mod.escape(st.session_state.last_saved_msg)}</div>',
             unsafe_allow_html=True,
         )
-
-    st.divider()
-
-    # Client / case info
-    st.markdown("#### Case Info")
-    client_name = st.text_input(
-        "Client Name",
-        value=tl.get("client_name", ""),
-        key="inp_client_name",
-    )
-    case_name = st.text_input(
-        "Case Name",
-        value=tl.get("case_name", ""),
-        key="inp_case_name",
-        placeholder="e.g. Asylum — Garcia",
-    )
 
     st.divider()
 
@@ -765,20 +602,46 @@ with st.sidebar:
 
     st.divider()
 
-    # Export
-    st.markdown("#### Export")
-
-    # Box folder browser
+    # Box folder browser — picker mode for extracting PDFs
     if render_box_folder_browser and _parse_folder_id:
         _sf = st.session_state.get("sf_client")
         _box_raw = (_sf.get("Box_Folder_Id__c", "") or "") if _sf else ""
         if _box_raw:
-            st.divider()
+
+            def _on_box_select(files: list[dict]) -> None:
+                """Download selected PDFs from Box for extraction."""
+                from shared.box_client import get_file_content
+
+                box_docs: list[dict] = st.session_state.get("box_docs", [])
+                existing_ids = {d.get("box_id") for d in box_docs}
+
+                with st.spinner("Downloading documents from Box..."):
+                    for f in files:
+                        if f["id"] in existing_ids:
+                            continue
+                        if (f.get("extension", "") or "").lower() != "pdf":
+                            continue
+                        pdf_bytes = get_file_content(f["id"])
+                        pages = extract_pages_from_pdf(pdf_bytes)
+                        box_docs.append({
+                            "name": f["name"],
+                            "pages": pages,
+                            "box_id": f["id"],
+                            "pdf_bytes": pdf_bytes,
+                        })
+
+                st.session_state["box_docs"] = box_docs
+
+            already_ids = {d.get("box_id") for d in st.session_state.get("box_docs", [])}
+
             render_box_folder_browser(
                 _parse_folder_id(_box_raw),
-                mode="viewer",
+                mode="picker",
+                on_select=_on_box_select,
+                already_selected_ids=already_ids,
                 key_prefix="_tl_box",
                 header_label="Client Documents",
+                add_button_label="Add to Extraction",
             )
 
     render_tool_notes("timeline-builder")
@@ -793,86 +656,317 @@ if save_clicked:
 
 # ── Main area ────────────────────────────────────────────────────────────────
 
-events = tl.get("events", [])
+tab_timeline, tab_extract = st.tabs(["Timeline", "Extract from Documents"])
 
-# Summary stats
-stats_html = _build_stats_html(events)
-if stats_html:
-    st.markdown(stats_html, unsafe_allow_html=True)
+# ── Timeline tab ─────────────────────────────────────────────────────────────
 
-# Visual timeline
-timeline_html = _build_timeline_html(events)
-st.markdown(timeline_html, unsafe_allow_html=True)
+with tab_timeline:
+    events = tl.get("events", [])
 
-# Delete buttons (rendered outside HTML because Streamlit buttons need Python)
-if events:
-    st.markdown(
-        '<div class="section-header">Manage Events</div>',
-        unsafe_allow_html=True,
-    )
-    for ev in events:
-        event_id = ev.get("id", "")
-        title = ev.get("title", "Untitled")
-        date_text = ev.get("date_text", "")
-        cat = ev.get("category", "Personal")
-        color = EVENT_CATEGORIES.get(cat, "#6c757d")
+    # Summary stats
+    stats_html = _build_stats_html(events)
+    if stats_html:
+        st.components.v1.html(stats_html, height=100)
 
-        col_info, col_del = st.columns([6, 1])
-        with col_info:
-            st.markdown(
-                f'<span style="color:{color}; font-weight:600;">{html_mod.escape(date_text)}</span> '
-                f"&mdash; {html_mod.escape(title)}",
-                unsafe_allow_html=True,
+    # Timeline events as native Streamlit cards with inline delete
+    if not events:
+        st.info("No events yet. Use the sidebar form or Extract tab to add events.")
+    else:
+        import re as _re
+
+        for ev in events:
+            event_id = ev.get("id", "")
+            title = ev.get("title", "Untitled")
+            date_text = ev.get("date_text", "")
+            end_date = ev.get("end_date_text", "")
+            desc = ev.get("description", "")
+            cat = ev.get("category", "Personal")
+            color = EVENT_CATEGORIES.get(cat, "#6c757d")
+
+            with st.container(border=True):
+                cols = st.columns([12, 1])
+                with cols[0]:
+                    # Date + optional range + category badge
+                    date_html = f'<span style="color:{color}; font-weight:600; font-size:0.85rem;">{html_mod.escape(date_text)}</span>'
+                    if end_date:
+                        date_html += f'<span style="color:#86868b; font-size:0.78rem; margin-left:6px;">to {html_mod.escape(end_date)}</span>'
+                    date_html += (
+                        f'<span style="display:inline-block; background:{color}; color:#fff; '
+                        f'padding:1px 8px; font-size:0.7rem; font-weight:600; border-radius:12px; '
+                        f'margin-left:10px;">{html_mod.escape(cat)}</span>'
+                    )
+                    st.markdown(date_html, unsafe_allow_html=True)
+
+                    # Title
+                    st.markdown(f"**{html_mod.escape(title)}**")
+
+                    # Description + source citation
+                    if desc:
+                        # Show source citation separately if present
+                        source_match = _re.search(r"\[([^\]]+\.pdf[^\]]*)\]", desc, _re.IGNORECASE)
+                        if source_match:
+                            source_label = source_match.group(0)
+                            desc_clean = desc.replace(source_label, "").strip()
+                            display_parts = []
+                            if desc_clean:
+                                display_parts.append(desc_clean)
+                            display_parts.append(f"*{html_mod.escape(source_label)}*")
+                            st.caption(" ".join(display_parts))
+                        else:
+                            st.caption(desc)
+                with cols[1]:
+                    if st.button("✕", key=f"del_{event_id}"):
+                        tl["events"] = [e for e in tl.get("events", []) if e.get("id") != event_id]
+                        save_timeline(tl)
+                        st.rerun()
+
+    # Draft Box
+    if render_draft_box is not None:
+        plain_text_for_draft = _build_plain_text(tl)
+        render_draft_box("timeline-builder", {
+            "document_type": "timeline narrative",
+            "client_name": client_name,
+            "case_id": st.session_state.get("timeline_id", ""),
+            "content": plain_text_for_draft,
+        })
+
+    # Export controls
+    st.markdown("---")
+    exp_cols = st.columns(2)
+
+    with exp_cols[0]:
+        plain_text = _build_plain_text(tl)
+        file_label = (client_name or "Timeline").replace(" ", "_")
+        st.download_button(
+            "Download .txt",
+            data=plain_text,
+            file_name=f"Timeline_{file_label}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            disabled=not events,
+        )
+
+    with exp_cols[1]:
+        if events:
+            docx_bytes = _build_docx(tl)
+            st.download_button(
+                "Download .docx",
+                data=docx_bytes,
+                file_name=f"Timeline_{file_label}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
             )
-        with col_del:
-            if st.button("Delete", key=f"del_{event_id}", use_container_width=True):
-                _do_delete_event(event_id)
+            if st.button("Upload to Google Docs", use_container_width=True):
+                with st.spinner("Uploading to Google Docs..."):
+                    try:
+                        url = upload_to_google_docs(docx_bytes, f"Timeline - {client_name or 'Timeline'}")
+                        st.session_state.google_doc_url = url
+                    except Exception as e:
+                        st.error(f"Upload failed: {e}")
+            if st.session_state.get("google_doc_url"):
+                st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
+        else:
+            st.button("Download .docx", disabled=True, use_container_width=True)
+
+# ── Extract from Documents tab ───────────────────────────────────────────────
+
+with tab_extract:
+    # Box-selected docs (from sidebar picker)
+    box_docs: list[dict] = st.session_state.get("box_docs", [])
+    if box_docs:
+        st.markdown("**Documents from Box:**")
+        for i, bd in enumerate(box_docs):
+            bd_cols = st.columns([6, 1])
+            with bd_cols[0]:
+                st.caption(f"{bd['name']} — {len(bd['pages'])} page{'s' if len(bd['pages']) != 1 else ''}")
+            with bd_cols[1]:
+                if st.button("Remove", key=f"rm_box_{i}", use_container_width=True):
+                    st.session_state["box_docs"].pop(i)
+                    st.rerun()
+
+    # Manual file uploads
+    uploaded_files = st.file_uploader(
+        "Upload documents (PDF)",
+        type=["pdf"],
+        accept_multiple_files=True,
+        key="extract_uploader",
+    )
+
+    # Build combined document list
+    all_doc_data: list[dict] = []
+
+    # Add Box docs (already parsed, with pdf_bytes)
+    for bd in box_docs:
+        entry: dict = {"name": bd["name"], "pages": bd["pages"]}
+        if "pdf_bytes" in bd:
+            entry["pdf_bytes"] = bd["pdf_bytes"]
+        all_doc_data.append(entry)
+
+    # Add uploaded docs
+    if uploaded_files:
+        st.markdown("**Uploaded documents:**")
+        for uf in uploaded_files:
+            pdf_bytes = uf.read()
+            uf.seek(0)
+            pages = extract_pages_from_pdf(pdf_bytes)
+            all_doc_data.append({"name": uf.name, "pages": pages, "pdf_bytes": pdf_bytes})
+            st.caption(f"{uf.name} — {len(pages)} page{'s' if len(pages) != 1 else ''}")
+
+    if all_doc_data:
+        # Cache combined list for extraction
+        st.session_state["_extract_doc_data"] = all_doc_data
+
+        # Extract button
+        if st.button(
+            "Extract Timeline Events",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state["_run_extraction"] = True
+            st.rerun()
+
+    # Run extraction if flagged (runs on the rerun after button click)
+    if st.session_state.get("_run_extraction"):
+        st.session_state["_run_extraction"] = False
+        doc_data = st.session_state.get("_extract_doc_data", [])
+        if doc_data:
+            categories = list(EVENT_CATEGORIES.keys())
+            with st.spinner("Extracting timeline events from documents..."):
+                try:
+                    extracted = extract_events_from_documents(
+                        doc_data, categories,
+                    )
+                except Exception as exc:
+                    st.error(f"Extraction failed: {exc}")
+                    extracted = []
+
+            if extracted:
+                st.success(f"Extracted {len(extracted)} events.")
+                st.session_state.extracted_events = extracted
+                st.session_state.extraction_selections = {
+                    i: True for i in range(len(extracted))
+                }
+            else:
+                st.warning("No events were extracted from the documents.")
+
+    # Show extracted events for review
+    extracted_events = st.session_state.get("extracted_events", [])
+    if extracted_events:
+        st.markdown(f"#### Extracted Events ({len(extracted_events)})")
+
+        # Select all / deselect all
+        sel_cols = st.columns(3)
+        with sel_cols[0]:
+            if st.button("Select All"):
+                st.session_state.extraction_selections = {
+                    i: True for i in range(len(extracted_events))
+                }
+                st.rerun()
+        with sel_cols[1]:
+            if st.button("Deselect All"):
+                st.session_state.extraction_selections = {
+                    i: False for i in range(len(extracted_events))
+                }
                 st.rerun()
 
-# Draft Box
-if render_draft_box is not None:
-    plain_text_for_draft = _build_plain_text(tl)
-    render_draft_box("timeline-builder", {
-        "document_type": "timeline narrative",
-        "client_name": client_name,
-        "case_id": st.session_state.get("timeline_id", ""),
-        "content": plain_text_for_draft,
-    })
+        selections = st.session_state.get("extraction_selections", {})
 
-# Export controls
-st.markdown("---")
-exp_cols = st.columns(2)
+        for idx, ev in enumerate(extracted_events):
+            cat = ev.get("category", "Personal")
+            color = EVENT_CATEGORIES.get(cat, "#6c757d")
+            checked = selections.get(idx, True)
 
-with exp_cols[0]:
-    plain_text = _build_plain_text(tl)
-    file_label = (client_name or "Timeline").replace(" ", "_")
-    st.download_button(
-        "Download .txt",
-        data=plain_text,
-        file_name=f"Timeline_{file_label}.txt",
-        mime="text/plain",
-        use_container_width=True,
-        disabled=not events,
-    )
+            cols = st.columns([0.5, 1.5, 2, 3, 2])
+            with cols[0]:
+                new_val = st.checkbox(
+                    "sel",
+                    value=checked,
+                    key=f"ext_sel_{idx}",
+                    label_visibility="collapsed",
+                )
+                if new_val != checked:
+                    st.session_state.extraction_selections[idx] = new_val
+            with cols[1]:
+                st.markdown(f"**{html_mod.escape(ev.get('date', ''))}**")
+            with cols[2]:
+                st.markdown(
+                    f'<span style="color:{color}; font-weight:600;">{html_mod.escape(cat)}</span> '
+                    f"&mdash; {html_mod.escape(ev.get('title', ''))}",
+                    unsafe_allow_html=True,
+                )
+            with cols[3]:
+                desc = ev.get("description", "")
+                st.caption(desc[:120] + ("..." if len(desc) > 120 else ""))
+            with cols[4]:
+                st.caption(ev.get("source", ""))
 
-with exp_cols[1]:
-    if events:
-        docx_bytes = _build_docx(tl)
+        # Add selected events to timeline
+        selected_count = sum(1 for v in selections.values() if v)
+        st.markdown("---")
+        if st.button(
+            f"Add {selected_count} Selected Events to Timeline",
+            type="primary",
+            disabled=selected_count == 0,
+            use_container_width=True,
+        ):
+            added = 0
+            for idx, ev in enumerate(extracted_events):
+                if not selections.get(idx, False):
+                    continue
+                new_ev = TimelineEvent.create(
+                    title=ev.get("title", ""),
+                    date_text=ev.get("date", ""),
+                    category=ev.get("category", "Personal"),
+                    description=ev.get("description", ""),
+                )
+                add_event(tl, new_ev)
+                added += 1
+            st.session_state.extracted_events = []
+            st.session_state.extraction_selections = {}
+            st.success(f"Added {added} events to timeline.")
+            st.rerun()
+
+    # ── Compile Exhibit PDF ──────────────────────────────────────────────
+    # Available whenever source docs with pdf_bytes exist
+    docs_with_bytes = [
+        d for d in st.session_state.get("_extract_doc_data", [])
+        if d.get("pdf_bytes")
+    ]
+    if docs_with_bytes:
+        st.markdown("---")
+        st.markdown("#### Compile Exhibit PDF")
+        st.caption(
+            "Merge all source PDFs into a single exhibit package with a "
+            "Table of Contents and separator pages so pin citations match."
+        )
+        if st.button("Compile Exhibit PDF", type="primary", use_container_width=True):
+            with st.spinner("Compiling exhibit PDF..."):
+                try:
+                    pdf_bytes_out, page_map = compile_exhibit_pdf(docs_with_bytes)
+                    st.session_state["_exhibit_pdf"] = pdf_bytes_out
+                    st.session_state["_exhibit_page_map"] = page_map
+                except Exception as exc:
+                    st.error(f"Compilation failed: {exc}")
+
+    # Show results if compiled
+    exhibit_pdf = st.session_state.get("_exhibit_pdf")
+    exhibit_map = st.session_state.get("_exhibit_page_map")
+    if exhibit_pdf and exhibit_map:
+        st.markdown("**Page Map:**")
+        map_rows = []
+        for pm in exhibit_map:
+            map_rows.append({
+                "Document": pm["name"],
+                "Pages in Exhibit": f"{pm['start_page']}–{pm['end_page']}",
+                "Document Pages": str(pm["num_pages"]),
+            })
+        st.dataframe(map_rows, use_container_width=True, hide_index=True)
+
+        file_label = (client_name or "Exhibit").replace(" ", "_")
         st.download_button(
-            "Download .docx",
-            data=docx_bytes,
-            file_name=f"Timeline_{file_label}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Download Exhibit PDF",
+            data=exhibit_pdf,
+            file_name=f"Exhibit_{file_label}.pdf",
+            mime="application/pdf",
             use_container_width=True,
         )
-        if st.button("Upload to Google Docs", use_container_width=True):
-            with st.spinner("Uploading to Google Docs..."):
-                try:
-                    url = upload_to_google_docs(docx_bytes, f"Timeline - {client_name or 'Timeline'}")
-                    st.session_state.google_doc_url = url
-                except Exception as e:
-                    st.error(f"Upload failed: {e}")
-        if st.session_state.get("google_doc_url"):
-            st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
-    else:
-        st.button("Download .docx", disabled=True, use_container_width=True)
