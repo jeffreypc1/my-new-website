@@ -1,21 +1,18 @@
 """Forms Assistant -- Streamlit dashboard.
 
-Production-quality UI for completing USCIS immigration forms with
-field-by-field guidance, validation, draft persistence, live preview,
-and Word/text export.  Works entirely offline without the API server.
+Tabbed orchestrator for the form ingestion, mapping, data-entry, and sync
+subsystems.  Each tab is implemented as a module under ``app/tab_*.py``.
+
+Backward compatible: all 16 hardcoded USCIS forms work with zero migration.
 """
 
 from __future__ import annotations
 
 import html as html_mod
-import io
 import sys
-from datetime import date
 from pathlib import Path
 
 import streamlit as st
-from docx import Document
-from docx.shared import Inches, Pt
 
 from app.form_definitions import (
     SUPPORTED_FORMS,
@@ -31,16 +28,23 @@ from app.form_definitions import (
 from app.pdf_form_store import (
     get_all_forms,
     get_all_fields,
-    get_template_pdf_bytes,
     is_uploaded_form,
     get_field_roles,
     get_field_sf_mappings,
 )
 
+# Tab modules
+from app.tab_fill import render_fill_tab
+from app.tab_ingest import render_ingest_tab
+from app.tab_mappings import render_mappings_tab
+from app.tab_sync import render_sync_tab
+
+# Shared imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from shared.google_upload import upload_to_google_docs
 from shared.client_banner import render_client_banner
+from shared.config_store import get_config_value, set_config_value
 from shared.tool_notes import render_tool_notes
+
 try:
     from shared.tool_help import render_tool_help
 except ImportError:
@@ -49,6 +53,12 @@ try:
     from shared.feedback_button import render_feedback_button
 except ImportError:
     render_feedback_button = None
+try:
+    from shared.box_folder_browser import render_box_folder_browser
+    from shared.box_client import parse_folder_id as _parse_folder_id
+except ImportError:
+    render_box_folder_browser = None
+    _parse_folder_id = None
 
 # -- Page config --------------------------------------------------------------
 
@@ -221,6 +231,7 @@ div[data-testid="stToolbar"] { display: none !important; }
 )
 
 from shared.auth import require_auth, render_logout
+
 require_auth()
 
 # -- Navigation bar -----------------------------------------------------------
@@ -251,6 +262,7 @@ _DEFAULTS: dict = {
     "form_data": {},
     "current_section": 0,
     "validation_errors": {},
+    "selected_forms": [],
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -262,37 +274,17 @@ if st.session_state.draft_id is None:
 
 # -- Helpers ------------------------------------------------------------------
 
-def _get_fields(form_id: str) -> dict:
-    """Return the field definitions dict for a given form (hardcoded or uploaded)."""
-    return get_all_fields(form_id)
-
-
-def _get_display_label(form_id: str, field_name: str) -> str:
-    """Get a human-readable label for a field.
-
-    For uploaded forms, uses the display_label from config.
-    For hardcoded forms, derives from the field name.
-    """
-    if is_uploaded_form(form_id):
-        from shared.config_store import load_config
-        cfg = load_config("forms-assistant") or {}
-        uploaded = cfg.get("uploaded_forms", {})
-        form_cfg = uploaded.get(form_id, {})
-        for fd in form_cfg.get("fields", []):
-            if fd.get("pdf_field_name") == field_name:
-                return fd.get("display_label", field_name.replace("_", " ").title())
-    return field_name.replace("_", " ").title()
-
 
 def _do_save(form_id: str) -> None:
     """Save the current form data as a draft."""
+    selected_forms = st.session_state.get("selected_forms", [])
     save_form_draft(
         st.session_state.draft_id,
         form_id,
         dict(st.session_state.form_data),
         st.session_state.current_section,
+        form_ids=selected_forms if len(selected_forms) > 1 else None,
     )
-    # Derive client name for toast
     name = ""
     for key in ("full_name", "applicant_name", "petitioner_name", "appellant_name"):
         if st.session_state.form_data.get(key, "").strip():
@@ -311,8 +303,12 @@ def _do_load(draft_id: str) -> None:
     st.session_state.current_section = draft.get("current_section", 0)
     st.session_state.validation_errors = {}
     st.session_state.last_saved_msg = ""
-    # Store loaded form_id so sidebar selectbox picks it up
     st.session_state._loaded_form_id = draft.get("form_id", "I-589")
+    # Restore multi-form selection if present
+    if draft.get("form_ids"):
+        st.session_state.selected_forms = list(draft["form_ids"])
+    else:
+        st.session_state.selected_forms = [draft.get("form_id", "I-589")]
 
 
 def _do_new() -> None:
@@ -326,132 +322,24 @@ def _do_new() -> None:
         del st.session_state["_loaded_form_id"]
 
 
-def _build_preview_html(form_id: str, form_data: dict) -> str:
-    """Build an HTML preview of all filled fields, organized by section."""
-    esc = html_mod.escape
-    fields_dict = _get_fields(form_id)
-    form_meta = get_all_forms().get(form_id, {})
-    parts: list[str] = []
-
-    parts.append(f'<div style="font-weight:700; font-size:0.95rem; color:#1a2744; margin-bottom:8px;">'
-                 f'{esc(form_id)} -- {esc(form_meta.get("title", ""))}</div>')
-
-    for section_name, fields in fields_dict.items():
-        if not fields:
-            continue
-        parts.append(f'<div class="pv-section">{esc(section_name)}</div>')
-        for f in fields:
-            label = _get_display_label(form_id, f.name)
-            val = form_data.get(f.name, "")
-            val_str = str(val).strip() if val else ""
-            if val_str:
-                parts.append(
-                    f'<div class="pv-field">'
-                    f'<span class="pv-label">{esc(label)}:</span>'
-                    f'<span class="pv-value">{esc(val_str)}</span>'
-                    f'</div>'
-                )
-            else:
-                parts.append(
-                    f'<div class="pv-field">'
-                    f'<span class="pv-label">{esc(label)}:</span>'
-                    f'<span class="pv-empty">--</span>'
-                    f'</div>'
-                )
-    return "\n".join(parts)
+def _auto_save(form_id: str) -> None:
+    """Silently persist current form data as a draft."""
+    selected_forms = st.session_state.get("selected_forms", [])
+    save_form_draft(
+        st.session_state.draft_id,
+        form_id,
+        dict(st.session_state.form_data),
+        st.session_state.current_section,
+        form_ids=selected_forms if len(selected_forms) > 1 else None,
+    )
 
 
-def _build_docx(form_id: str, form_data: dict) -> bytes:
-    """Build a Word document from the form data as a table."""
-    doc = Document()
-    for section in doc.sections:
-        section.top_margin = Inches(1)
-        section.bottom_margin = Inches(1)
-        section.left_margin = Inches(1)
-        section.right_margin = Inches(1)
+# -- Auto-load most recent draft on startup ----------------------------------
 
-    form_meta = get_all_forms().get(form_id, {})
-
-    # Title
-    title_para = doc.add_paragraph()
-    title_run = title_para.add_run(f"{form_id} -- {form_meta.get('title', '')}")
-    title_run.font.name = "Arial"
-    title_run.font.size = Pt(14)
-    title_run.bold = True
-    title_para.paragraph_format.space_after = Pt(12)
-
-    # Date
-    date_para = doc.add_paragraph()
-    date_run = date_para.add_run(f"Generated: {date.today().strftime('%m/%d/%Y')}")
-    date_run.font.name = "Arial"
-    date_run.font.size = Pt(10)
-    date_para.paragraph_format.space_after = Pt(12)
-
-    fields_dict = _get_fields(form_id)
-
-    for section_name, fields in fields_dict.items():
-        if not fields:
-            continue
-
-        # Section heading
-        heading = doc.add_paragraph()
-        h_run = heading.add_run(section_name)
-        h_run.font.name = "Arial"
-        h_run.font.size = Pt(11)
-        h_run.bold = True
-        heading.paragraph_format.space_before = Pt(12)
-        heading.paragraph_format.space_after = Pt(4)
-
-        # Table for fields
-        table = doc.add_table(rows=len(fields), cols=2)
-        table.style = "Table Grid"
-        for i, f in enumerate(fields):
-            label = _get_display_label(form_id, f.name)
-            val = str(form_data.get(f.name, "")).strip()
-            cell_label = table.cell(i, 0)
-            cell_value = table.cell(i, 1)
-            cell_label.text = label
-            cell_value.text = val if val else "--"
-            # Style cells
-            for paragraph in cell_label.paragraphs:
-                for run in paragraph.runs:
-                    run.font.name = "Arial"
-                    run.font.size = Pt(9)
-                    run.bold = True
-            for paragraph in cell_value.paragraphs:
-                for run in paragraph.runs:
-                    run.font.name = "Arial"
-                    run.font.size = Pt(9)
-
-    buf = io.BytesIO()
-    doc.save(buf)
-    return buf.getvalue()
-
-
-def _build_plain_text(form_id: str, form_data: dict) -> str:
-    """Build a plain text export of the form data."""
-    form_meta = get_all_forms().get(form_id, {})
-    lines: list[str] = []
-
-    lines.append(f"{form_id} -- {form_meta.get('title', '')}")
-    lines.append(f"Generated: {date.today().strftime('%m/%d/%Y')}")
-    lines.append("=" * 60)
-    lines.append("")
-
-    fields_dict = _get_fields(form_id)
-
-    for section_name, fields in fields_dict.items():
-        if not fields:
-            continue
-        lines.append(section_name)
-        lines.append("-" * len(section_name))
-        for f in fields:
-            label = _get_display_label(form_id, f.name)
-            val = str(form_data.get(f.name, "")).strip()
-            lines.append(f"  {label}: {val if val else '--'}")
-        lines.append("")
-
-    return "\n".join(lines)
+if not st.session_state.form_data:
+    saved_drafts = list_form_drafts()
+    if saved_drafts:
+        _do_load(saved_drafts[0]["id"])
 
 
 # -- Sidebar ------------------------------------------------------------------
@@ -498,7 +386,7 @@ with st.sidebar:
 
     st.divider()
 
-    # Form selector — merged hardcoded + uploaded
+    # Form selector -- multi-select for unified data entry
     all_forms = get_all_forms()
     form_ids = list(all_forms.keys())
     form_labels = {}
@@ -506,41 +394,63 @@ with st.sidebar:
         badge = " (PDF)" if meta.get("_uploaded") else ""
         form_labels[fid] = f"{fid}{badge} -- {meta.get('title', '')}"
 
+    # Read disk-persisted selection as fallback
+    persisted_selection = get_config_value("forms-assistant", "last_selected_forms", [])
+
     # If a draft was just loaded, use its form_id as default
-    default_idx = 0
-    if "_loaded_form_id" in st.session_state:
+    default_selection = st.session_state.get("selected_forms", [])
+    if "_loaded_form_id" in st.session_state and not default_selection:
         loaded_fid = st.session_state._loaded_form_id
         if loaded_fid in form_ids:
-            default_idx = form_ids.index(loaded_fid)
+            default_selection = [loaded_fid]
 
-    selected_form = st.selectbox(
-        "Form",
+    # Fall back to disk-persisted selection
+    if not default_selection:
+        default_selection = persisted_selection
+
+    if not default_selection:
+        default_selection = [form_ids[0]] if form_ids else []
+
+    # Ensure default selections are valid
+    default_selection = [f for f in default_selection if f in form_ids]
+    if not default_selection and form_ids:
+        default_selection = [form_ids[0]]
+
+    selected_forms = st.multiselect(
+        "Forms",
         options=form_ids,
-        index=default_idx,
+        default=default_selection,
         format_func=lambda x: form_labels.get(x, x),
         key="inp_form_selector",
     )
+    st.session_state.selected_forms = selected_forms
 
-    # Form metadata
-    form_meta = all_forms.get(selected_form, {})
-    st.markdown(
-        f'<div class="form-meta">'
-        f'<strong>Filing Fee:</strong> {html_mod.escape(form_meta.get("filing_fee", "N/A"))}<br>'
-        f'<strong>Processing:</strong> {html_mod.escape(form_meta.get("processing_time", "N/A"))}<br>'
-        f'<strong>Agency:</strong> {html_mod.escape(form_meta.get("agency", "N/A"))}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    # Persist selection to disk when it changes
+    if selected_forms != persisted_selection:
+        set_config_value("forms-assistant", "last_selected_forms", selected_forms)
+
+    # Show metadata for primary form
+    primary_form = selected_forms[0] if selected_forms else None
+    if primary_form:
+        form_meta = all_forms.get(primary_form, {})
+        st.markdown(
+            f'<div class="form-meta">'
+            f'<strong>Filing Fee:</strong> {html_mod.escape(form_meta.get("filing_fee", "N/A"))}<br>'
+            f'<strong>Processing:</strong> {html_mod.escape(form_meta.get("processing_time", "N/A"))}<br>'
+            f'<strong>Agency:</strong> {html_mod.escape(form_meta.get("agency", "N/A"))}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     # Auto-fill sections for uploaded forms
-    if is_uploaded_form(selected_form):
-        roles = get_field_roles(selected_form)
-        sf_mappings = get_field_sf_mappings(selected_form)
+    if primary_form and is_uploaded_form(primary_form):
+        roles = get_field_roles(primary_form)
+        sf_mappings = get_field_sf_mappings(primary_form)
 
         has_attorney_roles = any(r.startswith("attorney_") for r in roles.values())
         has_preparer_roles = any(r.startswith("preparer_") for r in roles.values())
 
-        # -- Client auto-fill from SF via direct sf_field mappings --
+        # Client auto-fill from SF
         if sf_mappings:
             sf_client = st.session_state.get("sf_client")
             if sf_client:
@@ -553,7 +463,7 @@ with st.sidebar:
                     st.divider()
                     st.caption(f"Auto-filled {filled} field(s) from Salesforce")
 
-            # -- Sync to Salesforce button --
+            # Sidebar SF sync button
             st.divider()
             st.markdown("#### Salesforce Sync")
             if sf_client:
@@ -571,7 +481,6 @@ with st.sidebar:
                             sf_id = sf_client.get("Id")
                             if sf_id:
                                 update_client(sf_id, changed)
-                                # Refresh local cache
                                 for sf_key, val in changed.items():
                                     sf_client[sf_key] = val
                                 st.toast(f"Pushed {len(changed)} field(s) to Salesforce")
@@ -585,7 +494,7 @@ with st.sidebar:
             else:
                 st.caption("Pull a client to enable Salesforce sync.")
 
-        # -- Attorney picklist --
+        # Attorney picklist
         if has_attorney_roles:
             st.divider()
             st.markdown("#### Attorney")
@@ -620,7 +529,7 @@ with st.sidebar:
             else:
                 st.caption("No attorneys configured. Add them in Admin Panel.")
 
-        # -- Preparer picklist --
+        # Preparer picklist
         if has_preparer_roles:
             st.divider()
             st.markdown("#### Preparer")
@@ -658,41 +567,106 @@ with st.sidebar:
     st.divider()
 
     # Progress bar
-    st.markdown("#### Progress")
-    fields_dict = _get_fields(selected_form)
-    all_defined_fields = [f for section_fields in fields_dict.values() for f in section_fields]
-    total_fields = len(all_defined_fields)
-    filled_count = sum(
-        1 for f in all_defined_fields
-        if str(st.session_state.form_data.get(f.name, "")).strip()
-    )
-    pct = round((filled_count / total_fields) * 100) if total_fields > 0 else 0
+    if primary_form:
+        st.markdown("#### Progress")
+        fields_dict = get_all_fields(primary_form)
+        all_defined_fields = [f for section_fields in fields_dict.values() for f in section_fields]
+        total_fields = len(all_defined_fields)
+        filled_count = sum(
+            1 for f in all_defined_fields
+            if str(st.session_state.form_data.get(f.name, "")).strip()
+        )
+        pct = round((filled_count / total_fields) * 100) if total_fields > 0 else 0
 
-    st.markdown(
-        f'<div class="progress-bar"><div class="progress-fill" style="width:{pct}%"></div></div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(f"{pct}% complete ({filled_count}/{total_fields} fields)")
+        st.markdown(
+            f'<div class="progress-bar"><div class="progress-fill" style="width:{pct}%"></div></div>',
+            unsafe_allow_html=True,
+        )
+        st.caption(f"{pct}% complete ({filled_count}/{total_fields} fields)")
 
     st.divider()
 
     # Validate button
     validate_clicked = st.button("Validate Form", use_container_width=True)
 
+    # -- Client Documents (Box folder browser) --------------------------------
+    if render_box_folder_browser and _parse_folder_id:
+        _sf = st.session_state.get("sf_client")
+        _box_raw = (_sf.get("Box_Folder_Id__c", "") or "") if _sf else ""
+        if _box_raw:
+            st.divider()
+
+            _box_folder_id = _parse_folder_id(_box_raw)
+
+            # Header with "Open in Box" link
+            st.markdown(
+                f'<div style="display:flex; align-items:center; justify-content:space-between;">'
+                f'<span style="font-size:1.05rem; font-weight:700;">Client Documents</span>'
+                f'<a href="https://app.box.com/folder/{html_mod.escape(_box_folder_id)}" '
+                f'target="_blank" style="font-size:0.8rem; color:#0066CC; text-decoration:none;">'
+                f'Open in Box &#x2197;</a>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Initialize selected docs in session state
+            if "_fa_selected_docs" not in st.session_state:
+                st.session_state["_fa_selected_docs"] = []
+
+            def _on_box_select(files: list[dict]) -> None:
+                """Store selected files in session state."""
+                existing_ids = {d["id"] for d in st.session_state.get("_fa_selected_docs", [])}
+                for f in files:
+                    if f["id"] not in existing_ids:
+                        st.session_state["_fa_selected_docs"].append(f)
+
+            already_ids = {d["id"] for d in st.session_state.get("_fa_selected_docs", [])}
+
+            render_box_folder_browser(
+                _box_folder_id,
+                mode="picker",
+                on_select=_on_box_select,
+                already_selected_ids=already_ids,
+                key_prefix="_fa_box",
+                show_header=False,
+                add_button_label="Add to Selection",
+            )
+
+            # Show selected documents with remove option
+            selected_docs = st.session_state.get("_fa_selected_docs", [])
+            if selected_docs:
+                st.markdown("---")
+                st.caption(f"**Selected:** {len(selected_docs)} document(s)")
+
+                # Select All / Deselect All
+                if st.button("Clear Selection", key="_fa_clear_sel", use_container_width=True):
+                    st.session_state["_fa_selected_docs"] = []
+                    st.rerun()
+
+                for i, doc in enumerate(selected_docs):
+                    doc_cols = st.columns([5, 1])
+                    with doc_cols[0]:
+                        ext = doc.get("extension", "") or ""
+                        st.caption(f"{doc['name']}" + (f" (.{ext})" if ext else ""))
+                    with doc_cols[1]:
+                        if st.button("✕", key=f"_fa_rm_doc_{i}"):
+                            st.session_state["_fa_selected_docs"].pop(i)
+                            st.rerun()
+
     render_tool_notes("forms-assistant")
 
 
 # -- Handle save (after sidebar renders) -------------------------------------
 
-if save_clicked:
-    _do_save(selected_form)
+if save_clicked and primary_form:
+    _do_save(primary_form)
     st.rerun()
 
 # -- Handle validate ----------------------------------------------------------
 
-if validate_clicked:
+if validate_clicked and primary_form:
     errors: dict[str, list[str]] = {}
-    fields_dict = _get_fields(selected_form)
+    fields_dict = get_all_fields(primary_form)
     for _section_name, fields in fields_dict.items():
         for field_def in fields:
             val = str(st.session_state.form_data.get(field_def.name, ""))
@@ -701,227 +675,25 @@ if validate_clicked:
                 errors[field_def.name] = field_errors
     st.session_state.validation_errors = errors
 
-# -- Main area ----------------------------------------------------------------
+# -- Main area: Tabs ----------------------------------------------------------
 
-form_col, preview_col = st.columns([3, 2], gap="large")
+tab_fill, tab_ingest, tab_mappings, tab_sync = st.tabs(
+    ["Fill Forms", "Manage Forms", "Field Mappings", "Sync & History"]
+)
 
-# -- Left column: Form fields ------------------------------------------------
+with tab_fill:
+    render_fill_tab()
 
-with form_col:
-    fields_dict = _get_fields(selected_form)
-    section_names = list(fields_dict.keys())
+with tab_ingest:
+    render_ingest_tab()
 
-    if not section_names:
-        st.info("No field definitions are available for this form yet.")
-    else:
-        # Clamp current_section to valid range
-        if st.session_state.current_section >= len(section_names):
-            st.session_state.current_section = 0
+with tab_mappings:
+    render_mappings_tab()
 
-        selected_section = st.radio(
-            "Section",
-            section_names,
-            horizontal=True,
-            index=st.session_state.current_section,
-            key="section_radio",
-        )
-        st.session_state.current_section = section_names.index(selected_section)
+with tab_sync:
+    render_sync_tab()
 
-        st.markdown(
-            f'<div class="section-header">{html_mod.escape(selected_section)}</div>',
-            unsafe_allow_html=True,
-        )
+# -- Auto-save on every rerun ------------------------------------------------
 
-        fields = fields_dict.get(selected_section, [])
-
-        if fields:
-            for field_def in fields:
-                field_name = field_def.name
-                field_type = field_def.field_type
-                required = field_def.required
-                help_text = field_def.help_text
-                options = field_def.options
-
-                label = _get_display_label(selected_form, field_name)
-                if required:
-                    label += " *"
-
-                current_value = st.session_state.form_data.get(field_name, "")
-
-                if field_type in ("select", "combo") and options:
-                    all_options = [""] + options
-                    idx = 0
-                    if current_value and current_value in options:
-                        idx = options.index(current_value) + 1
-                    value = st.selectbox(
-                        label,
-                        options=all_options,
-                        index=idx,
-                        help=help_text,
-                        key=f"field_{field_name}",
-                    )
-                elif field_type == "textarea":
-                    value = st.text_area(
-                        label,
-                        value=current_value,
-                        help=help_text,
-                        key=f"field_{field_name}",
-                        height=120,
-                    )
-                elif field_type == "checkbox":
-                    checked = st.checkbox(
-                        label,
-                        value=bool(current_value),
-                        help=help_text,
-                        key=f"field_{field_name}",
-                    )
-                    value = "Yes" if checked else ""
-                elif field_type == "date":
-                    value = st.text_input(
-                        label,
-                        value=current_value,
-                        help=help_text,
-                        placeholder="mm/dd/yyyy",
-                        key=f"field_{field_name}",
-                    )
-                else:
-                    # text, phone, email, etc.
-                    value = st.text_input(
-                        label,
-                        value=current_value,
-                        help=help_text,
-                        key=f"field_{field_name}",
-                    )
-
-                st.session_state.form_data[field_name] = value
-
-                # Show validation errors
-                field_errors = st.session_state.validation_errors.get(field_name, [])
-                if field_errors:
-                    for err in field_errors:
-                        st.markdown(
-                            f'<div class="field-error">{html_mod.escape(err)}</div>',
-                            unsafe_allow_html=True,
-                        )
-        else:
-            st.info(
-                "Detailed field definitions are not yet available for this section. "
-                "Additional sections will be added in future updates."
-            )
-
-        # Navigation buttons
-        st.markdown("---")
-        nav_left, nav_right = st.columns(2)
-        with nav_left:
-            if st.session_state.current_section > 0:
-                if st.button("Previous Section", use_container_width=True):
-                    st.session_state.current_section -= 1
-                    st.rerun()
-        with nav_right:
-            if st.session_state.current_section < len(section_names) - 1:
-                if st.button("Next Section", use_container_width=True):
-                    st.session_state.current_section += 1
-                    st.rerun()
-
-# -- Right column: Preview + Export -------------------------------------------
-
-with preview_col:
-    st.markdown('<div class="section-label">Live Preview</div>', unsafe_allow_html=True)
-
-    preview_html = _build_preview_html(selected_form, st.session_state.form_data)
-    st.markdown(
-        f'<div class="preview-panel">{preview_html}</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Validation summary
-    if st.session_state.validation_errors:
-        error_count = sum(len(v) for v in st.session_state.validation_errors.values())
-        st.error(f"{error_count} validation error(s) found. See field-level messages on the left.")
-    elif validate_clicked:
-        if is_uploaded_form(selected_form):
-            # Simple completeness check for uploaded forms
-            all_flds = [f for flds in _get_fields(selected_form).values() for f in flds]
-            req_missing = [f.name for f in all_flds if f.required and not str(st.session_state.form_data.get(f.name, "")).strip()]
-            if req_missing:
-                st.warning(f"{len(req_missing)} required field(s) still empty.")
-            else:
-                st.success("All required fields complete. No validation errors.")
-        else:
-            completeness = check_completeness(selected_form, st.session_state.form_data)
-            missing = completeness.get("required_missing", [])
-            if missing:
-                st.warning(f"{len(missing)} required field(s) still empty.")
-            else:
-                st.success("All required fields complete. No validation errors.")
-
-    # Export controls
-    st.markdown("---")
-    st.markdown('<div class="section-label">Export</div>', unsafe_allow_html=True)
-
-    # Filled PDF download (uploaded forms only)
-    if is_uploaded_form(selected_form):
-        template_bytes = get_template_pdf_bytes(selected_form)
-        if template_bytes:
-            # Build field value mapping: pdf_field_name -> user value
-            field_mapping: dict[str, str] = {}
-            for _sn, flds in _get_fields(selected_form).items():
-                for fld in flds:
-                    val = str(st.session_state.form_data.get(fld.name, "")).strip()
-                    if val:
-                        field_mapping[fld.name] = val
-            try:
-                from shared.pdf_form_extractor import fill_pdf_form
-                filled_pdf = fill_pdf_form(template_bytes, field_mapping)
-                client_name_pdf = ""
-                for key in ("full_name", "applicant_name", "petitioner_name", "appellant_name"):
-                    if st.session_state.form_data.get(key, "").strip():
-                        client_name_pdf = st.session_state.form_data[key].strip()
-                        break
-                safe_pdf_name = client_name_pdf.replace(" ", "_") if client_name_pdf else "form"
-                st.download_button(
-                    "Download Filled PDF",
-                    data=filled_pdf,
-                    file_name=f"{selected_form}_{safe_pdf_name}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                    type="primary",
-                )
-            except Exception as e:
-                st.error(f"PDF fill failed: {e}")
-
-    exp_cols = st.columns(2)
-    with exp_cols[0]:
-        plain_text = _build_plain_text(selected_form, st.session_state.form_data)
-        # Derive filename from client name
-        client_name = ""
-        for key in ("full_name", "applicant_name", "petitioner_name", "appellant_name"):
-            if st.session_state.form_data.get(key, "").strip():
-                client_name = st.session_state.form_data[key].strip()
-                break
-        safe_name = client_name.replace(" ", "_") if client_name else "form"
-        st.download_button(
-            "Download .txt",
-            data=plain_text,
-            file_name=f"{selected_form}_{safe_name}.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
-    with exp_cols[1]:
-        docx_bytes = _build_docx(selected_form, st.session_state.form_data)
-        st.download_button(
-            "Download .docx",
-            data=docx_bytes,
-            file_name=f"{selected_form}_{safe_name}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True,
-        )
-        if st.button("Upload to Google Docs", use_container_width=True):
-            with st.spinner("Uploading to Google Docs..."):
-                try:
-                    url = upload_to_google_docs(docx_bytes, f"{selected_form} - {client_name or 'Form'}")
-                    st.session_state.google_doc_url = url
-                except Exception as e:
-                    st.error(f"Upload failed: {e}")
-        if st.session_state.get("google_doc_url"):
-            st.markdown(f"[Open Google Doc]({st.session_state.google_doc_url})")
+if primary_form and st.session_state.form_data:
+    _auto_save(primary_form)
