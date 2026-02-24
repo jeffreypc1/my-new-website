@@ -40,6 +40,13 @@ def get_config_value(tool_name: str, key: str, default: Any) -> Any:
     return config.get(key, default)
 
 
+def set_config_value(tool_name: str, key: str, value: Any) -> None:
+    """Set a single key in a tool's config, preserving other keys."""
+    config = load_config(tool_name) or {}
+    config[key] = value
+    save_config(tool_name, config)
+
+
 def is_component_enabled(component_name: str, tool_name: str, default: bool = True) -> bool:
     """Check whether *component_name* is enabled for *tool_name*.
 

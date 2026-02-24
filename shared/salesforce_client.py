@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 # Load .env from the parent project directory (where SF credentials live)
@@ -101,25 +102,123 @@ def reset_connection():
         pass
 
 
-def describe_contact_fields() -> list[dict]:
-    """Return all fields on the Contact object.
+# Target SF objects for the forms assistant
+FORM_SF_OBJECTS = ["Contact", "Contact_Plus__c", "Contact_Plus_1__c"]
 
-    Each dict has: name (API name), label (human-readable), type, length.
+
+def describe_object_fields(object_name: str) -> list[dict]:
+    """Return all fields on any SF object.
+
+    Each dict has: name, label, type, length, updateable, nillable, custom.
     Sorted alphabetically by label.
     """
     sf = _sf_conn()
-    desc = sf.Contact.describe()
+    desc = getattr(sf, object_name).describe()
     fields = [
         {
             "name": f["name"],
             "label": f["label"],
             "type": f["type"],
             "length": f.get("length", 0),
+            "updateable": f.get("updateable", False),
+            "nillable": f.get("nillable", True),
+            "custom": f.get("custom", False),
         }
         for f in desc["fields"]
     ]
     fields.sort(key=lambda f: f["label"].lower())
     return fields
+
+
+def describe_contact_fields() -> list[dict]:
+    """Return all fields on the Contact object.
+
+    Each dict has: name (API name), label (human-readable), type, length, etc.
+    Sorted alphabetically by label.
+    """
+    return describe_object_fields("Contact")
+
+
+def create_custom_field(
+    object_name: str,
+    field_label: str,
+    field_type: str = "Text",
+    length: int = 255,
+    picklist_values: list[str] | None = None,
+    description: str = "",
+) -> dict:
+    """Create a custom field on an SF object via the Tooling API.
+
+    Args:
+        object_name: e.g. "Contact_Plus__c"
+        field_label: Human-readable label, e.g. "A-Number"
+        field_type: Text, Date, Checkbox, Picklist, LongTextArea, Number, Email, Phone
+        length: For Text fields (max 255). For LongTextArea (max 131072).
+        picklist_values: For Picklist type only.
+        description: Optional field description.
+
+    Returns: dict with "id", "fullName", and "apiName" on success.
+    Raises: Exception with SF error message on failure.
+    """
+    sf = _sf_conn()
+    # Derive API name from label: "A-Number" -> "A_Number__c"
+    api_name = re.sub(r'[^a-zA-Z0-9]', '_', field_label)
+    api_name = re.sub(r'_+', '_', api_name).strip('_')
+    full_name = f"{object_name}.{api_name}__c"
+
+    metadata: dict = {"label": field_label, "type": field_type}
+    if field_type == "Text":
+        metadata["length"] = min(length, 255)
+    elif field_type == "LongTextArea":
+        metadata["length"] = min(length, 131072)
+        metadata["visibleLines"] = 5
+    elif field_type == "Picklist" and picklist_values:
+        metadata["valueSet"] = {
+            "restricted": False,
+            "valueSetDefinition": {
+                "sorted": True,
+                "value": [
+                    {"fullName": v, "label": v, "default": False}
+                    for v in picklist_values
+                ],
+            },
+        }
+    elif field_type == "Number":
+        metadata["precision"] = 18
+        metadata["scale"] = 0
+
+    if description:
+        metadata["description"] = description
+
+    result = sf.restful(
+        "tooling/sobjects/CustomField",
+        method="POST",
+        data={"FullName": full_name, "Metadata": metadata},
+    )
+    return {"id": result.get("id", ""), "fullName": full_name, "apiName": f"{api_name}__c"}
+
+
+def get_related_record(
+    contact_id: str,
+    object_name: str,
+    lookup_field: str = "Contact__c",
+) -> dict | None:
+    """Fetch the related Contact_Plus__c or Contact_Plus_1__c record for a Contact.
+
+    Creates one if it doesn't exist (ensures 1:1 relationship for sync).
+    """
+    sf = _sf_conn()
+    query = f"SELECT Id FROM {object_name} WHERE {lookup_field} = '{contact_id}' LIMIT 1"
+    results = sf.query(query)
+    if results["records"]:
+        return results["records"][0]
+    # Create a new related record
+    result = sf.restful(
+        f"sobjects/{object_name}",
+        method="POST",
+        data={lookup_field: contact_id},
+    )
+    return {"Id": result.get("id", "")}
 
 
 def get_client(customer_id: str, fields: list[str] | None = None) -> dict | None:

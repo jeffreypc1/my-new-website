@@ -2,6 +2,10 @@
 
 Merges hardcoded SUPPORTED_FORMS with uploaded forms from config,
 provides unified field access, and manages PDF template files.
+
+Also bridges to the new FormSchema system (``app.ingestion``) so that
+forms ingested through the new pipeline appear seamlessly alongside
+hardcoded and legacy-uploaded forms.
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ from app.form_definitions import (
     _DEFAULT_SUPPORTED_FORMS,
     FormField,
 )
+from app.ingestion import load_form_schema, list_form_schemas
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "data" / "form_templates"
 
@@ -53,6 +58,19 @@ def get_all_forms() -> dict[str, dict]:
             entry["_uploaded"] = True
             result[fid] = entry
 
+    # Add forms from the new schema system that aren't already present
+    for schema in list_form_schemas():
+        if schema.form_id not in result and schema.form_id not in deleted:
+            result[schema.form_id] = {
+                "title": schema.title,
+                "agency": schema.agency,
+                "filing_fee": schema.filing_fee,
+                "processing_time": schema.processing_time,
+                "_uploaded": True,
+                "_schema_source": schema.source,
+                "_schema_version": schema.version,
+            }
+
     return result
 
 
@@ -70,29 +88,46 @@ def get_all_fields(form_id: str) -> dict[str, list[FormField]]:
     if form_id in FIELD_DEFINITIONS:
         return FIELD_DEFINITIONS[form_id]
 
-    # Check uploaded forms
+    # Check uploaded forms (legacy config format)
     cfg = load_config("forms-assistant") or {}
     uploaded = cfg.get("uploaded_forms", {})
     form_cfg = uploaded.get(form_id)
-    if not form_cfg:
-        return {}
+    if form_cfg:
+        fields_data = form_cfg.get("fields", [])
+        sections: dict[str, list[FormField]] = {}
 
-    fields_data = form_cfg.get("fields", [])
-    sections: dict[str, list[FormField]] = {}
+        for fd in fields_data:
+            section = fd.get("section", "Page 1")
+            ff = FormField(
+                name=fd["pdf_field_name"],
+                field_type=fd.get("field_type", "text"),
+                required=fd.get("required", False),
+                section=section,
+                help_text=fd.get("help_text", ""),
+                options=fd.get("options", []),
+            )
+            sections.setdefault(section, []).append(ff)
 
-    for fd in fields_data:
-        section = fd.get("section", "Page 1")
-        ff = FormField(
-            name=fd["pdf_field_name"],
-            field_type=fd.get("field_type", "text"),
-            required=fd.get("required", False),
-            section=section,
-            help_text=fd.get("help_text", ""),
-            options=fd.get("options", []),
-        )
-        sections.setdefault(section, []).append(ff)
+        return sections
 
-    return sections
+    # Fall back to new FormSchema system
+    schema = load_form_schema(form_id)
+    if schema and schema.fields:
+        sections = {}
+        for f in schema.fields:
+            sec = f.section or "General"
+            ff = FormField(
+                name=f.field_id,
+                field_type=f.field_type,
+                required=f.required,
+                section=sec,
+                help_text=f.help_text,
+                options=f.options,
+            )
+            sections.setdefault(sec, []).append(ff)
+        return sections
+
+    return {}
 
 
 def get_template_pdf_bytes(form_id: str) -> bytes | None:
@@ -154,9 +189,10 @@ def get_field_roles(form_id: str) -> dict[str, str]:
 def get_field_sf_mappings(form_id: str) -> dict[str, str]:
     """Return a mapping of pdf_field_name -> SF API field name.
 
-    Only returns fields that have a non-empty ``sf_field`` value,
-    enabling direct Salesforce Contact <-> form field sync.
+    Checks the legacy config first, then falls back to the new
+    MappingSet system (``app.mapping_store``).
     """
+    # Legacy config format
     cfg = load_config("forms-assistant") or {}
     uploaded = cfg.get("uploaded_forms", {})
     form_cfg = uploaded.get(form_id, {})
@@ -168,4 +204,48 @@ def get_field_sf_mappings(form_id: str) -> dict[str, str]:
         if sf:
             mappings[fd["pdf_field_name"]] = sf
 
+    if mappings:
+        return mappings
+
+    # Fall back to new mapping store
+    try:
+        from app.mapping_store import load_mapping_set
+
+        ms = load_mapping_set(form_id)
+        if ms:
+            for m in ms.get_approved_mappings():
+                if m.sf_field:
+                    mappings[m.field_id] = m.sf_field
+    except ImportError:
+        pass
+
     return mappings
+
+
+def get_schema_version(form_id: str) -> int | None:
+    """Return the latest schema version number, or None if no schema exists."""
+    schema = load_form_schema(form_id)
+    if schema:
+        return schema.version
+    return None
+
+
+def get_form_source(form_id: str) -> str:
+    """Return the source type for a form.
+
+    Returns one of: "hardcoded", "uploaded_fillable", "uploaded_nonfillable",
+    "uploaded" (legacy config), or "" if not found.
+    """
+    if form_id in FIELD_DEFINITIONS:
+        return "hardcoded"
+
+    schema = load_form_schema(form_id)
+    if schema:
+        return schema.source
+
+    cfg = load_config("forms-assistant") or {}
+    uploaded = cfg.get("uploaded_forms", {})
+    if form_id in uploaded:
+        return "uploaded"
+
+    return ""

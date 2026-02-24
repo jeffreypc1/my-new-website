@@ -1851,97 +1851,13 @@ def check_completeness(
 
 
 # ---------------------------------------------------------------------------
-# Draft persistence
+# Draft persistence (delegated to app.draft_store -- re-exported for compat)
 # ---------------------------------------------------------------------------
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "drafts"
-
-
-def _ensure_dir() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def new_draft_id() -> str:
-    """Generate a short unique ID for a new draft."""
-    return str(uuid.uuid4())[:8]
-
-
-def save_form_draft(
-    draft_id: str,
-    form_id: str,
-    form_data: dict[str, str],
-    current_section: int,
-) -> dict:
-    """Save or update a form draft. Returns the saved draft dict."""
-    _ensure_dir()
-    path = DATA_DIR / f"{draft_id}.json"
-
-    now = datetime.now().isoformat()
-    created_at = now
-    if path.exists():
-        try:
-            existing = json.loads(path.read_text())
-            created_at = existing.get("created_at", now)
-        except Exception:
-            pass
-
-    # Derive a display name from form data
-    name_field = ""
-    for key in ("full_name", "applicant_name", "petitioner_name", "appellant_name"):
-        if form_data.get(key, "").strip():
-            name_field = form_data[key].strip()
-            break
-
-    draft = {
-        "id": draft_id,
-        "form_id": form_id,
-        "form_data": form_data,
-        "current_section": current_section,
-        "client_name": name_field or "Unnamed",
-        "created_at": created_at,
-        "updated_at": now,
-    }
-    path.write_text(json.dumps(draft, indent=2))
-    return draft
-
-
-def load_form_draft(draft_id: str) -> dict | None:
-    """Load a draft by ID. Returns None if not found."""
-    path = DATA_DIR / f"{draft_id}.json"
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text())
-    except Exception:
-        return None
-
-
-def list_form_drafts() -> list[dict]:
-    """Return summary info for all saved form drafts, newest first."""
-    _ensure_dir()
-    drafts = []
-    for p in DATA_DIR.glob("*.json"):
-        try:
-            d = json.loads(p.read_text())
-            drafts.append(
-                {
-                    "id": d["id"],
-                    "form_id": d.get("form_id", ""),
-                    "client_name": d.get("client_name", "Unnamed"),
-                    "updated_at": d.get("updated_at", ""),
-                    "created_at": d.get("created_at", ""),
-                }
-            )
-        except Exception:
-            continue
-    drafts.sort(key=lambda d: d["updated_at"], reverse=True)
-    return drafts
-
-
-def delete_form_draft(draft_id: str) -> bool:
-    """Delete a draft. Returns True if the file existed."""
-    path = DATA_DIR / f"{draft_id}.json"
-    if path.exists():
-        path.unlink()
-        return True
-    return False
+from app.draft_store import (  # noqa: E402, F401
+    new_draft_id,
+    save_form_draft,
+    load_form_draft,
+    list_form_drafts,
+    delete_form_draft,
+)
