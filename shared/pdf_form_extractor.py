@@ -328,6 +328,86 @@ def _parse_field_name(raw_name: str) -> str:
 
 # -- Extract fields -----------------------------------------------------------
 
+def _extract_tooltip(doc, xref: int) -> str:
+    """Extract the /TU (tooltip/alternate name) from a widget annotation."""
+    try:
+        obj_str = doc.xref_object(xref)
+        # Try parenthesized string first — handle nested escaped parens
+        tu_match = re.search(r"/TU\s*\(((?:[^()\\]|\\.)*)\)", obj_str)
+        if tu_match:
+            raw = tu_match.group(1)
+            # Unescape PDF string escapes
+            raw = raw.replace("\\(", "(").replace("\\)", ")").replace("\\\\", "\\")
+            return raw.rstrip("\\")
+        # Try hex string
+        tu_hex = re.search(r"/TU\s*<([^>]*)>", obj_str)
+        if tu_hex:
+            raw = tu_hex.group(1)
+            try:
+                return bytes.fromhex(raw).decode("utf-16-be", errors="replace")
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return ""
+
+
+def _parse_tooltip_to_label(tooltip: str, raw_name: str) -> tuple[str, str]:
+    """Derive a human-readable label and section from a /TU tooltip string.
+
+    Returns (display_label, section).
+    Tooltip format: "Part. A. 1. Information About You. 5. Enter First Name."
+    """
+    if not tooltip:
+        return _parse_field_name(raw_name), ""
+
+    # Clean up escaped characters and trailing dots
+    cleaned = tooltip.strip().rstrip(".")
+
+    # Try to extract section: "Part. A. 1. Information About You"
+    # Pattern: "Part[. ]X[. ]N[. ]Section Title[. ]N[. ]Field Description"
+    section = ""
+    label = cleaned
+
+    # Match: "Part. A. 1. Section Title. N. Field description"
+    # or: "Part A.I - Section Title. Field description"
+    part_match = re.match(
+        r"^Part\.?\s*([A-Z]+)\.?\s*(\d+)?\.?\s*([^.]+(?:\([^)]*\))?)\.\s*(.+)$",
+        cleaned,
+        re.IGNORECASE,
+    )
+    if part_match:
+        part_letter = part_match.group(1).upper()
+        part_num = part_match.group(2) or ""
+        section_title = part_match.group(3).strip()
+        remainder = part_match.group(4).strip()
+        section = f"Part {part_letter}"
+        if part_num:
+            section += f".{part_num}"
+        section += f" - {section_title}"
+
+        # Remainder may start with a line number like "5. Enter First Name"
+        line_match = re.match(r"^(\d+[a-z]?)\.?\s*(.+)$", remainder)
+        if line_match:
+            label = line_match.group(2).strip().rstrip(".")
+        else:
+            label = remainder.rstrip(".")
+    else:
+        # No section detected — use the whole tooltip as label
+        label = cleaned
+
+    # Clean up common prefixes like "Enter ", "Select "
+    for prefix in ("Enter ", "Select "):
+        if label.startswith(prefix) and len(label) > len(prefix) + 3:
+            label = label[len(prefix):]
+
+    # Title case if it's all lowercase or has weird casing
+    if label == label.lower() or label == label.upper():
+        label = label.title()
+
+    return label, section
+
+
 def extract_form_fields(pdf_bytes: bytes) -> list[dict]:
     """Extract all AcroForm widget fields from a PDF.
 
@@ -337,7 +417,7 @@ def extract_form_fields(pdf_bytes: bytes) -> list[dict]:
     Returns:
         List of field dicts with keys: pdf_field_name, display_label,
         field_type, page_number, rect, options, required, role, section,
-        help_text.
+        help_text, tooltip.
     """
     import pymupdf  # lazy import
 
@@ -376,9 +456,15 @@ def extract_form_fields(pdf_bytes: bytes) -> list[dict]:
 
             rect = list(widget.rect) if widget.rect else [0, 0, 0, 0]
 
+            # Extract tooltip for better display names and sections
+            tooltip = _extract_tooltip(doc, widget.xref)
+            display_label, tooltip_section = _parse_tooltip_to_label(tooltip, fname)
+
+            section = tooltip_section if tooltip_section else f"Page {page_num + 1}"
+
             fields.append({
                 "pdf_field_name": fname,
-                "display_label": _parse_field_name(fname),
+                "display_label": display_label,
                 "field_type": ftype,
                 "page_number": page_num,
                 "rect": rect,
@@ -386,8 +472,9 @@ def extract_form_fields(pdf_bytes: bytes) -> list[dict]:
                 "required": False,
                 "role": "none",
                 "sf_field": "",
-                "section": f"Page {page_num + 1}",
-                "help_text": "",
+                "section": section,
+                "help_text": tooltip,
+                "tooltip": tooltip,
             })
 
     doc.close()
@@ -431,3 +518,74 @@ def fill_pdf_form(pdf_bytes: bytes, field_values: dict[str, str]) -> bytes:
     filled = doc.tobytes(deflate=True, garbage=3)
     doc.close()
     return filled
+
+
+def extract_text_blocks(pdf_bytes: bytes) -> list[dict]:
+    """Extract text blocks from a non-fillable PDF for overlay-based form filling.
+
+    Returns list of dicts with: text, page_number, rect (bounding box), font_size.
+    Useful for identifying where to overlay text on non-fillable PDFs.
+    """
+    import pymupdf
+
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    blocks = []
+
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        text_dict = page.get_text("dict")
+        for block in text_dict.get("blocks", []):
+            if block.get("type") != 0:  # text blocks only
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = span.get("text", "").strip()
+                    if not text:
+                        continue
+                    bbox = span.get("bbox", [0, 0, 0, 0])
+                    blocks.append({
+                        "text": text,
+                        "page_number": page_num,
+                        "rect": list(bbox),
+                        "font_size": span.get("size", 12),
+                    })
+
+    doc.close()
+    return blocks
+
+
+def overlay_text_on_pdf(pdf_bytes: bytes, overlays: list[dict]) -> bytes:
+    """Overlay text onto a non-fillable PDF at specified positions.
+
+    Args:
+        pdf_bytes: Raw bytes of the PDF.
+        overlays: List of dicts with: text, page_number, rect [x0, y0, x1, y1],
+                  font_size (optional, default 10).
+
+    Returns:
+        Bytes of the modified PDF.
+    """
+    import pymupdf
+
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+
+    for overlay in overlays:
+        page_num = overlay.get("page_number", 0)
+        if page_num >= len(doc):
+            continue
+        page = doc[page_num]
+        rect = overlay.get("rect", [0, 0, 100, 20])
+        text = overlay.get("text", "")
+        font_size = overlay.get("font_size", 10)
+
+        r = pymupdf.Rect(rect)
+        page.insert_textbox(
+            r, text,
+            fontsize=font_size,
+            fontname="helv",
+            color=(0, 0, 0),
+        )
+
+    result = doc.tobytes(deflate=True, garbage=3)
+    doc.close()
+    return result
