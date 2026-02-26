@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1e293b;overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:transparent;color:#1e293b;overflow-x:hidden}
 
 /* ── Toolbar ─────────────────────────────────────────────────────────── */
 .toolbar{
@@ -21,12 +21,79 @@ body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1
   transition:background .15s,border-color .15s;
 }
 .toolbar button:hover{background:#e2e8f0;border-color:#cbd5e1}
+.toolbar button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 
-/* ── Canvas ──────────────────────────────────────────────────────────── */
-.canvas{
-  background:#fff;border:1px solid #e2e8f0;border-top:none;
-  border-radius:0 0 6px 6px;padding:24px 28px;min-height:300px;
+/* ── Canvas wrapper ──────────────────────────────────────────────────── */
+.canvas-wrap{
+  border:1px solid #e2e8f0;border-top:none;
+  border-radius:0 0 6px 6px;
+  background:#e8eaed;
+  padding:0;
 }
+
+/* ── Page View ───────────────────────────────────────────────────────── */
+.canvas-wrap.page-view{
+  padding:20px;
+}
+.canvas-wrap.page-view .canvas{
+  position:relative;
+  max-width:8.5in;
+  min-height:11in;
+  margin:0 auto;
+  background:#fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.15), 0 0 0 1px rgba(0,0,0,.05);
+  padding:0.9in 1in 1in 1.5in;
+  font-family:'Times New Roman',Times,serif;
+  font-size:12pt;
+  line-height:1.5;
+}
+
+/* ── Compact View ────────────────────────────────────────────────────── */
+.canvas-wrap.compact-view{
+  background:#fff;
+  padding:0;
+}
+.canvas-wrap.compact-view .canvas{
+  padding:24px 28px;
+  min-height:300px;
+  font-family:'Times New Roman',Times,serif;
+  font-size:12pt;
+  line-height:1.5;
+}
+
+/* ── Decorative line numbers (page view only) ────────────────────────── */
+.line-numbers{
+  position:absolute;
+  top:0.9in;
+  left:0.3in;
+  bottom:1in;
+  width:0.6in;
+  pointer-events:none;
+  user-select:none;
+}
+.line-numbers span{
+  display:block;
+  font-family:'Times New Roman',Times,serif;
+  font-size:9pt;
+  color:#c8c8c8;
+  text-align:right;
+  line-height:1.5;
+  height:calc((100%) / 28);
+}
+.compact-view .line-numbers{display:none}
+
+/* ── Margin lines (page view only) ───────────────────────────────────── */
+.canvas-wrap.page-view .canvas::before,
+.canvas-wrap.page-view .canvas::after{
+  content:'';
+  position:absolute;
+  top:0;bottom:0;
+  width:1px;
+  background:#e0c8c8;
+  pointer-events:none;
+}
+.canvas-wrap.page-view .canvas::before{left:1.2in}
+.canvas-wrap.page-view .canvas::after{left:1.25in}
 
 /* ── Block ───────────────────────────────────────────────────────────── */
 .block{
@@ -34,7 +101,7 @@ body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1
   border:1.5px dashed transparent;border-radius:5px;
   cursor:default;transition:border-color .15s,background .15s,box-shadow .15s;
 }
-.block:hover{border-color:#93c5fd;background:#f0f7ff}
+.block:hover{border-color:#93c5fd;background:rgba(240,247,255,.6)}
 .block.editing{
   border:1.5px solid #3b82f6;background:#f0f7ff;
   box-shadow:0 0 0 3px rgba(59,130,246,.12);cursor:text;
@@ -60,6 +127,7 @@ body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1
   background:#fff;border:1px solid #d1d5db;border-radius:3px;
   width:19px;height:19px;display:flex;align-items:center;justify-content:center;
   cursor:pointer;font-size:9px;color:#64748b;padding:0;transition:all .1s;
+  font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
 }
 .block-actions button:hover{background:#f1f5f9;color:#1e293b}
 
@@ -72,8 +140,94 @@ body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1
 
 /* ── Content ─────────────────────────────────────────────────────────── */
 .block-content{
-  white-space:pre-wrap;font-size:11.5px;line-height:1.5;outline:none;
-  word-wrap:break-word;
+  outline:none;word-wrap:break-word;
+}
+.block-content[contenteditable="true"]{
+  white-space:pre-wrap;font-size:11.5px;line-height:1.5;
+  font-family:'Courier New',Courier,monospace;
+}
+
+/* ── Type-specific display styles ────────────────────────────────────── */
+
+/* Attorney header */
+.render-attorney-header{
+  font-size:10pt;line-height:1.3;text-align:left;
+}
+
+/* Court caption */
+.render-court-caption{
+  text-align:center;text-transform:uppercase;font-weight:bold;
+  font-size:12pt;line-height:1.6;
+}
+
+/* Party table */
+.render-party-table{
+  width:100%;margin:8px 0;
+}
+.party-table-inner{
+  border-top:2px solid #000;border-bottom:2px solid #000;
+  display:flex;width:100%;
+}
+.party-col-left{
+  flex:1;padding:10px 16px 10px 8px;
+}
+.party-col-divider{
+  width:1px;background:#000;flex-shrink:0;
+}
+.party-col-right{
+  flex:1;padding:10px 8px 10px 16px;
+}
+.party-col-left .party-label{
+  font-size:11pt;margin-bottom:4px;
+}
+.party-col-left .party-name{
+  font-weight:bold;text-transform:uppercase;font-size:12pt;
+  margin:2px 0;
+}
+.party-col-right .party-a-number{
+  font-size:12pt;margin:2px 0;
+}
+.party-col-right .party-case-type{
+  font-size:11pt;margin-top:6px;
+}
+
+/* Submission body */
+.render-submission-body .submission-title{
+  text-align:center;font-weight:bold;text-transform:uppercase;
+  font-size:12pt;margin-bottom:8px;
+}
+.render-submission-body .submission-paragraph{
+  margin:6px 0;
+}
+.render-submission-body ol.doc-list{
+  margin:8px 0 8px 0.5in;font-size:12pt;line-height:1.5;
+}
+.render-submission-body ol.doc-list li{
+  padding-left:4px;margin:2px 0;
+}
+
+/* Signature block */
+.render-signature{
+  white-space:pre-wrap;line-height:1.5;
+}
+.render-signature .sig-line{
+  display:inline-block;width:3in;border-bottom:1px solid #000;
+  margin-top:24px;
+}
+
+/* Certificate of service */
+.render-cert .cert-heading{
+  text-align:center;font-weight:bold;text-transform:uppercase;
+  font-size:12pt;margin-bottom:8px;
+}
+.render-cert .cert-body{
+  margin:6px 0;line-height:1.5;
+}
+.render-cert .cert-indent{
+  margin-left:0.5in;
+}
+.render-cert .cert-sig-area{
+  margin-top:20px;white-space:pre-wrap;line-height:1.5;
 }
 
 /* ── Empty state ─────────────────────────────────────────────────────── */
@@ -82,6 +236,18 @@ body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1
   min-height:200px;color:#94a3b8;font-style:italic;
   font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;
 }
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media(max-width:900px){
+  .canvas-wrap.page-view .canvas{
+    padding:0.5in 0.6in 0.6in 0.8in;
+    min-height:auto;
+  }
+  .canvas-wrap.page-view{padding:10px}
+  .line-numbers{display:none}
+  .canvas-wrap.page-view .canvas::before,
+  .canvas-wrap.page-view .canvas::after{display:none}
+}
 </style>
 </head>
 <body>
@@ -89,12 +255,15 @@ body{font-family:'Courier New',Courier,monospace;background:transparent;color:#1
 <div class="toolbar">
   <span class="toolbar-hint">Click to edit &middot; Drag to reorder</span>
   <div class="toolbar-right">
+    <button id="viewToggleBtn" title="Toggle between page view and compact view">&#x1f4c4; Page View</button>
     <button id="resetBtn" title="Regenerate all blocks from template">&#x21bb; Regenerate</button>
     <button id="expandBtn" title="Open full-screen editor">&#x26F6; Expand View</button>
   </div>
 </div>
-<div id="canvas" class="canvas">
-  <div class="empty-state">Fill in the submission description to see the document.</div>
+<div id="canvasWrap" class="canvas-wrap page-view">
+  <div id="canvas" class="canvas">
+    <div class="empty-state">Fill in the submission description to see the document.</div>
+  </div>
 </div>
 
 <script>
@@ -115,12 +284,243 @@ var blockOrder=[];   // current display order (block IDs)
 var blockEdits={};   // {block_id: edited_text} — only user-changed blocks
 var editingId=null;
 var draggedId=null;
+var actionSeq=0;
+var isPageView=true;
+var componentArgs={};  // extra structured data from Python
+
+// ── Escape HTML for safe innerHTML ──────────────────────────────────
+function esc(s){
+  var d=document.createElement("div");d.textContent=s;return d.innerHTML;
+}
+
+// ── Build line numbers ──────────────────────────────────────────────
+function buildLineNumbers(){
+  var wrap=document.getElementById("canvasWrap");
+  var existing=wrap.querySelector(".line-numbers");
+  if(existing)existing.remove();
+  if(!isPageView)return;
+  var container=document.getElementById("canvas");
+  var ln=document.createElement("div");
+  ln.className="line-numbers";
+  for(var i=1;i<=28;i++){
+    var sp=document.createElement("span");
+    sp.textContent=i;
+    ln.appendChild(sp);
+  }
+  container.appendChild(ln);
+}
+
+// ── Type-specific rendering ─────────────────────────────────────────
+
+function renderAttorneyHeader(content){
+  var lines=content.split("\n");
+  return '<div class="render-attorney-header">'+lines.map(function(l){return esc(l)}).join("<br>")+'</div>';
+}
+
+function renderCourtCaption(content){
+  var lines=content.split("\n").filter(function(l){return l.trim()});
+  return '<div class="render-court-caption">'+lines.map(function(l){return esc(l)}).join("<br>")+'</div>';
+}
+
+function renderPartyTable(content){
+  var bens=componentArgs.beneficiaries;
+  var rows=[];
+
+  if(bens&&bens.length){
+    for(var i=0;i<bens.length;i++){
+      rows.push({name:bens[i].Name||"",aNum:bens[i].A_Number||"",type:bens[i].Type||""});
+    }
+  }else{
+    // Fallback: parse plain-text content using 40-char column split
+    var lines=content.split("\n");
+    for(var i=0;i<lines.length;i++){
+      var line=lines[i];
+      if(!line.trim()||line.indexOf("IN THE MATTER")>=0)continue;
+      if(line.length>=40){
+        var left=line.substring(0,40).trim();
+        var right=line.substring(40).trim();
+        if(left||right)rows.push({name:left,aNum:right,type:""});
+      }else{
+        var trimmed=line.trim();
+        if(trimmed)rows.push({name:trimmed,aNum:"",type:""});
+      }
+    }
+  }
+
+  // Determine case type from last row or args
+  var caseType="";
+  if(rows.length){
+    for(var i=rows.length-1;i>=0;i--){
+      if(rows[i].type){caseType=rows[i].type;break;}
+    }
+  }
+
+  var leftHtml='<div class="party-label">In the Matter of:</div>';
+  var rightHtml='';
+  for(var i=0;i<rows.length;i++){
+    leftHtml+='<div class="party-name">'+esc(rows[i].name)+'</div>';
+    rightHtml+='<div class="party-a-number">'+esc(rows[i].aNum)+'</div>';
+  }
+  if(caseType){
+    rightHtml+='<div class="party-case-type">'+esc(caseType)+'</div>';
+  }
+
+  return '<div class="render-party-table">'+
+    '<div class="party-table-inner">'+
+    '<div class="party-col-left">'+leftHtml+'</div>'+
+    '<div class="party-col-divider"></div>'+
+    '<div class="party-col-right">'+rightHtml+'</div>'+
+    '</div></div>';
+}
+
+function renderSubmissionBody(content){
+  var lines=content.split("\n");
+  var html='<div class="render-submission-body">';
+
+  // Title lines: all-caps lines at the start
+  var bodyStart=0;
+  for(var i=0;i<lines.length;i++){
+    var trimmed=lines[i].trim();
+    if(!trimmed){bodyStart=i+1;continue;}
+    if(trimmed===trimmed.toUpperCase()&&trimmed.length>3){
+      html+='<div class="submission-title">'+esc(trimmed)+'</div>';
+      bodyStart=i+1;
+    }else{
+      bodyStart=i;
+      break;
+    }
+  }
+
+  // Check for document list from args
+  var docList=componentArgs.document_list;
+  // Also check for submission title override
+  var subTitle=componentArgs.submission_title;
+
+  // Parse remaining lines
+  var inList=false;
+  for(var i=bodyStart;i<lines.length;i++){
+    var trimmed=lines[i].trim();
+    if(!trimmed)continue;
+
+    // Detect numbered items: "    1. ..." or "1. ..."
+    var numMatch=trimmed.match(/^(\d+)\.\s+(.+)/);
+    if(numMatch){
+      if(!inList){html+='<ol class="doc-list" start="'+numMatch[1]+'">';inList=true;}
+      html+='<li>'+esc(numMatch[2])+'</li>';
+    }else{
+      if(inList){html+='</ol>';inList=false;}
+      html+='<div class="submission-paragraph">'+esc(trimmed)+'</div>';
+    }
+  }
+  if(inList)html+='</ol>';
+  html+='</div>';
+  return html;
+}
+
+function renderSignature(content){
+  var lines=content.split("\n");
+  var html='<div class="render-signature">';
+  for(var i=0;i<lines.length;i++){
+    var trimmed=lines[i].trim();
+    if(trimmed.match(/^_{3,}$/)||trimmed.match(/^-{3,}$/)){
+      html+='<div class="sig-line">&nbsp;</div>';
+    }else{
+      html+=esc(lines[i])+'<br>';
+    }
+  }
+  html+='</div>';
+  return html;
+}
+
+function renderCertOfService(content){
+  var lines=content.split("\n");
+  var html='<div class="render-cert">';
+  var i=0;
+
+  // Find heading
+  for(;i<lines.length;i++){
+    var trimmed=lines[i].trim();
+    if(!trimmed)continue;
+    if(trimmed.toUpperCase().indexOf("CERTIFICATE OF SERVICE")>=0){
+      html+='<div class="cert-heading">'+esc(trimmed)+'</div>';
+      i++;break;
+    }
+  }
+
+  // Body paragraphs — detect indented address blocks
+  var bodyLines=[];
+  for(;i<lines.length;i++){
+    var line=lines[i];
+    var trimmed=line.trim();
+    if(!trimmed){
+      if(bodyLines.length)bodyLines.push("");
+      continue;
+    }
+    // Check if this looks like signature area (Respectfully, Date:, underscores)
+    if(trimmed.match(/^(Respectfully|Date:|_{3,}|-{3,})/)){
+      break;
+    }
+    bodyLines.push(line);
+  }
+
+  // Render body
+  if(bodyLines.length){
+    html+='<div class="cert-body">';
+    for(var j=0;j<bodyLines.length;j++){
+      var bl=bodyLines[j];
+      if(!bl){html+='<br>';continue;}
+      // Indented lines (address)
+      if(bl.match(/^\s{4,}/)){
+        html+='<div class="cert-indent">'+esc(bl.trim())+'</div>';
+      }else{
+        html+=esc(bl)+'<br>';
+      }
+    }
+    html+='</div>';
+  }
+
+  // Signature area
+  var sigLines=[];
+  for(;i<lines.length;i++){sigLines.push(lines[i]);}
+  if(sigLines.length){
+    html+='<div class="cert-sig-area">';
+    for(var j=0;j<sigLines.length;j++){
+      var trimmed=sigLines[j].trim();
+      if(trimmed.match(/^_{3,}$/)||trimmed.match(/^-{3,}$/)){
+        html+='<div class="sig-line">&nbsp;</div>';
+      }else{
+        html+=esc(sigLines[j])+'<br>';
+      }
+    }
+    html+='</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+// ── Block rendering dispatcher ──────────────────────────────────────
+function renderBlockContent(blk,content,isEditing){
+  if(isEditing){
+    return null; // signal to use contenteditable with plain text
+  }
+  switch(blk.id){
+    case "attorney_header": return renderAttorneyHeader(content);
+    case "court_caption":   return renderCourtCaption(content);
+    case "party_table":     return renderPartyTable(content);
+    case "submission_body": return renderSubmissionBody(content);
+    case "signature":       return renderSignature(content);
+    case "cert_of_service": return renderCertOfService(content);
+    default:                return null; // plain text fallback
+  }
+}
 
 // ── Render blocks ────────────────────────────────────────────────────
 function render(){
   var canvas=document.getElementById("canvas");
   if(!blocks.length||!blockOrder.length){
     canvas.innerHTML='<div class="empty-state">Fill in the submission description to see the document.</div>';
+    buildLineNumbers();
     setHeight();return;
   }
   canvas.innerHTML="";
@@ -129,9 +529,10 @@ function render(){
     for(var i=0;i<blocks.length;i++){if(blocks[i].id===id){blk=blocks[i];break;}}
     if(!blk)return;
     var content=(blockEdits[id]!=null)?blockEdits[id]:blk.content;
+    var isEditing=(editingId===id);
 
     var el=document.createElement("div");
-    el.className="block"+(editingId===id?" editing":"");
+    el.className="block"+(isEditing?" editing":"");
     el.setAttribute("data-id",id);
     el.draggable=true;
 
@@ -164,8 +565,18 @@ function render(){
     // Content
     var ce=document.createElement("div");
     ce.className="block-content";
-    ce.textContent=content;
-    if(editingId===id)ce.setAttribute("contenteditable","true");
+
+    var rendered=renderBlockContent(blk,content,isEditing);
+    if(rendered!==null){
+      ce.innerHTML=rendered;
+    }else{
+      // Plain text (editing mode or unknown block type)
+      ce.textContent=content;
+      ce.style.whiteSpace="pre-wrap";
+      ce.style.fontSize="11.5px";
+      ce.style.fontFamily="'Courier New',Courier,monospace";
+      if(isEditing)ce.setAttribute("contenteditable","true");
+    }
     el.appendChild(ce);
 
     // Click to edit
@@ -221,6 +632,7 @@ function render(){
 
     canvas.appendChild(el);
   });
+  buildLineNumbers();
   setHeight();
 }
 
@@ -232,7 +644,6 @@ function finishEditing(){
     var blk=null;
     for(var i=0;i<blocks.length;i++){if(blocks[i].id===editingId){blk=blocks[i];break;}}
     var edited=el.innerText;
-    // Only store if user actually changed the content
     if(blk&&edited!==blk.content){
       blockEdits[editingId]=edited;
     }
@@ -270,14 +681,26 @@ document.getElementById("canvas").addEventListener("click",function(e){
   if(e.target===this){finishEditing();render();}
 });
 
+// ── View toggle ─────────────────────────────────────────────────────
+document.getElementById("viewToggleBtn").addEventListener("click",function(){
+  isPageView=!isPageView;
+  var wrap=document.getElementById("canvasWrap");
+  wrap.className="canvas-wrap "+(isPageView?"page-view":"compact-view");
+  this.innerHTML=isPageView?"&#x1f4c4; Page View":"&#x1f4cb; Compact";
+  if(isPageView){this.classList.remove("active")}else{this.classList.add("active")}
+  render();
+});
+
 // ── Toolbar buttons ──────────────────────────────────────────────────
 document.getElementById("resetBtn").addEventListener("click",function(){
   finishEditing();
-  setValue({block_order:blockOrder,block_edits:blockEdits,action:"regenerate"});
+  actionSeq++;
+  setValue({block_order:blockOrder,block_edits:blockEdits,action:"regenerate",seq:actionSeq});
 });
 document.getElementById("expandBtn").addEventListener("click",function(){
   finishEditing();
-  setValue({block_order:blockOrder,block_edits:blockEdits,action:"expand"});
+  actionSeq++;
+  setValue({block_order:blockOrder,block_edits:blockEdits,action:"expand",seq:actionSeq});
 });
 
 // ── Receive data from Streamlit ──────────────────────────────────────
@@ -286,15 +709,20 @@ window.addEventListener("message",function(event){
   var args=event.data.args;
   blocks=args.blocks||[];
 
+  // Store structured data for rich rendering
+  componentArgs={
+    beneficiaries:args.beneficiaries||null,
+    document_list:args.document_list||null,
+    submission_title:args.submission_title||null
+  };
+
   if(args.reset){
     blockOrder=args.block_order||blocks.map(function(b){return b.id;});
     blockEdits={};
     editingId=null;
-    // Emit immediately so Python gets the fresh state
     render();
     emitState();
   }else{
-    // Preserve user order and edits; just update default block content
     if(!blockOrder.length){
       blockOrder=args.block_order||blocks.map(function(b){return b.id;});
     }

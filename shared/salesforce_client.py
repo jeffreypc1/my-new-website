@@ -130,6 +130,17 @@ def describe_object_fields(object_name: str) -> list[dict]:
     return fields
 
 
+def list_sf_objects() -> list[dict]:
+    """Return all queryable SF objects: [{name, label, custom}], sorted by label."""
+    sf = _sf_conn()
+    result = sf.describe()
+    return sorted(
+        [{"name": o["name"], "label": o["label"], "custom": o["custom"]}
+         for o in result["sobjects"] if o["queryable"]],
+        key=lambda o: o["label"].lower(),
+    )
+
+
 def describe_contact_fields() -> list[dict]:
     """Return all fields on the Contact object.
 
@@ -291,6 +302,7 @@ LEGAL_CASE_FIELDS = [
     "EOIR_Submission_Line_1__c",
     # EOIR court / service fields
     "Location_City__c", "Address_of_next_hearing__c", "DHS_Address__c",
+    "Time_of_next_hearing__c",
 ]
 
 # Relationship fields to resolve names for reference lookups

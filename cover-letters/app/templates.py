@@ -646,6 +646,7 @@ def render_cover_letter(
     salutation: str = "",
     custom_subject: str = "",
     custom_body: str = "",
+    subject_block: str = "",
 ) -> str:
     """Render a complete cover letter as plain text.
 
@@ -696,17 +697,27 @@ def render_cover_letter(
     lines.append("")
 
     # RE block
-    if custom_subject:
+    if subject_block and subject_block.strip():
+        for sb_line in subject_block.strip().splitlines():
+            lines.append(sb_line)
+        lines.append("")
+    elif custom_subject:
         lines.append(f"RE: {custom_subject}")
         lines.append(f"    Client: {client_name}")
+        if a_number:
+            lines.append(f"    A# {a_number}")
+        if receipt_number:
+            lines.append(f"    Receipt# {receipt_number}")
+        lines.append(f"    {case_type}")
+        lines.append("")
     else:
         lines.append(f"RE: {client_name}")
-    if a_number:
-        lines.append(f"    A# {a_number}")
-    if receipt_number:
-        lines.append(f"    Receipt# {receipt_number}")
-    lines.append(f"    {case_type}")
-    lines.append("")
+        if a_number:
+            lines.append(f"    A# {a_number}")
+        if receipt_number:
+            lines.append(f"    Receipt# {receipt_number}")
+        lines.append(f"    {case_type}")
+        lines.append("")
 
     # Salutation
     lines.append(sal)
@@ -1080,6 +1091,11 @@ def render_eoir_from_template(
     service_method: str = "first-class mail",
     served_by_name: str = "",
     served_by_bar: str = "",
+    hearing_time: str = "",
+    judge_name: str = "",
+    next_date_type: str = "",
+    next_govt_date: str = "",
+    filing_method: str = "",
     template_override: str | None = None,
 ) -> str:
     """Render EOIR cover page from a template with {variable} placeholders.
@@ -1136,6 +1152,11 @@ def render_eoir_from_template(
         "{service_method}": service_method or "first-class mail",
         "{served_by_name}": served_by_name or "",
         "{served_by_bar}": served_by_bar or "",
+        "{hearing_time}": hearing_time or "",
+        "{judge_name}": judge_name or "",
+        "{next_date_type}": next_date_type or "",
+        "{next_govt_date}": next_govt_date or "",
+        "{filing_method}": filing_method or "",
     }
 
     result = template

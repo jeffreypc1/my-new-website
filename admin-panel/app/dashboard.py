@@ -19,107 +19,33 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.config_store import load_config, save_config
 try:
-    from shared.tool_help import render_tool_help
-except ImportError:
-    render_tool_help = None
-try:
-    from shared.feedback_button import render_feedback_button
-except ImportError:
-    render_feedback_button = None
-try:
     from shared.recipient_manager import render_recipient_manager
 except ImportError:
     render_recipient_manager = None
+from shared.layout import init_layout
 
-st.set_page_config(
-    page_title="Admin Panel — O'Brien Immigration Law",
-    page_icon="&#x2699;&#xFE0F;",
-    layout="wide",
-    initial_sidebar_state="expanded",
+zones = init_layout(
+    tool_name="admin-panel",
+    tool_title="Admin Panel",
+    right_rail=False,
 )
-
-# ── CSS (matches other tools) ────────────────────────────────────────────────
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-/* Hide Streamlit chrome */
-#MainMenu, footer,
-div[data-testid="stToolbar"] { display: none !important; }
-.stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-.nav-bar {
-    display: flex;
-    align-items: center;
-    padding: 10px 4px;
-    margin: -1rem 0 1.2rem 0;
-    border-bottom: 1px solid rgba(0,0,0,0.07);
-}
-.nav-back {
-    display: flex; align-items: center; gap: 6px;
-    font-family: 'Inter', sans-serif; font-size: 0.85rem;
-    font-weight: 500; color: #0066CC; text-decoration: none;
-    min-width: 150px;
-}
-.nav-back:hover { color: #004499; text-decoration: underline; }
-.nav-title {
-    flex: 1; text-align: center;
-    font-family: 'Inter', sans-serif; font-size: 1.15rem;
-    font-weight: 700; color: #1a2744; letter-spacing: -0.02em;
-}
-.nav-firm { font-weight: 400; color: #86868b; font-size: 0.85rem; margin-left: 8px; }
-.nav-spacer { min-width: 150px; }
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
-from shared.auth import require_auth, render_logout
-require_auth()
-
-# ── Nav bar ──────────────────────────────────────────────────────────────────
-st.markdown(
-    """
-<div class="nav-bar">
-    <a href="http://localhost:8502" class="nav-back">&#8592; Staff Dashboard</a>
-    <div class="nav-title">Admin Panel<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
-    <div class="nav-spacer"></div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-render_logout()
-
-# ── Client banner ────────────────────────────────────────────────────────────
-try:
-    from shared.client_banner import render_client_banner
-    render_client_banner()
-    if render_tool_help:
-        render_tool_help("admin-panel")
-    if render_feedback_button:
-        render_feedback_button("admin-panel")
-except Exception:
-    pass
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
-with st.sidebar:
+with zones.A1:
     st.markdown("### Admin Panel")
     st.markdown("[Staff Dashboard](http://localhost:8502)")
     st.markdown("[Client Info](http://localhost:8512)")
-    st.markdown("---")
+with zones.A2:
     st.caption("Configure templates, lists, and settings for all office tools.")
-    try:
-        from shared.tool_notes import render_tool_notes
-        render_tool_notes("admin-panel")
-    except Exception:
-        pass
 
 # ── Tab navigation (main area) ───────────────────────────────────────────────
-tab_tools, tab_integrations, tab_governance, tab_usage = st.tabs([
-    "Tool Configuration",
-    "Integrations",
-    "Governance",
-    "Usage & Billing",
-])
+with zones.B2:
+    tab_tools, tab_integrations, tab_governance, tab_usage = st.tabs([
+        "Tool Configuration",
+        "Integrations",
+        "Governance",
+        "Usage & Billing",
+    ])
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1443,6 +1369,11 @@ ____________________________
             "| `{service_method}` | Service method (mail, hand delivery, etc.) |\n"
             "| `{served_by_name}` | Name of person serving documents |\n"
             "| `{served_by_bar}` | Bar number of person serving documents |\n"
+            "| `{hearing_time}` | Hearing time (from Time_of_next_hearing__c) |\n"
+            "| `{judge_name}` | Immigration judge name |\n"
+            "| `{next_date_type}` | Type of next date (hearing, interview, etc.) |\n"
+            "| `{next_govt_date}` | Next government date (MM/DD/YYYY) |\n"
+            "| `{filing_method}` | Filing method (paper or eROP) |\n"
         )
         st.info(
             "The EOIR preview in Filing Assembler detects EOIR content by looking for "
@@ -1463,9 +1394,12 @@ ____________________________
 _CASE_DETAIL_FIELD_OPTIONS = [
     ("Editable", [
         ("Location_City__c", "City", "picklist"),
+        ("Address_of_next_hearing__c", "Court Address", "picklist"),
+        ("Time_of_next_hearing__c", "Hearing Time", "picklist"),
         ("Type_of_next_date__c", "Next Date Type", "picklist"),
         ("Next_Government_Date__c", "Next Govt Date", "date"),
         ("Immigration_Judge__c", "Immigration Judge", "picklist"),
+        ("DHS_Address__c", "DHS / OCC Address", "picklist"),
         ("EOIR_Submission_Type__c", "EOIR Submission Type", "picklist"),
         ("EOIR_Submission_Line_1__c", "Submission Line 1", "picklist"),
         ("Paper_or_eRop__c", "Filing Method", "picklist"),
@@ -1478,8 +1412,9 @@ _CASE_DETAIL_FIELD_OPTIONS = [
 ]
 
 _CASE_DETAIL_DEFAULTS = [
-    "Location_City__c", "Type_of_next_date__c", "Next_Government_Date__c",
-    "Immigration_Judge__c",
+    "Location_City__c", "Address_of_next_hearing__c", "Time_of_next_hearing__c",
+    "Type_of_next_date__c", "Next_Government_Date__c",
+    "Immigration_Judge__c", "DHS_Address__c",
     "EOIR_Submission_Type__c", "EOIR_Submission_Line_1__c", "Paper_or_eRop__c",
     "Primary_Applicant__r_Name", "Primary_Attorney__r_Name", "A_number_dashed__c",
 ]
@@ -2705,7 +2640,8 @@ with tab_governance:
     st.caption("Feature locking, sidebar visibility, navigation, component toggles, and security.")
     gov_sub = st.radio(
         "Section",
-        ["Feature Registry", "Sidebar Visibility", "Navigation", "Component Toggles", "Security"],
+        ["Feature Registry", "Sidebar Visibility", "Navigation",
+         "Component Toggles", "Security", "Tickets", "Help Text"],
         horizontal=True,
         key="_tab_gov_radio",
         label_visibility="collapsed",
@@ -2865,7 +2801,7 @@ with tab_governance:
             save_config("global-settings", _global)
             st.toast("Sidebar settings saved!")
             st.rerun()
-    else:
+    elif gov_sub == "Security":
         # ── Security ────────────────────────────────────────────────────
         from shared.auth import (
             is_password_set,
@@ -2961,6 +2897,160 @@ with tab_governance:
             set_session_hours(_new_hours)
             st.toast(f"Session duration set to {_new_hours} hours.")
             st.rerun()
+
+    elif gov_sub == "Tickets":
+        # ── Tickets — Development Improvement Tracker ────────────────────
+        import uuid
+        from datetime import datetime
+
+        st.subheader("Tickets")
+        st.caption(
+            "Development improvement tickets. "
+            "Existing tool review notes were auto-migrated here on first load."
+        )
+
+        _TICKET_CONFIG = "tickets"
+        _tickets: list[dict] = load_config(_TICKET_CONFIG) or []
+
+        # Auto-migrate from tool-notes.json on first load
+        if not _tickets:
+            _old_notes = load_config("tool-notes") or {}
+            _migrated = []
+            for _tn_key, _tn_body in _old_notes.items():
+                if _tn_body and _tn_body.strip():
+                    _migrated.append({
+                        "id": str(uuid.uuid4())[:8],
+                        "tool": _tn_key,
+                        "title": f"Review notes for {_tn_key}",
+                        "body": _tn_body.strip(),
+                        "status": "open",
+                        "created": datetime.now().strftime("%Y-%m-%d"),
+                    })
+            if _migrated:
+                _tickets = _migrated
+                save_config(_TICKET_CONFIG, _tickets)
+                st.toast(f"Migrated {len(_migrated)} review notes as tickets.")
+                st.rerun()
+
+        # Filters
+        _all_tools = sorted({t["tool"] for t in _tickets}) if _tickets else []
+        _status_opts = ["all", "open", "in-progress", "done"]
+        _fc1, _fc2 = st.columns(2)
+        with _fc1:
+            _filt_tool = st.selectbox(
+                "Filter by tool",
+                ["all"] + _all_tools,
+                key="_tkt_filt_tool",
+            )
+        with _fc2:
+            _filt_status = st.selectbox(
+                "Filter by status",
+                _status_opts,
+                key="_tkt_filt_status",
+            )
+
+        _filtered = _tickets
+        if _filt_tool != "all":
+            _filtered = [t for t in _filtered if t["tool"] == _filt_tool]
+        if _filt_status != "all":
+            _filtered = [t for t in _filtered if t["status"] == _filt_status]
+
+        # Display tickets
+        if not _filtered:
+            st.info("No tickets match the current filters.")
+        for _tkt in _filtered:
+            _status_icon = {"open": "\U0001f7e1", "in-progress": "\U0001f535", "done": "\u2705"}.get(_tkt["status"], "")
+            with st.expander(f"{_status_icon} [{_tkt['id']}] {_tkt['title']}  —  {_tkt['tool']}"):
+                _new_title = st.text_input("Title", value=_tkt["title"], key=f"_tkt_t_{_tkt['id']}")
+                _new_body = st.text_area("Details", value=_tkt["body"], height=150, key=f"_tkt_b_{_tkt['id']}")
+                _tkt_sc1, _tkt_sc2 = st.columns(2)
+                with _tkt_sc1:
+                    _cur_si = ["open", "in-progress", "done"].index(_tkt["status"]) if _tkt["status"] in ["open", "in-progress", "done"] else 0
+                    _new_stat = st.selectbox("Status", ["open", "in-progress", "done"], index=_cur_si, key=f"_tkt_s_{_tkt['id']}")
+                with _tkt_sc2:
+                    st.caption(f"Created: {_tkt.get('created', 'unknown')}")
+
+                _bc1, _bc2 = st.columns(2)
+                with _bc1:
+                    if st.button("Save", key=f"_tkt_save_{_tkt['id']}", use_container_width=True):
+                        _tkt["title"] = _new_title
+                        _tkt["body"] = _new_body
+                        _tkt["status"] = _new_stat
+                        save_config(_TICKET_CONFIG, _tickets)
+                        st.toast("Ticket updated!")
+                        st.rerun()
+                with _bc2:
+                    if st.button("Delete", key=f"_tkt_del_{_tkt['id']}", use_container_width=True):
+                        _tickets = [t for t in _tickets if t["id"] != _tkt["id"]]
+                        save_config(_TICKET_CONFIG, _tickets)
+                        st.toast("Ticket deleted.")
+                        st.rerun()
+
+        # Create new ticket
+        st.markdown("---")
+        st.markdown("**Create New Ticket**")
+
+        _TOOL_CHOICES = [k for k, _ in _SIDEBAR_TOOLS]
+        _new_tkt_tool = st.selectbox("Tool", _TOOL_CHOICES, key="_tkt_new_tool")
+        _new_tkt_title = st.text_input("Title", key="_tkt_new_title", placeholder="Brief description of the improvement")
+        _new_tkt_body = st.text_area("Details", key="_tkt_new_body", height=120, placeholder="Full details...")
+
+        if st.button("Create Ticket", type="primary", key="_tkt_create"):
+            if not _new_tkt_title.strip():
+                st.error("Title is required.")
+            else:
+                _tickets.append({
+                    "id": str(uuid.uuid4())[:8],
+                    "tool": _new_tkt_tool,
+                    "title": _new_tkt_title.strip(),
+                    "body": _new_tkt_body.strip(),
+                    "status": "open",
+                    "created": datetime.now().strftime("%Y-%m-%d"),
+                })
+                save_config(_TICKET_CONFIG, _tickets)
+                st.toast("Ticket created!")
+                st.rerun()
+
+    elif gov_sub == "Help Text":
+        # ── Help Text — Per-Tool End-User Help Content ───────────────────
+        st.subheader("Help Text")
+        st.caption(
+            "Configure the read-only help text that appears in each tool's sidebar. "
+            "Leave blank to hide the help section for a tool."
+        )
+
+        _help_data = load_config("help-text") or {}
+
+        _HELP_TOOLS = [(k, label) for k, label in _SIDEBAR_TOOLS]
+        _help_labels = [label for _, label in _HELP_TOOLS]
+        _help_keys = [k for k, _ in _HELP_TOOLS]
+
+        _sel_label = st.selectbox("Tool", _help_labels, key="_ht_tool_sel")
+        _sel_key = _help_keys[_help_labels.index(_sel_label)]
+
+        _cur_text = _help_data.get(_sel_key, {}).get("text", "")
+        _new_text = st.text_area(
+            "Help text (shown in sidebar)",
+            value=_cur_text,
+            height=180,
+            key="_ht_text",
+            placeholder="Enter brief help or guidance for end users of this tool...",
+        )
+
+        if st.button("Save Help Text", type="primary", key="_ht_save"):
+            if _new_text.strip():
+                _help_data[_sel_key] = {"text": _new_text.strip()}
+            else:
+                _help_data.pop(_sel_key, None)
+            save_config("help-text", _help_data)
+            st.toast(f"Help text {'saved' if _new_text.strip() else 'cleared'} for {_sel_label}!")
+            st.rerun()
+
+        # Preview
+        if _new_text.strip():
+            st.markdown("---")
+            st.markdown("**Sidebar Preview**")
+            st.info(_new_text.strip(), icon="\U0001f4a1")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tab 4: Usage & Billing

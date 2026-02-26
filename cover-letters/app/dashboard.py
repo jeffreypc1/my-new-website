@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import html as html_mod
 import io
+import os
 import sys
+import uuid as _uuid_mod
 from datetime import date
 from pathlib import Path
 
@@ -38,9 +40,7 @@ from app.templates import (
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from shared.config_store import get_config_value, load_config, is_component_enabled
 from shared.google_upload import copy_template_and_fill, upload_to_google_docs
-from shared.client_banner import render_client_banner
-from shared.tool_notes import render_tool_notes
-from shared.theme import render_theme_css, render_nav_bar
+from shared.layout import init_layout
 try:
     from shared.preview_modal import show_preview_modal
 except ImportError:
@@ -76,27 +76,21 @@ try:
 except ImportError:
     render_google_doc_button = None
 try:
-    from shared.tool_help import render_tool_help
+    from shared.box_folder_browser import render_box_folder_browser
+    from shared.box_client import parse_folder_id as _parse_folder_id
 except ImportError:
-    render_tool_help = None
+    render_box_folder_browser = None
+    _parse_folder_id = None
 try:
-    from shared.feedback_button import render_feedback_button
+    from shared.box_sidebar_manager import render_box_sidebar as _render_box_sidebar
 except ImportError:
-    render_feedback_button = None
+    _render_box_sidebar = None
 
 # -- EOIR Canvas custom Streamlit component -----------------------------------
 _EOIR_CANVAS_DIR = Path(__file__).parent / "eoir_canvas"
 _eoir_canvas_component = st_components.declare_component("eoir_canvas", path=str(_EOIR_CANVAS_DIR))
 
-# -- Page config --------------------------------------------------------------
-
-st.set_page_config(
-    page_title="Filing Assembler — O'Brien Immigration Law",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# -- CSS ----------------------------------------------------------------------
+# -- Layout -------------------------------------------------------------------
 
 _FILING_EXTRA_CSS = """\
 /* Header */
@@ -175,30 +169,20 @@ _FILING_EXTRA_CSS = """\
     align-items: flex-end;
 }
 """
-render_theme_css(extra_css=_FILING_EXTRA_CSS)
 
-from shared.auth import require_auth, render_logout
-require_auth()
-
-# -- Navigation bar -----------------------------------------------------------
-
-render_nav_bar("Filing Assembler")
-render_logout()
-
-render_client_banner()
-if render_tool_help:
-    render_tool_help("cover-letters")
-if render_feedback_button:
-    render_feedback_button("cover-letters")
+zones = init_layout(
+    tool_name="cover-letters",
+    tool_title="Filing Assembler",
+    right_rail=False,
+    extra_css=_FILING_EXTRA_CSS,
+)
 
 # -- Session state defaults ---------------------------------------------------
 
 _DEFAULTS: dict = {
     "draft_id": None,
     "last_saved_msg": "",
-    "custom_docs": [],
-    "sf_task_docs": [],
-    "doc_descriptions": {},
+    "exhibit_items": [],
     "sf_tasks_pending_delete": [],
 }
 for k, v in _DEFAULTS.items():
@@ -222,21 +206,350 @@ if _sf_client:
         if _sf_anum:
             st.session_state["inp_a_number"] = _sf_anum
         st.session_state["_sf_autofill_cid"] = _sf_cid
+        # Clear subject block so it re-auto-populates for new client
+        for _sbk in ("inp_subject_block", "_cl_subject_block_auto"):
+            if _sbk in st.session_state:
+                del st.session_state[_sbk]
 
 
 # -- Helpers ------------------------------------------------------------------
 
 def _build_enclosed_docs_list() -> list[dict[str, str]]:
     """Collect the currently selected enclosed documents with descriptions."""
-    docs: list[dict[str, str]] = []
-    # SF tasks that are checked
-    for doc_name in st.session_state.get("sf_task_docs", []):
-        docs.append({"name": doc_name, "description": ""})
-    # Custom docs
-    for doc_name in st.session_state.get("custom_docs", []):
-        desc = st.session_state.get("doc_descriptions", {}).get(doc_name, "")
-        docs.append({"name": doc_name, "description": desc})
-    return docs
+    return [
+        {"name": item.get("label") or item.get("name", ""), "description": item.get("description", "")}
+        for item in st.session_state.get("exhibit_items", [])
+    ]
+
+
+def _render_exhibit_list(key_prefix: str) -> None:
+    """Render the shared exhibit list with reorder/rename/remove controls.
+
+    Called from both tabs with a different *key_prefix* ("cl" vs "eoir")
+    to avoid Streamlit DuplicateWidgetID errors.
+    """
+    items: list[dict] = st.session_state.get("exhibit_items", [])
+
+    for idx, item in enumerate(items):
+        item_id = item["id"]
+        _lk = f"_{key_prefix}_exlabel_{item_id}"
+
+        # Initialize widget key from item label on first render
+        if _lk not in st.session_state:
+            st.session_state[_lk] = item.get("label") or item.get("name", "")
+
+        source = item.get("source", "custom")
+        badge = {"task": "SF", "box": "Box", "custom": "+"}.get(source, "?")
+
+        cols = st.columns([0.6, 5, 0.6, 0.4, 0.4, 0.4])
+        with cols[0]:
+            st.markdown(f"**Ex. {idx + 1}**")
+        with cols[1]:
+            st.text_input(
+                f"Exhibit {idx + 1} label",
+                key=_lk,
+                label_visibility="collapsed",
+            )
+        with cols[2]:
+            st.caption(badge)
+        with cols[3]:
+            if idx > 0 and st.button("\u2191", key=f"_{key_prefix}_exup_{item_id}"):
+                items[idx], items[idx - 1] = items[idx - 1], items[idx]
+                st.session_state["exhibit_items"] = items
+                st.rerun()
+        with cols[4]:
+            if idx < len(items) - 1 and st.button("\u2193", key=f"_{key_prefix}_exdn_{item_id}"):
+                items[idx], items[idx + 1] = items[idx + 1], items[idx]
+                st.session_state["exhibit_items"] = items
+                st.rerun()
+        with cols[5]:
+            if st.button("\u2715", key=f"_{key_prefix}_exrm_{item_id}"):
+                items.pop(idx)
+                st.session_state["exhibit_items"] = items
+                # Clean up widget keys for both tab prefixes
+                for _pfx in ("cl", "eoir"):
+                    _clean_key = f"_{_pfx}_exlabel_{item_id}"
+                    if _clean_key in st.session_state:
+                        del st.session_state[_clean_key]
+                st.rerun()
+
+    # Clear the "Add" text input if flagged from previous rerun
+    _clear_flag = f"_{key_prefix}_clear_new_exhibit"
+    if st.session_state.pop(_clear_flag, False):
+        st.session_state[f"_{key_prefix}_new_exhibit_name"] = ""
+
+    # Add New Document row
+    _add_cols = st.columns([6, 1])
+    with _add_cols[0]:
+        _new_name = st.text_input(
+            "New document name",
+            key=f"_{key_prefix}_new_exhibit_name",
+            label_visibility="collapsed",
+            placeholder="Add a new document...",
+        )
+    with _add_cols[1]:
+        if st.button("+", key=f"_{key_prefix}_add_exhibit"):
+            if _new_name.strip():
+                _new_id = f"custom_{str(_uuid_mod.uuid4())[:8]}"
+                items.append({
+                    "id": _new_id,
+                    "source": "custom",
+                    "name": _new_name.strip(),
+                    "label": _new_name.strip(),
+                    "description": "",
+                    "sf_id": "",
+                    "box_id": "",
+                })
+                st.session_state["exhibit_items"] = items
+                st.session_state[_clear_flag] = True
+                st.rerun()
+
+
+def _render_sf_tasks(key_prefix: str) -> None:
+    """Render the Salesforce Tasks (LC_Task__c) checklist for enclosed documents.
+
+    Called from both Cover Letter and EOIR tabs with different key_prefix
+    to avoid DuplicateWidgetID errors.  Shares the same exhibit_items list.
+    """
+    _active_client = st.session_state.get("sf_client")
+    _sf_contact_id = _active_client.get("Id", "") if _active_client else ""
+    _sf_tasks: list[dict] = []
+
+    if _sf_contact_id:
+        try:
+            from shared.salesforce_client import get_lc_tasks
+            _sf_tasks = get_lc_tasks(_sf_contact_id)
+        except Exception:
+            _sf_tasks = []
+
+    if _sf_tasks or _sf_contact_id:
+        st.markdown(
+            '<div class="section-label" style="margin-top:4px;">Salesforce Tasks</div>',
+            unsafe_allow_html=True,
+        )
+
+    _pending_deletes: list[str] = list(st.session_state.get("sf_tasks_pending_delete", []))
+
+    if _sf_tasks:
+        _exhibit_items = list(st.session_state.get("exhibit_items", []))
+        _exhibit_task_ids = {it["id"] for it in _exhibit_items if it.get("source") == "task"}
+        _has_edits = False
+
+        for _task in _sf_tasks:
+            _task_id = _task.get("Id", "")
+            _task_label = _task.get("For__c") or _task.get("Name") or "Untitled task"
+            _is_pending_delete = _task_id in _pending_deletes
+            _edit_key = f"_{key_prefix}_sf_task_edit_{_task_id}"
+
+            if _is_pending_delete:
+                st.markdown(
+                    f'<div class="sf-task-deleted">'
+                    f'<div class="doc-item">{html_mod.escape(_task_label)}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                _undo_cols = st.columns([8, 1])
+                with _undo_cols[1]:
+                    if st.button("Undo", key=f"_{key_prefix}_btn_undo_sft_{_task_id}", use_container_width=True):
+                        _pending_deletes.remove(_task_id)
+                        st.session_state.sf_tasks_pending_delete = _pending_deletes
+                        st.rerun()
+            else:
+                _edited_label = st.session_state.get(_edit_key, _task_label)
+                _was_checked = f"task_{_task_id}" in _exhibit_task_ids
+                _tc = st.columns([0.5, 8, 0.5])
+                with _tc[0]:
+                    _tc_checked = st.checkbox(
+                        _task_label,
+                        value=_was_checked,
+                        key=f"_{key_prefix}_chk_sft_{_task_id}",
+                        label_visibility="collapsed",
+                    )
+                with _tc[1]:
+                    _edited_val = st.text_input(
+                        "Edit document name",
+                        value=_edited_label,
+                        key=_edit_key,
+                        label_visibility="collapsed",
+                    )
+                with _tc[2]:
+                    if st.button("X", key=f"_{key_prefix}_btn_del_sft_{_task_id}", help="Mark for deletion"):
+                        _pending_deletes.append(_task_id)
+                        st.session_state.sf_tasks_pending_delete = _pending_deletes
+                        st.rerun()
+
+                if _edited_val.strip() != _task_label:
+                    _has_edits = True
+
+                _item_id = f"task_{_task_id}"
+                if _tc_checked and _edited_val.strip():
+                    if _item_id not in _exhibit_task_ids:
+                        _exhibit_items.append({
+                            "id": _item_id,
+                            "source": "task",
+                            "name": _edited_val.strip(),
+                            "label": _edited_val.strip(),
+                            "description": "",
+                            "sf_id": _task_id,
+                            "box_id": "",
+                        })
+                        _exhibit_task_ids.add(_item_id)
+                    else:
+                        for _ei in _exhibit_items:
+                            if _ei["id"] == _item_id:
+                                _old_name = _ei["name"]
+                                _ei["name"] = _edited_val.strip()
+                                if _ei["label"] == _old_name:
+                                    _ei["label"] = _edited_val.strip()
+                                break
+                elif not _tc_checked and _item_id in _exhibit_task_ids:
+                    _exhibit_items = [it for it in _exhibit_items if it["id"] != _item_id]
+                    _exhibit_task_ids.discard(_item_id)
+
+        st.session_state["exhibit_items"] = _exhibit_items
+
+        # ── Save Changes button ──
+        _has_changes = _has_edits or len(_pending_deletes) > 0
+        if _has_changes:
+            _badge_parts: list[str] = []
+            _edit_count = sum(
+                1 for _t in _sf_tasks
+                if _t.get("Id", "") not in _pending_deletes
+                and st.session_state.get(f"_{key_prefix}_sf_task_edit_{_t.get('Id', '')}", "").strip()
+                   != (_t.get("For__c") or _t.get("Name") or "Untitled task")
+                and st.session_state.get(f"_{key_prefix}_sf_task_edit_{_t.get('Id', '')}", "") != ""
+            )
+            if _edit_count:
+                _badge_parts.append(f'<span class="pending-badge edits">{_edit_count} edit{"s" if _edit_count != 1 else ""}</span>')
+            if _pending_deletes:
+                _del_count = len(_pending_deletes)
+                _badge_parts.append(f'<span class="pending-badge deletes">{_del_count} deletion{"s" if _del_count != 1 else ""}</span>')
+            st.markdown(f'{"".join(_badge_parts)}', unsafe_allow_html=True)
+
+            if st.button("Save Changes to Salesforce", type="primary", use_container_width=True, key=f"_{key_prefix}_btn_save_all_sf"):
+                with st.spinner("Saving to Salesforce..."):
+                    _save_errors: list[str] = []
+                    try:
+                        from shared.salesforce_client import update_lc_task, delete_lc_task
+
+                        for _t in _sf_tasks:
+                            _tid = _t.get("Id", "")
+                            if _tid in _pending_deletes:
+                                continue
+                            _orig = _t.get("For__c") or _t.get("Name") or "Untitled task"
+                            _new_val = st.session_state.get(f"_{key_prefix}_sf_task_edit_{_tid}", "").strip()
+                            if _new_val and _new_val != _orig:
+                                try:
+                                    update_lc_task(_tid, _new_val)
+                                except Exception as e:
+                                    _save_errors.append(f"Edit '{_new_val}': {e}")
+
+                        for _tid in _pending_deletes:
+                            try:
+                                delete_lc_task(_tid)
+                            except Exception as e:
+                                _save_errors.append(f"Delete {_tid}: {e}")
+
+                        st.session_state.sf_tasks_pending_delete = []
+                        for _t in _sf_tasks:
+                            _ek = f"_{key_prefix}_sf_task_edit_{_t.get('Id', '')}"
+                            if _ek in st.session_state:
+                                del st.session_state[_ek]
+
+                        if _save_errors:
+                            st.warning(f"Saved with {len(_save_errors)} error(s): {'; '.join(_save_errors)}")
+                        else:
+                            st.success("Changes saved to Salesforce.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Save failed: {e}")
+
+    elif _sf_contact_id:
+        st.caption("No tasks found for this client.")
+
+
+def _sync_exhibit_label_keys() -> None:
+    """Sync exhibit label edits between CL and EOIR tab widget keys.
+
+    Called ONCE before ``st.tabs(...)`` so that edits made on one tab
+    propagate to the other on the next rerun.
+    """
+    items: list[dict] = st.session_state.get("exhibit_items", [])
+    for item in items:
+        item_id = item["id"]
+        canonical = item.get("label") or item.get("name", "")
+        cl_key = f"_cl_exlabel_{item_id}"
+        eoir_key = f"_eoir_exlabel_{item_id}"
+        cl_val = st.session_state.get(cl_key)
+        eoir_val = st.session_state.get(eoir_key)
+
+        # If either widget has a different value, it was edited — that wins
+        if cl_val is not None and cl_val != canonical:
+            canonical = cl_val
+        elif eoir_val is not None and eoir_val != canonical:
+            canonical = eoir_val
+
+        item["label"] = canonical
+        st.session_state[cl_key] = canonical
+        st.session_state[eoir_key] = canonical
+
+
+def _build_subject_block() -> str:
+    """Build the RE: subject block from SF client fields + case type + beneficiaries."""
+    client_name = st.session_state.get("inp_client_name", "")
+    a_number = st.session_state.get("inp_a_number", "")
+    receipt_number = st.session_state.get("inp_receipt_number", "")
+    case_type = st.session_state.get("inp_case_type", "")
+    if not client_name:
+        return ""
+    lines: list[str] = [f"RE: {client_name}"]
+    if a_number:
+        lines.append(f"    A# {a_number}")
+    if receipt_number:
+        lines.append(f"    Receipt# {receipt_number}")
+    if case_type:
+        lines.append(f"    {case_type}")
+
+    # Append selected beneficiaries
+    _cl_bens = st.session_state.get("_cl_case_bens", [])
+    _cl_sel_ids = st.session_state.get("_cl_case_bens_selected", [])
+    for _b in _cl_bens:
+        if _b.get("Id") in _cl_sel_ids:
+            _bn = _b.get("Contact_Name", "") or "Unnamed"
+            _banum = _b.get("Alien_Number_Dashed__c", "")
+            _ben_line = f"& {_bn}"
+            if _banum:
+                _ben_line += f" (A# {_banum})"
+            lines.append(_ben_line)
+    return "\n".join(lines)
+
+
+def _translate_cover_letter(text: str, target_lang_code: str) -> str:
+    """Translate cover letter text using Google Translate v2 API."""
+    import requests
+
+    api_key = os.environ.get("GOOGLE_TRANSLATE_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("GOOGLE_TRANSLATE_API_KEY not set")
+
+    url = "https://translation.googleapis.com/language/translate/v2"
+    # Split into paragraphs, translate in batches of 50
+    paragraphs = text.split("\n")
+    translated_parts: list[str] = []
+    batch_size = 50
+    for i in range(0, len(paragraphs), batch_size):
+        batch = paragraphs[i : i + batch_size]
+        resp = requests.post(
+            url,
+            params={"key": api_key},
+            json={"q": batch, "target": target_lang_code, "format": "text"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        translations = resp.json().get("data", {}).get("translations", [])
+        for t in translations:
+            translated_parts.append(t.get("translatedText", ""))
+    return "\n".join(translated_parts)
 
 
 def _substitute_placeholders(text: str) -> str:
@@ -333,6 +646,8 @@ def _do_save(case_type: str) -> None:
         template_selection=_tmpl_sel,
         letter_subject=_ltr_subject,
         letter_body=_ltr_body,
+        exhibit_items=list(st.session_state.get("exhibit_items", [])),
+        subject_block=st.session_state.get("inp_subject_block", ""),
     )
     name = client["name"] or "draft"
     st.session_state.last_saved_msg = f"Saved -- {name}"
@@ -350,6 +665,30 @@ def _do_load(draft_id: str) -> None:
     st.session_state.inp_client_name = c.get("name", "")
     st.session_state.inp_a_number = c.get("a_number", "")
     st.session_state.inp_receipt_number = c.get("receipt_number", "")
+
+    # Restore subject block — construct from old fields if not present
+    _saved_sb = draft.get("subject_block", "")
+    if _saved_sb:
+        st.session_state["inp_subject_block"] = _saved_sb
+        st.session_state["_cl_subject_block_auto"] = ""  # don't auto-overwrite
+    else:
+        # Old draft without subject_block — build from client fields + case type
+        _sb_parts: list[str] = []
+        _sb_name = c.get("name", "")
+        if _sb_name:
+            _sb_parts.append(f"RE: {_sb_name}")
+            _sb_anum = c.get("a_number", "")
+            if _sb_anum:
+                _sb_parts.append(f"    A# {_sb_anum}")
+            _sb_rcpt = c.get("receipt_number", "")
+            if _sb_rcpt:
+                _sb_parts.append(f"    Receipt# {_sb_rcpt}")
+            _sb_ct = draft.get("case_type", "")
+            if _sb_ct:
+                _sb_parts.append(f"    {_sb_ct}")
+        _constructed_sb = "\n".join(_sb_parts)
+        st.session_state["inp_subject_block"] = _constructed_sb
+        st.session_state["_cl_subject_block_auto"] = _constructed_sb
 
     a = draft.get("attorney", {})
     # Restore attorney selection — try staff_id first, fall back to name match
@@ -403,18 +742,23 @@ def _do_load(draft_id: str) -> None:
             st.session_state.inp_recipient_category = _match["category"]
             st.session_state.inp_recipient_name = _match["name"]
 
-    # Restore enclosed docs
-    enclosed = draft.get("enclosed_docs", [])
-    custom = []
-    descs: dict[str, str] = {}
-    for doc in enclosed:
-        name = doc.get("name", "")
-        desc = doc.get("description", "")
-        custom.append(name)
-        if desc:
-            descs[name] = desc
-    st.session_state.custom_docs = custom
-    st.session_state.doc_descriptions = descs
+    # Restore exhibit items (with legacy migration from enclosed_docs)
+    _loaded_exhibits = draft.get("exhibit_items", [])
+    if _loaded_exhibits:
+        st.session_state["exhibit_items"] = _loaded_exhibits
+    else:
+        st.session_state["exhibit_items"] = [
+            {
+                "id": f"custom_{str(_uuid_mod.uuid4())[:8]}",
+                "source": "custom",
+                "name": doc.get("name", ""),
+                "label": doc.get("name", ""),
+                "description": doc.get("description", ""),
+                "sf_id": "",
+                "box_id": "",
+            }
+            for doc in draft.get("enclosed_docs", [])
+        ]
 
     # Restore template / letter body fields
     _loaded_case_type = draft.get("case_type", CASE_TYPES[0])
@@ -451,11 +795,12 @@ def _do_new() -> None:
     """Start a fresh cover letter."""
     st.session_state.draft_id = new_draft_id()
     st.session_state.last_saved_msg = ""
-    st.session_state.custom_docs = []
-    st.session_state.sf_task_docs = []
-    st.session_state.doc_descriptions = {}
+    st.session_state["exhibit_items"] = []
     for k in (
         "inp_client_name", "inp_a_number", "inp_receipt_number",
+        "inp_subject_block", "_cl_subject_block_auto",
+        "_cl_case_bens", "_cl_case_bens_selected", "_cl_autofill_case_id",
+        "_cl_target_lang", "_cl_lang_en", "_cl_lang_target", "_cl_translation_cache",
         "inp_attorney_staff",
         "inp_filing_office", "inp_case_type",
         "inp_recipient_type", "inp_recipient_category", "inp_recipient_name",
@@ -495,6 +840,12 @@ def _do_new() -> None:
     _bb_keys = [k for k in st.session_state if k.startswith("_bb_content_") or k.startswith("_bb_chk_")]
     for k in _bb_keys:
         del st.session_state[k]
+    # Clear exhibit label / widget keys from both tab prefixes
+    _ex_keys = [k for k in st.session_state
+                if k.startswith("_cl_exlabel_") or k.startswith("_eoir_exlabel_")
+                or k == "_cl_new_exhibit_name" or k == "_eoir_new_exhibit_name"]
+    for k in _ex_keys:
+        del st.session_state[k]
 
 
 def _eoir_expand_on_save(edited_text: str) -> None:
@@ -504,6 +855,7 @@ def _eoir_expand_on_save(edited_text: str) -> None:
     st.session_state["_eoir_canvas_edits"] = {b["id"]: b["content"] for b in _new_blocks}
     st.session_state["_eoir_letter_text"] = edited_text
     st.session_state["_eoir_show_expand"] = False
+    st.session_state["_eoir_canvas_handled_action"] = None
 
 
 def _open_eoir_expand():
@@ -914,7 +1266,48 @@ def _bb_clear_content_keys() -> None:
 
 # -- Sidebar (drafts only) ---------------------------------------------------
 
-with st.sidebar:
+with zones.A1:
+    # Client Documents (Box sidebar — picker mode)
+    if _render_box_sidebar is not None:
+        _already_box_ids = {
+            it.get("box_id", "") for it in st.session_state.get("exhibit_items", [])
+            if it.get("source") == "box" and it.get("box_id")
+        }
+
+        def _on_box_select(files: list[dict]) -> None:
+            _items = st.session_state.get("exhibit_items", [])
+            _existing_ids = {it["id"] for it in _items}
+            for f in files:
+                fid = str(f.get("id", ""))
+                if f"box_{fid}" not in _existing_ids:
+                    _items.append({
+                        "id": f"box_{fid}",
+                        "source": "box",
+                        "name": f.get("name", ""),
+                        "label": f.get("name", ""),
+                        "description": "",
+                        "sf_id": "",
+                        "box_id": fid,
+                    })
+            st.session_state["exhibit_items"] = _items
+
+        _render_box_sidebar(
+            tool_mode="filing",
+            on_select=_on_box_select,
+            already_selected_ids=_already_box_ids,
+        )
+    elif render_box_folder_browser and _parse_folder_id:
+        _sf = st.session_state.get("sf_client")
+        _box_raw = (_sf.get("Box_Folder_Id__c", "") or "") if _sf else ""
+        if _box_raw:
+            render_box_folder_browser(
+                _parse_folder_id(_box_raw),
+                mode="viewer",
+                key_prefix="_fa_box",
+                header_label="Client Documents",
+            )
+            st.divider()
+
     # Draft management
     st.markdown("#### Drafts")
     btn_cols = st.columns(2)
@@ -954,8 +1347,6 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-    render_tool_notes("cover-letters")
-
 
 # -- Add Address dialog trigger -----------------------------------------------
 if st.session_state.get("_show_add_address"):
@@ -985,7 +1376,11 @@ firm_address = _gs_global.get("firm_address", "")
 
 letter_text = ""
 
-tab_cover, tab_eoir = st.tabs(["Cover Letter", "EOIR Submission"])
+# Sync exhibit label edits across tabs before rendering
+_sync_exhibit_label_keys()
+
+with zones.B2:
+    tab_cover, tab_eoir = st.tabs(["Cover Letter", "EOIR Submission"])
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 1: Cover Letter
@@ -1003,6 +1398,58 @@ with tab_cover:
             key="inp_case_type",
             label_visibility="collapsed",
         )
+
+        # ── Legal Case Selector (Cover Letter) ────────────────────────────
+        _cl_sf_client_lc = st.session_state.get("sf_client")
+        _cl_legal_cases: list[dict] = []
+        if _cl_sf_client_lc:
+            _cl_legal_cases = _cl_sf_client_lc.get("legal_cases", [])
+
+        if _cl_sf_client_lc and _cl_legal_cases:
+            st.markdown('<div class="section-label">Legal Case</div>', unsafe_allow_html=True)
+            _cl_lc_labels = []
+            for _clc in _cl_legal_cases:
+                _clc_name = _clc.get("Name", "")
+                _clc_type = _clc.get("Legal_Case_Type__c", "")
+                _cl_lc_labels.append(f"{_clc_name} — {_clc_type}" if _clc_type else _clc_name)
+
+            _cl_preselected_lc = _cl_sf_client_lc.get("selected_legal_case")
+            _cl_default_lc_idx = 0
+            if _cl_preselected_lc:
+                for _cli, _clc in enumerate(_cl_legal_cases):
+                    if _clc.get("Id") == _cl_preselected_lc.get("Id"):
+                        _cl_default_lc_idx = _cli
+                        break
+
+            _cl_lc_idx = st.selectbox(
+                "Select Legal Case",
+                options=range(len(_cl_legal_cases)),
+                index=st.session_state.get("_cl_legal_case_idx", _cl_default_lc_idx),
+                format_func=lambda i: _cl_lc_labels[i],
+                key="_cl_legal_case_idx",
+                label_visibility="collapsed",
+            )
+            _cl_selected_case = _cl_legal_cases[_cl_lc_idx]
+            _cl_selected_case_id = _cl_selected_case.get("Id", "")
+
+            # Fetch Case_Contact__c beneficiaries on case change
+            # Uses _cl_* prefixed keys to avoid collisions with EOIR tab
+            _cl_prev_case_id = st.session_state.get("_cl_autofill_case_id", "")
+            if _cl_selected_case_id and _cl_selected_case_id != _cl_prev_case_id:
+                st.session_state["_cl_autofill_case_id"] = _cl_selected_case_id
+                st.session_state["_cl_case_bens"] = []
+                st.session_state["_cl_case_bens_selected"] = []
+                if get_case_beneficiaries and _cl_selected_case_id:
+                    try:
+                        _cl_fetched = get_case_beneficiaries(_cl_selected_case_id)
+                        st.session_state["_cl_case_bens"] = _cl_fetched
+                        st.session_state["_cl_case_bens_selected"] = [
+                            b.get("Id") for b in _cl_fetched
+                        ]
+                    except Exception:
+                        st.session_state["_cl_case_bens"] = []
+        elif _cl_sf_client_lc and not _cl_legal_cases:
+            st.info("No legal cases found for this client.")
 
         st.divider()
 
@@ -1096,23 +1543,64 @@ with tab_cover:
 
         st.divider()
 
-        # ── Step 3: Client / RE Block ────────────────────────────────────────
-        st.markdown('<div class="section-label">Client</div>', unsafe_allow_html=True)
-        client_name = st.text_input(
-            "Client Name",
-            key="inp_client_name",
-            placeholder="e.g. Maria Garcia Lopez",
+        # ── Step 3: Case Beneficiaries + Subject Block ───────────────────────
+        _cl_sf_client = st.session_state.get("sf_client")
+        _cl_case_bens: list[dict] = st.session_state.get("_cl_case_bens", [])
+        if _cl_sf_client and _cl_case_bens:
+            st.markdown('<div class="section-label">Case Beneficiaries</div>', unsafe_allow_html=True)
+            st.caption("Select beneficiaries to include in this cover letter.")
+            _cl_sel_ids: list[str] = st.session_state.get("_cl_case_bens_selected", [])
+
+            _cl_all_ids = [b.get("Id") for b in _cl_case_bens]
+            _cl_all_sel = all(bid in _cl_sel_ids for bid in _cl_all_ids)
+            if st.checkbox("Select All", value=_cl_all_sel, key="_cl_bens_sel_all"):
+                if not _cl_all_sel:
+                    st.session_state["_cl_case_bens_selected"] = list(_cl_all_ids)
+                    st.rerun()
+            elif _cl_all_sel:
+                st.session_state["_cl_case_bens_selected"] = []
+                st.rerun()
+
+            _cl_new_sel: list[str] = []
+            for _ci, _cb in enumerate(_cl_case_bens):
+                _cid = _cb.get("Id", "")
+                _cname = _cb.get("Contact_Name", "") or "Unnamed"
+                _crel = _cb.get("Role__c", "")
+                _canum = _cb.get("Alien_Number_Dashed__c", "")
+                _clabel = _cname
+                if _crel:
+                    _clabel += f" ({_crel})"
+                if _canum:
+                    _clabel += f" — A# {_canum}"
+                if st.checkbox(_clabel, value=_cid in _cl_sel_ids, key=f"_cl_cben_chk_{_ci}"):
+                    _cl_new_sel.append(_cid)
+            st.session_state["_cl_case_bens_selected"] = _cl_new_sel
+        elif _cl_sf_client and not _cl_case_bens:
+            st.caption("No beneficiaries linked to this Legal Case.")
+
+        # ── Subject Block (auto-populated RE: section) ───────────────────────
+        st.markdown('<div class="section-label">Subject Block</div>', unsafe_allow_html=True)
+
+        # Auto-populate logic: compute auto text, only overwrite if user hasn't manually edited
+        _auto_sb = _build_subject_block()
+        _prev_auto = st.session_state.get("_cl_subject_block_auto", "")
+        _current_sb = st.session_state.get("inp_subject_block")
+        if _current_sb is None or _current_sb == _prev_auto:
+            # User hasn't manually edited — update to latest auto-generated
+            st.session_state["inp_subject_block"] = _auto_sb
+        st.session_state["_cl_subject_block_auto"] = _auto_sb
+
+        subject_block = st.text_area(
+            "Subject Block",
+            key="inp_subject_block",
+            height=120,
+            help="The RE: block in the cover letter. Auto-generated from client info; edit freely.",
         )
-        a_number = st.text_input(
-            "A-Number",
-            key="inp_a_number",
-            placeholder="e.g. 123-456-789",
-        )
-        receipt_number = st.text_input(
-            "Receipt Number",
-            key="inp_receipt_number",
-            placeholder="e.g. SRC-21-123-45678",
-        )
+
+        # Keep client_name / a_number / receipt_number accessible for placeholders & EOIR
+        client_name = st.session_state.get("inp_client_name", "")
+        a_number = st.session_state.get("inp_a_number", "")
+        receipt_number = st.session_state.get("inp_receipt_number", "")
 
         st.divider()
 
@@ -1128,6 +1616,11 @@ with tab_cover:
             "Template",
             options=_template_options,
             key="inp_template_selection",
+        )
+        st.markdown(
+            '<a href="http://localhost:8513" target="_blank" '
+            'style="font-size:0.85rem;color:#4a7dff;">Manage Templates</a>',
+            unsafe_allow_html=True,
         )
 
         # ── Change detection for template + case type ──
@@ -1188,233 +1681,23 @@ with tab_cover:
             help="Use {client_name}, {first_name}, {last_name}, {case_type}, {a_number} as placeholders.",
         )
 
-        # ── Case Beneficiaries (Cover Letter) ─────────────────────────────
-        # Show beneficiaries from the active legal case if available
-        _cl_sf_client = st.session_state.get("sf_client")
-        _cl_case_bens: list[dict] = st.session_state.get("_case_bens", [])
-        if _cl_sf_client and _cl_case_bens:
-            st.divider()
-            st.markdown('<div class="section-label">Case Beneficiaries</div>', unsafe_allow_html=True)
-            st.caption("Select beneficiaries to include in this cover letter.")
-            _cl_sel_ids: list[str] = st.session_state.get("_case_bens_selected", [])
-
-            _cl_all_ids = [b.get("Id") for b in _cl_case_bens]
-            _cl_all_sel = all(bid in _cl_sel_ids for bid in _cl_all_ids)
-            if st.checkbox("Select All", value=_cl_all_sel, key="_cl_bens_sel_all"):
-                if not _cl_all_sel:
-                    st.session_state["_case_bens_selected"] = list(_cl_all_ids)
-                    st.rerun()
-            elif _cl_all_sel:
-                st.session_state["_case_bens_selected"] = []
-                st.rerun()
-
-            _cl_new_sel: list[str] = []
-            for _ci, _cb in enumerate(_cl_case_bens):
-                _cid = _cb.get("Id", "")
-                _cname = _cb.get("Contact_Name", "") or "Unnamed"
-                _crel = _cb.get("Role__c", "")
-                _canum = _cb.get("Alien_Number_Dashed__c", "")
-                _clabel = _cname
-                if _crel:
-                    _clabel += f" ({_crel})"
-                if _canum:
-                    _clabel += f" — A# {_canum}"
-                if st.checkbox(_clabel, value=_cid in _cl_sel_ids, key=f"_cl_cben_chk_{_ci}"):
-                    _cl_new_sel.append(_cid)
-            st.session_state["_case_bens_selected"] = _cl_new_sel
-        elif _cl_sf_client and not _cl_case_bens:
-            st.divider()
-            st.caption("No derivatives found for this case.")
-
         st.divider()
 
         # ── Step 5: Enclosed Documents ───────────────────────────────────────
         st.markdown('<div class="section-label">Enclosed Documents</div>', unsafe_allow_html=True)
         st.caption("Check the documents to include in this cover letter. Add descriptions for specificity.")
 
-        # -- Salesforce Tasks (LC_Task__c) ------------------------------------
-        _active_client = st.session_state.get("sf_client")
-        _sf_contact_id = _active_client.get("Id", "") if _active_client else ""
-        _sf_tasks: list[dict] = []
+        _render_sf_tasks("cl")
 
-        if _sf_contact_id:
-            try:
-                from shared.salesforce_client import get_lc_tasks
-                _sf_tasks = get_lc_tasks(_sf_contact_id)
-            except Exception:
-                _sf_tasks = []
-
-        if _sf_tasks or _sf_contact_id:
-            st.markdown('<div class="section-label" style="margin-top:4px;">Salesforce Tasks</div>', unsafe_allow_html=True)
-
-        _pending_deletes: list[str] = list(st.session_state.get("sf_tasks_pending_delete", []))
-
-        if _sf_tasks:
-            _current_sf_checked = list(st.session_state.get("sf_task_docs", []))
-            _new_sf_checked: list[str] = []
-            _has_edits = False
-
-            for _task in _sf_tasks:
-                _task_id = _task.get("Id", "")
-                _task_label = _task.get("For__c") or _task.get("Name") or "Untitled task"
-                _is_pending_delete = _task_id in _pending_deletes
-                _edit_key = f"_sf_task_edit_{_task_id}"
-
-                if _is_pending_delete:
-                    st.markdown(
-                        f'<div class="sf-task-deleted">'
-                        f'<div class="doc-item">{html_mod.escape(_task_label)}</div>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-                    _undo_cols = st.columns([8, 1])
-                    with _undo_cols[1]:
-                        if st.button("Undo", key=f"_btn_undo_sft_{_task_id}", use_container_width=True):
-                            _pending_deletes.remove(_task_id)
-                            st.session_state.sf_tasks_pending_delete = _pending_deletes
-                            st.rerun()
-                else:
-                    _edited_label = st.session_state.get(_edit_key, _task_label)
-                    _was_checked = _edited_label in _current_sf_checked or _task_label in _current_sf_checked
-                    _tc = st.columns([0.5, 8, 0.5])
-                    with _tc[0]:
-                        _tc_checked = st.checkbox(
-                            _task_label,
-                            value=_was_checked,
-                            key=f"chk_sft_{_task_id}",
-                            label_visibility="collapsed",
-                        )
-                    with _tc[1]:
-                        _edited_val = st.text_input(
-                            "Edit document name",
-                            value=_edited_label,
-                            key=_edit_key,
-                            label_visibility="collapsed",
-                        )
-                    with _tc[2]:
-                        if st.button("X", key=f"_btn_del_sft_{_task_id}", help="Mark for deletion"):
-                            _pending_deletes.append(_task_id)
-                            st.session_state.sf_tasks_pending_delete = _pending_deletes
-                            st.rerun()
-
-                    if _edited_val.strip() != _task_label:
-                        _has_edits = True
-                    if _tc_checked and _edited_val.strip():
-                        _new_sf_checked.append(_edited_val.strip())
-
-            st.session_state.sf_task_docs = _new_sf_checked
-
-            # ── Save Changes button ──
-            _has_changes = _has_edits or len(_pending_deletes) > 0
-            if _has_changes:
-                _badge_parts: list[str] = []
-                _edit_count = sum(
-                    1 for _t in _sf_tasks
-                    if _t.get("Id", "") not in _pending_deletes
-                    and st.session_state.get(f"_sf_task_edit_{_t.get('Id', '')}", "").strip()
-                       != (_t.get("For__c") or _t.get("Name") or "Untitled task")
-                    and st.session_state.get(f"_sf_task_edit_{_t.get('Id', '')}", "") != ""
-                )
-                if _edit_count:
-                    _badge_parts.append(f'<span class="pending-badge edits">{_edit_count} edit{"s" if _edit_count != 1 else ""}</span>')
-                if _pending_deletes:
-                    _del_count = len(_pending_deletes)
-                    _badge_parts.append(f'<span class="pending-badge deletes">{_del_count} deletion{"s" if _del_count != 1 else ""}</span>')
-                st.markdown(f'{"".join(_badge_parts)}', unsafe_allow_html=True)
-
-                if st.button("Save Changes to Salesforce", type="primary", use_container_width=True, key="_btn_save_all_sf"):
-                    _save_errors: list[str] = []
-                    try:
-                        from shared.salesforce_client import update_lc_task, delete_lc_task
-
-                        for _t in _sf_tasks:
-                            _tid = _t.get("Id", "")
-                            if _tid in _pending_deletes:
-                                continue
-                            _orig = _t.get("For__c") or _t.get("Name") or "Untitled task"
-                            _new_val = st.session_state.get(f"_sf_task_edit_{_tid}", "").strip()
-                            if _new_val and _new_val != _orig:
-                                try:
-                                    update_lc_task(_tid, _new_val)
-                                except Exception as e:
-                                    _save_errors.append(f"Edit '{_new_val}': {e}")
-
-                        for _tid in _pending_deletes:
-                            try:
-                                delete_lc_task(_tid)
-                            except Exception as e:
-                                _save_errors.append(f"Delete {_tid}: {e}")
-
-                        st.session_state.sf_tasks_pending_delete = []
-                        for _t in _sf_tasks:
-                            _ek = f"_sf_task_edit_{_t.get('Id', '')}"
-                            if _ek in st.session_state:
-                                del st.session_state[_ek]
-
-                        if _save_errors:
-                            st.warning(f"Saved with {len(_save_errors)} error(s): {'; '.join(_save_errors)}")
-                        else:
-                            st.success("Changes saved to Salesforce.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Save failed: {e}")
-
-        elif _sf_contact_id:
-            st.caption("No tasks found for this client.")
-
-        from shared.document_adder import render_document_adder
-        render_document_adder("cover-letters")
-
-        descriptions = st.session_state.get("doc_descriptions", {})
-        new_descriptions: dict[str, str] = dict(descriptions)
-
-        # Custom documents
-        custom_docs = list(st.session_state.get("custom_docs", []))
-        new_custom: list[str] = []
-        for doc_name in custom_docs:
-            cols = st.columns([0.5, 5, 3, 1])
-            with cols[0]:
-                st.checkbox(
-                    doc_name,
-                    value=True,
-                    key=f"chk_custom_{hash(doc_name)}",
-                    label_visibility="collapsed",
-                    disabled=True,
-                )
-            with cols[1]:
-                st.markdown(
-                    f'<div class="doc-item">{html_mod.escape(doc_name)}</div>',
-                    unsafe_allow_html=True,
-                )
-            with cols[2]:
-                desc_val = descriptions.get(doc_name, "")
-                desc = st.text_input(
-                    "Description",
-                    value=desc_val,
-                    key=f"desc_custom_{hash(doc_name)}",
-                    label_visibility="collapsed",
-                    placeholder="Optional description...",
-                )
-                if desc:
-                    new_descriptions[doc_name] = desc
-                elif doc_name in new_descriptions:
-                    new_descriptions.pop(doc_name, None)
-            with cols[3]:
-                if st.button("X", key=f"rm_{hash(doc_name)}", help="Remove custom document"):
-                    custom_docs.remove(doc_name)
-                    st.session_state.custom_docs = custom_docs
-                    new_descriptions.pop(doc_name, None)
-                    st.rerun()
-            new_custom.append(doc_name)
-
-        st.session_state.custom_docs = new_custom
-        st.session_state.doc_descriptions = new_descriptions
+        st.divider()
+        st.markdown('<div class="section-label">Exhibit List</div>', unsafe_allow_html=True)
+        _render_exhibit_list("cl")
 
     # ── Cover Letter Preview (right column) ──────────────────────────────────
     with _cl_right:
         st.markdown('<div class="section-label">Cover Letter Preview</div>', unsafe_allow_html=True)
-        if not client_name:
-            st.info("Enter the client's name to see the live preview.")
+        if not subject_block.strip():
+            st.info("Enter client info in the Subject Block to see the live preview.")
         else:
             all_enclosed = _build_enclosed_docs_list()
 
@@ -1447,6 +1730,7 @@ with tab_cover:
                     custom_closing=_closing_safe,
                     recipient_address=recipient_address,
                     salutation=salutation,
+                    subject_block=subject_block,
                 )
             else:
                 # Template mode: subject + body → enclosed docs → signature
@@ -1470,34 +1754,65 @@ with tab_cover:
                     salutation=salutation,
                     custom_subject=_subj_rendered,
                     custom_body=_body_safe,
+                    subject_block=subject_block,
                 )
-
-            # Append selected beneficiaries to letter text
-            _cl_sel_ben_ids = st.session_state.get("_case_bens_selected", [])
-            _cl_bens_for_letter = [
-                b for b in (st.session_state.get("_case_bens") or [])
-                if b.get("Id") in _cl_sel_ben_ids
-            ]
-            if _cl_bens_for_letter:
-                _ben_parts: list[str] = []
-                for _b in _cl_bens_for_letter:
-                    _bn = _b.get("Contact_Name", "") or "Unnamed"
-                    _br = (_b.get("Role__c") or "").lower()
-                    _ben_parts.append(f"{_br}: {_bn}" if _br else _bn)
-                _ben_sentence = "Also filing for " + ", ".join(_ben_parts) + "."
-                # Insert before the signature block (find "Sincerely" or "Respectfully")
-                for _sig in ("Sincerely,", "Respectfully,", "Respectfully submitted,"):
-                    if _sig in letter_text:
-                        letter_text = letter_text.replace(_sig, f"{_ben_sentence}\n\n{_sig}", 1)
-                        break
-                else:
-                    letter_text += f"\n\n{_ben_sentence}"
 
             preview_html = _build_preview_html(letter_text, case_type)
             st.markdown(
                 f'<div class="preview-panel">{preview_html}</div>',
                 unsafe_allow_html=True,
             )
+
+            # ── Language Settings ────────────────────────────────────────────
+            st.divider()
+            st.markdown('<div class="section-label">Language Settings</div>', unsafe_allow_html=True)
+            _tl_languages = get_config_value("document-translator", "languages", {
+                "es": "Spanish", "pt": "Portuguese", "zh": "Chinese (Simplified)",
+                "ar": "Arabic", "fr": "French", "ru": "Russian", "ko": "Korean",
+                "tl": "Tagalog", "vi": "Vietnamese", "ht": "Haitian Creole",
+            })
+            _tl_display_names = sorted(_tl_languages.values())
+            _tl_options = ["None"] + _tl_display_names
+            _tl_lang_by_name = {v: k for k, v in _tl_languages.items()}
+
+            _tl_selected = st.selectbox(
+                "Target Language",
+                options=_tl_options,
+                key="_cl_target_lang",
+            )
+
+            if _tl_selected != "None":
+                _tl_show_en = st.checkbox("English", value=True, key="_cl_lang_en")
+                _tl_show_target = st.checkbox(_tl_selected, value=True, key="_cl_lang_target")
+
+                if _tl_show_target:
+                    # Translate letter_text, cached by content hash + language
+                    import hashlib
+                    _tl_cache_key = (hashlib.md5(letter_text.encode()).hexdigest(), _tl_selected)
+                    _tl_cached = st.session_state.get("_cl_translation_cache", {})
+                    if _tl_cache_key in _tl_cached:
+                        _translated = _tl_cached[_tl_cache_key]
+                    else:
+                        _translated = ""
+                        _tl_code = _tl_lang_by_name.get(_tl_selected, "")
+                        if _tl_code:
+                            try:
+                                _translated = _translate_cover_letter(letter_text, _tl_code)
+                                _tl_cached[_tl_cache_key] = _translated
+                                st.session_state["_cl_translation_cache"] = _tl_cached
+                            except Exception as _tl_err:
+                                st.warning(f"Translation failed: {_tl_err}")
+
+                    if _translated:
+                        if _tl_show_en:
+                            _final_text = letter_text + "\n\n--- TRANSLATION ---\n\n" + _translated
+                        else:
+                            _final_text = _translated
+                        _trans_html = _build_preview_html(_final_text, case_type)
+                        st.markdown(
+                            f'<div class="preview-panel">{_trans_html}</div>',
+                            unsafe_allow_html=True,
+                        )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2: EOIR Submission
@@ -1556,7 +1871,6 @@ with tab_eoir:
             # ── Auto-fill from case fields on case change ────────────────
             _prev_autofill = st.session_state.get("_eoir_autofill_case_id", "")
             if _eoir_case_id and _eoir_case_id != _prev_autofill:
-                st.session_state["inp_eoir_dhs_address"] = _eoir_case.get("DHS_Address__c", "") or ""
                 st.session_state["_eoir_autofill_case_id"] = _eoir_case_id
 
             # ── Fetch beneficiaries (cached per case) ────────────────────
@@ -1633,6 +1947,9 @@ with tab_eoir:
                 st.session_state["inp_eoir_cd_submission_type"] = _eoir_case.get("EOIR_Submission_Type__c", "") or ""
                 st.session_state["inp_eoir_cd_submission_line_1"] = _eoir_case.get("EOIR_Submission_Line_1__c", "") or ""
                 st.session_state["inp_eoir_cd_filing_method"] = _eoir_case.get("Paper_or_eRop__c", "") or ""
+                st.session_state["inp_eoir_cd_court_address"] = _eoir_case.get("Address_of_next_hearing__c", "") or ""
+                st.session_state["inp_eoir_cd_dhs_address"] = _eoir_case.get("DHS_Address__c", "") or ""
+                st.session_state["inp_eoir_cd_hearing_time"] = _eoir_case.get("Time_of_next_hearing__c", "") or ""
                 # A-Number dashed (formula / read-only)
                 st.session_state["inp_eoir_cd_a_number"] = (
                     _eoir_case.get("A_number_dashed__c", "") or _eoir_sf_client.get("A_Number__c", "")
@@ -1660,12 +1977,16 @@ with tab_eoir:
             _submission_type_opts = _pl_opts("EOIR_Submission_Type__c")
             _submission_line_1_opts = _pl_opts("EOIR_Submission_Line_1__c")
             _filing_method_opts = _pl_opts("Paper_or_eRop__c")
+            _court_address_opts = _pl_opts("Address_of_next_hearing__c")
+            _dhs_address_opts = _pl_opts("DHS_Address__c")
+            _hearing_time_opts = _pl_opts("Time_of_next_hearing__c")
 
             # Load admin-configured visible fields (or defaults)
             _comp_config = load_config("components") or {}
             _CD_DEFAULTS = [
-                "Location_City__c", "Type_of_next_date__c", "Next_Government_Date__c",
-                "Immigration_Judge__c",
+                "Location_City__c", "Address_of_next_hearing__c", "Time_of_next_hearing__c",
+                "Type_of_next_date__c", "Next_Government_Date__c",
+                "Immigration_Judge__c", "DHS_Address__c",
                 "EOIR_Submission_Type__c", "EOIR_Submission_Line_1__c", "Paper_or_eRop__c",
                 "Primary_Applicant__r_Name", "Primary_Attorney__r_Name", "A_number_dashed__c",
             ]
@@ -1680,6 +2001,9 @@ with tab_eoir:
                 "EOIR_Submission_Type__c":   ("EOIR Submission Type", "inp_eoir_cd_submission_type",  "picklist", _submission_type_opts, "EOIR_Submission_Type__c", False),
                 "EOIR_Submission_Line_1__c": ("Submission Line 1",    "inp_eoir_cd_submission_line_1", "picklist", _submission_line_1_opts, "EOIR_Submission_Line_1__c", False),
                 "Paper_or_eRop__c":          ("Filing Method",        "inp_eoir_cd_filing_method",    "picklist", _filing_method_opts,   "Paper_or_eRop__c",        False),
+                "Address_of_next_hearing__c": ("Court Address",    "inp_eoir_cd_court_address",  "picklist", _court_address_opts, "Address_of_next_hearing__c", False),
+                "DHS_Address__c":            ("DHS / OCC Address", "inp_eoir_cd_dhs_address",    "picklist", _dhs_address_opts,   "DHS_Address__c",            False),
+                "Time_of_next_hearing__c":   ("Hearing Time",     "inp_eoir_cd_hearing_time",   "picklist", _hearing_time_opts,  "Time_of_next_hearing__c",   False),
                 "Primary_Applicant__r_Name": ("Primary Applicant", "inp_eoir_cd_applicant",     "text",     None,            None,                        True),
                 "Primary_Attorney__r_Name":  ("Primary Attorney",  "inp_eoir_cd_attorney",      "text",     None,            None,                        True),
                 "A_number_dashed__c":        ("A-Number (Dashed)", "inp_eoir_cd_a_number",      "text",     None,            None,                        True),
@@ -1745,7 +2069,8 @@ with tab_eoir:
 
                     if _do_save and update_legal_case and _eoir_case_id:
                         # Build updates from visible editable fields only
-                        # Use metadata to verify each field is updateable in SF
+                        # Only send fields that actually changed from the SF record
+                        # to avoid restricted-picklist errors on unchanged stale values
                         updates: dict = {}
                         for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_editable:
                             if not _sf_api:
@@ -1761,6 +2086,15 @@ with tab_eoir:
                             val = st.session_state.get(_ss_key)
                             if _wtype == "date":
                                 val = val.strftime("%Y-%m-%d") if val else None
+                            # Compare against original SF value — skip unchanged fields
+                            _orig = _eoir_case.get(_sf_api, "") or ""
+                            if _wtype == "date":
+                                _orig = str(_orig)[:10] if _orig else ""
+                                if val == _orig:
+                                    continue
+                            else:
+                                if str(val or "") == str(_orig):
+                                    continue
                             updates[_sf_api] = val
                         updates = {k: v for k, v in updates.items() if v is not None}
 
@@ -1984,36 +2318,34 @@ with tab_eoir:
                     placeholder="e.g. Motion to Change Venue",
                 )
 
-                _eoir_submission_type = st.text_area(
-                    "Submission Description",
-                    key="inp_eoir_submission_type",
-                    height=80,
-                    placeholder="e.g. Respondent's Pre-Hearing Brief and Supporting Evidence",
+                _eoir_submission_type = (
+                    _eoir_submission_sub_line.strip()
+                    or _eoir_submission_line_1.strip()
+                    or "Document Submission"
                 )
 
-                # Show enclosed documents summary (shared with Cover Letter tab)
-                _eoir_enclosed = _build_enclosed_docs_list()
-                if _eoir_enclosed:
-                    st.markdown(f"**Enclosed Documents** ({len(_eoir_enclosed)}):")
-                    for _idx, _doc in enumerate(_eoir_enclosed, start=1):
-                        _doc_label = _doc.get("name", "")
-                        _doc_desc = _doc.get("description", "")
-                        if _doc_desc:
-                            st.caption(f"{_idx}. {_doc_label} — {_doc_desc}")
-                        else:
-                            st.caption(f"{_idx}. {_doc_label}")
-                else:
-                    st.caption("No enclosed documents. Add documents in the Cover Letter tab.")
+                st.divider()
+                st.markdown('<div class="section-label">Enclosed Documents</div>', unsafe_allow_html=True)
+                st.caption("Check documents to include as exhibits.")
+
+                _render_sf_tasks("eoir")
+
+                st.divider()
+                st.markdown('<div class="section-label">Exhibit List</div>', unsafe_allow_html=True)
+                _render_exhibit_list("eoir")
 
                 st.divider()
 
                 # ── Certificate of Service ───────────────────────────────
                 st.markdown('<div class="section-label">Certificate of Service</div>', unsafe_allow_html=True)
-                _eoir_dhs_addr = st.text_area(
+                _eoir_dhs_addr = st.session_state.get("inp_eoir_cd_dhs_address", "") or ""
+                st.text_area(
                     "DHS / OCC Address",
-                    key="inp_eoir_dhs_address",
+                    value=_eoir_dhs_addr,
+                    key="inp_eoir_dhs_address_display",
                     height=80,
-                    placeholder="Office of the Chief Counsel address",
+                    disabled=True,
+                    help="Edit in Verify Case Details above",
                 )
                 _eoir_service_method = st.selectbox(
                     "Service Method",
@@ -2060,10 +2392,11 @@ with tab_eoir:
                 _canvas_edits: dict = {}
                 _block_map: dict = {}
 
-                if _eoir_submission_type.strip():
+                _eoir_enclosed = _build_enclosed_docs_list()
+                if _eoir_submission_type.strip() and _eoir_enclosed:
                     # Source court/party data from Verify Case Details session state
                     _render_court_loc = st.session_state.get("inp_eoir_cd_city", "") or ""
-                    _render_court_addr = _eoir_case.get("Address_of_next_hearing__c", "") or ""
+                    _render_court_addr = st.session_state.get("inp_eoir_cd_court_address", "") or ""
                     _render_applicant = st.session_state.get("inp_eoir_cd_applicant", "") or (
                         _eoir_sf_client.get("Name", "")
                     )
@@ -2119,6 +2452,14 @@ with tab_eoir:
                         service_method=_eoir_service_method,
                         served_by_name=_served_by_name,
                         served_by_bar=_served_by_bar,
+                        hearing_time=st.session_state.get("inp_eoir_cd_hearing_time", "") or "",
+                        judge_name=st.session_state.get("inp_eoir_cd_judge", "") or "",
+                        next_date_type=st.session_state.get("inp_eoir_cd_next_date_type", "") or "",
+                        next_govt_date=(
+                            st.session_state.get("inp_eoir_cd_next_govt_date").strftime("%m/%d/%Y")
+                            if st.session_state.get("inp_eoir_cd_next_govt_date") else ""
+                        ),
+                        filing_method=st.session_state.get("inp_eoir_cd_filing_method", "") or "",
                         template_override=_eff_template,
                     )
 
@@ -2136,7 +2477,7 @@ with tab_eoir:
                         attorney_name,
                         _eoir_service_method,
                         _served_by_name,
-                        len(_eoir_enclosed),
+                        tuple(it.get("label", "") for it in st.session_state.get("exhibit_items", [])),
                         len(_final_bens),
                     )
                     _prev_fp = st.session_state.get("_eoir_draft_fingerprint")
@@ -2408,9 +2749,8 @@ with tab_eoir:
                 )
         else:
             # Document Submission — existing canvas logic
-            # Expand dialog trigger
-            if st.session_state.get("_eoir_show_expand"):
-                st.session_state["_eoir_show_expand"] = False
+            # Expand dialog trigger — opened via flag set on previous rerun
+            if st.session_state.pop("_eoir_show_expand", False):
                 _open_eoir_expand()
 
             if _eoir_blocks:
@@ -2419,19 +2759,31 @@ with tab_eoir:
                     block_order=_canvas_order,
                     block_edits=_canvas_edits,
                     reset=_reset_canvas,
+                    beneficiaries=_final_bens,
+                    document_list=_eoir_enclosed,
+                    submission_title=_eoir_submission_type.strip(),
                     key="eoir_canvas",
                     default=None,
                 )
                 # Process canvas output — update session state with user edits/order
+                # Guard against stale cached component values: Streamlit custom
+                # components return their last emitted value on every rerun, so
+                # we track a sequence number to distinguish new actions from
+                # the cached repeat of the last action.
                 if _canvas_out is not None:
                     _action = _canvas_out.get("action")
-                    if _action == "expand":
-                        st.session_state["_eoir_show_expand"] = True
-                        st.rerun()
-                    elif _action == "regenerate":
-                        st.session_state["_eoir_force_regen"] = True
-                        st.rerun()
-                    else:
+                    _seq = _canvas_out.get("seq", 0)
+                    _prev_seq = st.session_state.get("_eoir_canvas_last_seq", -1)
+                    if _seq != _prev_seq:
+                        st.session_state["_eoir_canvas_last_seq"] = _seq
+                        if _action == "expand":
+                            st.session_state["_eoir_show_expand"] = True
+                            st.rerun()
+                        elif _action == "regenerate":
+                            st.session_state["_eoir_force_regen"] = True
+                            st.rerun()
+                    # Always process edit/reorder data regardless of seq
+                    if _action not in ("expand", "regenerate"):
                         _new_order = _canvas_out.get("block_order")
                         _new_edits = _canvas_out.get("block_edits")
                         if _new_order is not None:
@@ -2451,7 +2803,7 @@ with tab_eoir:
                 st.markdown(
                     '<div class="preview-panel" style="min-height:200px;display:flex;align-items:center;'
                     'justify-content:center;color:#94a3b8;font-style:italic;">'
-                    'Fill in the submission description to see the document canvas.'
+                    'Add documents to the exhibit list to see the EOIR document canvas.'
                     '</div>',
                     unsafe_allow_html=True,
                 )
@@ -2459,8 +2811,9 @@ with tab_eoir:
 # ═══════════════════════════════════════════════════════════════════════════════
 # PERSISTENT FOOTER — Attorney / Signature + Export
 # ═══════════════════════════════════════════════════════════════════════════════
-st.divider()
-_footer_left, _footer_right = st.columns([3, 2], gap="large")
+with zones.B4:
+    st.divider()
+    _footer_left, _footer_right = st.columns([3, 2], gap="large")
 
 with _footer_left:
     # ── Attorney / Signature Block ───────────────────────────────────────────
