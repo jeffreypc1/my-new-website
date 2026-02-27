@@ -2035,9 +2035,16 @@ with tab_eoir:
                         _val = st.session_state.get(_ss_key)
                         with _col:
                             if _wtype == "picklist" and _extra:
-                                _cur = _val or ""
-                                _idx = _extra.index(_cur) if _cur in _extra else 0
-                                st.selectbox(f"✏️ {_label}", options=_extra, index=_idx, key=_ss_key)
+                                # Use a separate widget key to avoid Streamlit conflict
+                                # between programmatic session state and widget ownership
+                                _cur = st.session_state.get(_ss_key, "")
+                                _opts = list(_extra)
+                                if _cur and _cur not in _opts:
+                                    _opts.append(_cur)
+                                _idx = _opts.index(_cur) if _cur in _opts else 0
+                                _wkey = f"{_ss_key}_w"
+                                _new = st.selectbox(f"✏️ {_label}", options=_opts, index=_idx, key=_wkey)
+                                st.session_state[_ss_key] = _new
                             elif _wtype == "date":
                                 if _val is None:
                                     st.session_state[_ss_key] = date.today()
@@ -2068,44 +2075,69 @@ with tab_eoir:
                         st.rerun()
 
                     if _do_save and update_legal_case and _eoir_case_id:
-                        # Build updates from visible editable fields only
-                        # Only send fields that actually changed from the SF record
-                        # to avoid restricted-picklist errors on unchanged stale values
+                        # Build updates: only send fields the user actually changed.
+                        # Compare widget value against cached case record to avoid
+                        # sending empty strings that would blank out SF fields, and
+                        # to avoid restricted-picklist errors on unchanged values.
                         updates: dict = {}
+                        _skipped: list[str] = []
                         for _fkey, (_label, _ss_key, _wtype, _extra, _sf_api, _ro) in _vis_editable:
                             if not _sf_api:
-                                continue  # derived field, not in SF
-                            # Check metadata: only push if field exists and is updateable
+                                continue
                             _fmeta = _lc_meta.get(_sf_api, {})
                             if _lc_meta and not _fmeta:
-                                continue  # field not in SF org — store locally only
+                                continue
                             if _fmeta and not _fmeta.get("updateable", False):
-                                continue  # skip formula / non-updateable
+                                continue
                             if _fmeta and _fmeta.get("formula", False):
                                 continue
                             val = st.session_state.get(_ss_key)
                             if _wtype == "date":
                                 val = val.strftime("%Y-%m-%d") if val else None
-                            # Compare against original SF value — skip unchanged fields
-                            _orig = _eoir_case.get(_sf_api, "") or ""
-                            if _wtype == "date":
-                                _orig = str(_orig)[:10] if _orig else ""
-                                if val == _orig:
-                                    continue
-                            else:
-                                if str(val or "") == str(_orig):
+                            # Compare against original case record — skip unchanged
+                            _orig = _eoir_case.get(_sf_api)
+                            _orig_str = str(_orig)[:10] if (_wtype == "date" and _orig) else (_orig or "")
+                            _val_str = str(val) if val else ""
+                            if _val_str == str(_orig_str):
+                                continue  # unchanged — don't send
+                            # For restricted picklists, validate value is allowed
+                            if _wtype == "picklist" and val and _fmeta.get("restrictedPicklist"):
+                                _valid = {pv["value"] for pv in _fmeta.get("picklistValues", [])}
+                                if val not in _valid:
+                                    _skipped.append(f"{_label} ({val})")
                                     continue
                             updates[_sf_api] = val
                         updates = {k: v for k, v in updates.items() if v is not None}
 
-                        with st.spinner("Syncing to Salesforce..."):
-                            try:
-                                update_legal_case(_eoir_case_id, updates)
-                                st.session_state["_eoir_cd_edit_mode"] = False
-                                st.toast("Case details synced to Salesforce!")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Sync failed: {e}")
+                        if updates:
+                            with st.spinner("Syncing to Salesforce..."):
+                                try:
+                                    update_legal_case(_eoir_case_id, updates)
+                                    # Update cached case record in session + on disk
+                                    _sf_data = st.session_state.get("sf_client")
+                                    if _sf_data:
+                                        for _lc in _sf_data.get("legal_cases", []):
+                                            if _lc.get("Id") == _eoir_case_id:
+                                                _lc.update(updates)
+                                                break
+                                        try:
+                                            from shared.salesforce_client import save_active_client
+                                            save_active_client(_sf_data)
+                                        except Exception:
+                                            pass
+                                    # Force re-auto-fill from updated cache
+                                    st.session_state["_eoir_cd_autofill_case_id"] = ""
+                                    st.session_state["_eoir_cd_edit_mode"] = False
+                                    if _skipped:
+                                        st.warning(f"Skipped invalid picklist values: {', '.join(_skipped)}")
+                                    st.toast(f"Synced {len(updates)} field(s) to Salesforce!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Sync failed: {e}")
+                        else:
+                            st.info("No fields changed — nothing to sync.")
+                            st.session_state["_eoir_cd_edit_mode"] = False
+                            st.rerun()
 
                 else:
                     # ── View mode: compact display ───────────────────────

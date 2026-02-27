@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 # Load .env from the parent project directory (where SF credentials live)
@@ -80,15 +81,25 @@ def _get_connection():
 
 # Cache the connection so we don't re-auth on every call
 _sf = None
+_sf_connected_at: float = 0
+_SF_SESSION_TTL = 3600  # re-auth after 1 hour to avoid expired session errors
 
 
 def _sf_conn():
-    global _sf
+    global _sf, _sf_connected_at
+    if _sf is not None and (time.time() - _sf_connected_at) > _SF_SESSION_TTL:
+        # Proactively re-auth before session expires
+        _sf = None
+        try:
+            _SF_SESSION_PATH.unlink(missing_ok=True)
+        except Exception:
+            pass
     if _sf is None:
         # Try restoring a cached session first
         _sf = _restore_session()
         if _sf is None:
             _sf = _get_connection()
+        _sf_connected_at = time.time()
     return _sf
 
 
@@ -460,10 +471,10 @@ def get_legal_case_field_metadata() -> dict:
 _lc_field_meta_cache = None
 
 
-def update_legal_case(case_sf_id: str, updates: dict) -> None:
-    """Push field updates to a Legal_Case__c record."""
+def update_legal_case(case_sf_id: str, updates: dict) -> int:
+    """Push field updates to a Legal_Case__c record. Returns HTTP status code."""
     sf = _sf_conn()
-    sf.Legal_Case__c.update(case_sf_id, updates)
+    return sf.Legal_Case__c.update(case_sf_id, updates)
 
 
 def create_lc_task(contact_sf_id: str, description: str) -> str:
