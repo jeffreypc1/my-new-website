@@ -1,8 +1,9 @@
 """Templates — Streamlit dashboard for managing all template types.
 
-Centralized template management for email templates, client cover letters,
-government cover letters, and EOIR templates. Replaces the Evidence Indexer
-dashboard (evidence.py and api.py remain in the directory untouched).
+Centralized template management for email, letters, court filings, briefs,
+declarations, filing packets, contracts, checklists, and outcome documents.
+Replaces the Evidence Indexer dashboard (evidence.py and api.py remain in
+the directory untouched).
 
 Part of the O'Brien Immigration Law tool suite.
 """
@@ -13,25 +14,34 @@ import copy
 import html as html_mod
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from shared.client_banner import render_client_banner
-from shared.tool_notes import render_tool_notes
+from shared.layout import init_layout
 import streamlit.components.v1 as st_components
 
 from app.templates_store import (
-    EOIR_CATEGORIES,
+    CHECKLIST_CATEGORIES,
+    COURT_FILING_CATEGORIES,
+    get_checklist_templates,
     get_client_letter_templates,
+    get_contract_templates,
+    get_court_filing_templates,
+    get_declaration_templates,
     get_email_templates,
-    get_eoir_templates,
     get_govt_letter_templates,
+    get_outcome_templates,
+    save_checklist_templates,
     save_client_letter_templates,
+    save_contract_templates,
+    save_court_filing_templates,
+    save_declaration_templates,
     save_email_templates,
-    save_eoir_templates,
     save_govt_letter_templates,
+    save_outcome_templates,
 )
 from app.brief_sections_store import (
     MERGE_FIELDS,
@@ -40,107 +50,54 @@ from app.brief_sections_store import (
     resolve_merge_fields,
     save_brief_config,
 )
+from app.merge_fields_store import (
+    MANAGED_OBJECTS,
+    find_duplicate_aliases,
+    get_enabled_merge_fields,
+    get_field_cache,
+    get_merge_field_config,
+    refresh_all_field_caches,
+    refresh_field_cache,
+    save_merge_field_config,
+)
+from app.foundation_store import (
+    get_foundation_by_id,
+    get_foundations,
+    merge_template_with_foundation,
+    save_foundation,
+)
+from app.template_exporter import (
+    build_template_docx,
+    build_template_pdf,
+    resolve_merge_fields_for_export,
+)
 
 _brief_canvas_component = st_components.declare_component(
     "brief_sections_canvas",
     path=str(Path(__file__).resolve().parent / "brief_sections_canvas"),
 )
 
-try:
-    from shared.tool_help import render_tool_help
-except ImportError:
-    render_tool_help = None
-try:
-    from shared.feedback_button import render_feedback_button
-except ImportError:
-    render_feedback_button = None
-
-# -- Page config --------------------------------------------------------------
-
-st.set_page_config(
-    page_title="Templates -- O'Brien Immigration Law",
-    layout="wide",
-    initial_sidebar_state="expanded",
+_template_canvas_component = st_components.declare_component(
+    "template_canvas",
+    path=str(Path(__file__).resolve().parent / "template_canvas"),
 )
 
-# -- CSS ----------------------------------------------------------------------
+# -- Layout -------------------------------------------------------------------
 
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-/* Hide Streamlit chrome */
-#MainMenu, footer,
-div[data-testid="stToolbar"] { display: none !important; }
-
-.stApp {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* Navigation bar */
-.nav-bar {
-    display: flex;
-    align-items: center;
-    padding: 10px 4px;
-    margin: -1rem 0 1.2rem 0;
-    border-bottom: 1px solid rgba(0,0,0,0.07);
-}
-.nav-back {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #0066CC;
-    text-decoration: none;
-    min-width: 150px;
-}
-.nav-back:hover { color: #004499; text-decoration: underline; }
-.nav-title {
-    flex: 1;
-    text-align: center;
-    font-family: 'Inter', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #1a2744;
-    letter-spacing: -0.02em;
-}
-.nav-firm {
-    font-weight: 400;
-    color: #86868b;
-    font-size: 0.85rem;
-    margin-left: 8px;
-}
-.nav-spacer { min-width: 150px; }
-</style>
-""",
-    unsafe_allow_html=True,
+zones = init_layout(
+    tool_name="evidence-indexer",
+    tool_title="Templates",
+    right_rail=False,
+    extra_css="""
+        /* Prevent Streamlit from fading the template canvas during reruns.
+           Streamlit applies opacity:0.33 via styled-components on stale elements.
+           We override with !important on [data-stale] attribute selectors. */
+        [data-stale="true"] {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+    """,
 )
-
-from shared.auth import require_auth, render_logout
-require_auth()
-
-# -- Navigation bar -----------------------------------------------------------
-
-st.markdown(
-    """
-<div class="nav-bar">
-    <a href="http://localhost:8502" class="nav-back">&#8592; Staff Dashboard</a>
-    <div class="nav-title">Templates<span class="nav-firm">&mdash; O'Brien Immigration Law</span></div>
-    <div class="nav-spacer"></div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-render_logout()
-
-render_client_banner()
-if render_tool_help:
-    render_tool_help("evidence-indexer")
-if render_feedback_button:
-    render_feedback_button("evidence-indexer")
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -151,31 +108,404 @@ def _esc(text: str) -> str:
     return html_mod.escape(str(text))
 
 
+def _render_export_buttons(
+    foundation_id: str,
+    canvas_sections: list[dict],
+    order_key: str,
+    edits_key: str,
+    disabled_key: str,
+    default_disabled: list[str],
+    key_prefix: str,
+) -> None:
+    """Render Word / PDF / Google Docs export row below a canvas."""
+    block_order = st.session_state.get(order_key) or [s["id"] for s in canvas_sections]
+    block_edits = st.session_state.get(edits_key, {})
+    disabled_ids = st.session_state.get(disabled_key, default_disabled)
+
+    # Resolve merge fields — real client data if loaded, sample fallback
+    sf_client = st.session_state.get("sf_client")
+    legal_case = sf_client.get("selected_legal_case") if sf_client else None
+    merge_values = resolve_merge_fields_for_export(sf_client, legal_case)
+
+    # Letterhead toggle — only show if a letterhead image has been uploaded
+    from app.template_exporter import _get_letterhead_path
+    has_letterhead = _get_letterhead_path() is not None
+    include_logo = False
+    if has_letterhead:
+        include_logo = st.checkbox("Include letterhead", value=True, key=f"_{key_prefix}_incl_logo")
+
+    docx_bytes = build_template_docx(
+        foundation_id, canvas_sections, block_order, block_edits, disabled_ids,
+        merge_values=merge_values,
+        include_letterhead=include_logo,
+    )
+    pdf_bytes = build_template_pdf(
+        foundation_id, canvas_sections, block_order, block_edits, disabled_ids,
+        merge_values=merge_values,
+        include_letterhead=include_logo,
+    )
+
+    exp_cols = st.columns(3)
+    with exp_cols[0]:
+        st.download_button(
+            "Download Word (.docx)",
+            data=docx_bytes,
+            file_name="template.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key=f"_{key_prefix}_dl_docx",
+        )
+    with exp_cols[1]:
+        st.download_button(
+            "Download PDF",
+            data=pdf_bytes,
+            file_name="template.pdf",
+            mime="application/pdf",
+            key=f"_{key_prefix}_dl_pdf",
+        )
+    with exp_cols[2]:
+        if st.button("Open in Google Docs", key=f"_{key_prefix}_gdoc"):
+            with st.spinner("Uploading to Google Docs..."):
+                try:
+                    from shared.google_upload import upload_to_google_docs
+
+                    url = upload_to_google_docs(docx_bytes, "Template Preview")
+                    st.session_state[f"_{key_prefix}_gdoc_url"] = url
+                except Exception as e:
+                    st.error(f"Upload failed: {e}")
+        gdoc_url = st.session_state.get(f"_{key_prefix}_gdoc_url")
+        if gdoc_url:
+            st.markdown(f"[Open Google Doc]({gdoc_url})")
+
+    # Inline PDF preview
+    with st.expander("Preview"):
+        import base64
+
+        b64 = base64.b64encode(pdf_bytes).decode()
+        st.markdown(
+            f'<iframe src="data:application/pdf;base64,{b64}" '
+            f'width="100%" height="800" style="border:1px solid #ddd; border-radius:4px;">'
+            f"</iframe>",
+            unsafe_allow_html=True,
+        )
+
+
+def _render_merge_fields_table(
+    fields: list[tuple[str, str]] | None = None,
+    *,
+    key_prefix: str = "",
+) -> None:
+    """Render a merge fields expander with a markdown table.
+
+    If *fields* is None, uses the centralized merge field config with
+    radio-button filtering by source object.
+    Legacy callers can still pass a list of (placeholder, description) tuples.
+    """
+    with st.expander("Available merge fields"):
+        if fields is not None:
+            rows = "| Placeholder | Description |\n|---|---|\n"
+            for placeholder, description in fields:
+                rows += f"| `{{{placeholder}}}` | {description} |\n"
+            st.markdown(rows)
+        else:
+            enabled = get_enabled_merge_fields()
+            sources = ["All"] + [obj["tab_label"] for obj in MANAGED_OBJECTS]
+            selected = st.radio(
+                "Source",
+                sources,
+                horizontal=True,
+                key=f"_mf_radio_{key_prefix}",
+                label_visibility="collapsed",
+            )
+            if selected != "All":
+                enabled = [e for e in enabled if e[2] == selected]
+            rows = "| Placeholder | Description | Source |\n|---|---|---|\n"
+            for alias, label, source in enabled:
+                rows += f"| `{{{alias}}}` | {label} | {source} |\n"
+            st.markdown(rows)
+
+
+def _render_merge_fields_expander(key_prefix: str = "") -> None:
+    """Render Available merge fields from centralized config."""
+    _render_merge_fields_table(None, key_prefix=key_prefix)
+
+
+def _render_template_editor(
+    templates: list[dict],
+    tpl_idx: int,
+    save_fn: Callable,
+    default_foundation: str,
+    key_prefix: str,
+) -> None:
+    """Full-tab editor view for a single template — shows canvas at full width."""
+    tpl = templates[tpl_idx]
+    fnd_id = tpl.get("foundation_id", default_foundation)
+    fnd = get_foundation_by_id(fnd_id)
+
+    # Header bar
+    col_back, col_title, col_save = st.columns([1, 4, 1])
+    with col_back:
+        if st.button("Back", key=f"_{key_prefix}_ed_back"):
+            # Clean up editor state
+            cv_key = f"_{key_prefix}_ed_cv"
+            for suffix in ("_order", "_edits", "_disabled"):
+                st.session_state.pop(f"{cv_key}{suffix}", None)
+            st.session_state.pop(f"_{key_prefix}_editing_idx", None)
+            st.rerun()
+    with col_title:
+        fnd_label = "EOIR Pleading Paper" if fnd_id == "eoir_pleading" else "Cover Letter"
+        st.markdown(f"### {_esc(tpl.get('name', 'Untitled'))}  \n"
+                     f"Foundation: **{fnd_label}**")
+    with col_save:
+        save_clicked = st.button("Save", type="primary", key=f"_{key_prefix}_ed_save")
+
+    # Merge the template onto its foundation
+    merged = merge_template_with_foundation(tpl, fnd)
+    canvas_sections = []
+    disabled_ids = []
+    for sec in merged:
+        canvas_sections.append({
+            "id": sec["id"],
+            "label": sec.get("label", ""),
+            "block_type": sec.get("block_type", "paragraph"),
+            "content": sec.get("content", sec.get("default_content", "")),
+            "default_content": sec.get("default_content", ""),
+            "enabled_by_default": sec.get("enabled_by_default", True),
+        })
+        if not sec.get("enabled_by_default", True):
+            disabled_ids.append(sec["id"])
+
+    mf_list = [{"alias": a, "label": l, "source": s} for a, l, s in get_enabled_merge_fields()]
+
+    cv_key = f"_{key_prefix}_ed_cv"
+    canvas_result = _template_canvas_component(
+        foundation_id=fnd_id,
+        sections=canvas_sections,
+        block_order=st.session_state.get(f"{cv_key}_order"),
+        block_edits=st.session_state.get(f"{cv_key}_edits", {}),
+        disabled_ids=st.session_state.get(f"{cv_key}_disabled", disabled_ids),
+        merge_fields=mf_list,
+        mode="page_view",
+        reset=False,
+        key=cv_key,
+        height=800,
+    )
+
+    if canvas_result:
+        if canvas_result.get("action") == "reset":
+            for suffix in ("_order", "_edits", "_disabled"):
+                st.session_state.pop(f"{cv_key}{suffix}", None)
+            st.rerun()
+        else:
+            st.session_state[f"{cv_key}_order"] = canvas_result.get("block_order")
+            st.session_state[f"{cv_key}_edits"] = canvas_result.get("block_edits", {})
+            st.session_state[f"{cv_key}_disabled"] = canvas_result.get("disabled_ids", [])
+
+    _render_export_buttons(
+        foundation_id=fnd_id,
+        canvas_sections=canvas_sections,
+        order_key=f"{cv_key}_order",
+        edits_key=f"{cv_key}_edits",
+        disabled_key=f"{cv_key}_disabled",
+        default_disabled=disabled_ids,
+        key_prefix=f"{key_prefix}_ed_exp",
+    )
+
+    if save_clicked:
+        edits = st.session_state.get(f"{cv_key}_edits", {})
+        if edits:
+            sec_map = {s["id"]: s for s in tpl.get("sections", [])}
+            for sec_id, html_content in edits.items():
+                if sec_id in sec_map:
+                    sec_map[sec_id]["content"] = html_content
+                else:
+                    # Section from foundation not yet in template — add it
+                    for fsec in fnd.get("sections", []):
+                        if fsec["id"] == sec_id:
+                            tpl.setdefault("sections", []).append({
+                                "id": sec_id,
+                                "label": fsec.get("label", ""),
+                                "content": html_content,
+                                "enabled_by_default": fsec.get("enabled_by_default", True),
+                            })
+                            break
+        save_fn(templates)
+        st.toast(f"Saved {tpl.get('name', 'template')}!")
+
+
+def _render_section_based_tab(
+    caption: str,
+    merge_fields: list[tuple[str, str]] | None,
+    get_fn: Callable[[], list[dict]],
+    save_fn: Callable[[list[dict]], None],
+    categories: list[str] | None,
+    key_prefix: str,
+    *,
+    default_foundation: str = "cover_letter",
+) -> None:
+    """Shared UI for section-based template tabs (Court Filings, Contracts, Outcome Documents).
+
+    Has two modes:
+    - **List mode** (default): shows all templates with expanders for editing fields
+    - **Editor mode**: full-tab canvas editor for a single template (enter via Edit button)
+    """
+    templates = get_fn()
+
+    # Check if we're in editor mode
+    editing_idx = st.session_state.get(f"_{key_prefix}_editing_idx")
+    if editing_idx is not None and 0 <= editing_idx < len(templates):
+        _render_template_editor(
+            templates, editing_idx, save_fn, default_foundation, key_prefix,
+        )
+        return
+
+    # -- List mode ----------------------------------------------------------------
+    st.caption(caption)
+    _render_merge_fields_table(merge_fields, key_prefix=key_prefix)
+
+    # Add new template
+    with st.expander("Add New Template"):
+        new_name = st.text_input("Template Name", key=f"_{key_prefix}_new_name")
+        if categories:
+            new_cat = st.selectbox("Category", categories, key=f"_{key_prefix}_new_cat")
+        new_fnd = st.radio(
+            "Foundation",
+            ["Cover Letter", "EOIR Pleading Paper"],
+            horizontal=True,
+            key=f"_{key_prefix}_new_fnd",
+            index=0 if default_foundation == "cover_letter" else 1,
+        )
+        if st.button("Add Template", type="primary", key=f"_{key_prefix}_add"):
+            if not new_name.strip():
+                st.warning("Template name is required.")
+            else:
+                new_tpl: dict = {
+                    "id": f"{key_prefix}_{int(time.time() * 1000)}",
+                    "name": new_name.strip(),
+                    "foundation_id": "cover_letter" if new_fnd == "Cover Letter" else "eoir_pleading",
+                    "sections": [],
+                }
+                if categories:
+                    new_tpl["category"] = new_cat
+                templates.append(new_tpl)
+                save_fn(templates)
+                st.toast(f"Added template: {new_name.strip()}")
+                st.rerun()
+
+    if not templates:
+        st.info("No templates yet. Add one above.")
+        return
+
+    st.markdown(f"**{len(templates)} template{'s' if len(templates) != 1 else ''}**")
+
+    templates_to_delete: list[int] = []
+
+    for idx, tpl in enumerate(templates):
+        label = tpl.get("name", f"Template {idx + 1}")
+        if categories and tpl.get("category"):
+            label += f" ({tpl['category']})"
+        fnd_id = tpl.get("foundation_id", default_foundation)
+        fnd_short = "EOIR" if fnd_id == "eoir_pleading" else "Cover Letter"
+        label += f"  [{fnd_short}]"
+
+        with st.expander(label):
+            tpl["name"] = st.text_input("Name", value=tpl.get("name", ""), key=f"_{key_prefix}_name_{idx}")
+            if categories:
+                cat_val = tpl.get("category", categories[-1])
+                cat_idx = categories.index(cat_val) if cat_val in categories else len(categories) - 1
+                tpl["category"] = st.selectbox("Category", categories, index=cat_idx, key=f"_{key_prefix}_cat_{idx}")
+
+            # Foundation selector
+            fnd_choices = ["Cover Letter", "EOIR Pleading Paper"]
+            cur_fnd = tpl.get("foundation_id", default_foundation)
+            fnd_idx = 0 if cur_fnd == "cover_letter" else 1
+            fnd_label = st.radio(
+                "Foundation",
+                fnd_choices,
+                horizontal=True,
+                index=fnd_idx,
+                key=f"_{key_prefix}_fnd_{idx}",
+            )
+            tpl["foundation_id"] = "cover_letter" if fnd_label == "Cover Letter" else "eoir_pleading"
+
+            # Sections
+            sections = tpl.get("sections", [])
+            secs_to_delete: list[int] = []
+
+            for si, sec in enumerate(sections):
+                st.markdown(f"**Section {si + 1}:** {sec.get('label', '')}")
+                sec["label"] = st.text_input("Label", value=sec.get("label", ""), key=f"_{key_prefix}_sl_{idx}_{si}")
+                sec["content"] = st.text_area("Content", value=sec.get("content", ""), key=f"_{key_prefix}_sc_{idx}_{si}", height=120)
+                sec["enabled_by_default"] = st.checkbox("Enabled by default", value=sec.get("enabled_by_default", True), key=f"_{key_prefix}_se_{idx}_{si}")
+                if st.button("Delete Section", key=f"_{key_prefix}_sd_{idx}_{si}"):
+                    secs_to_delete.append(si)
+                st.divider()
+
+            for si in sorted(secs_to_delete, reverse=True):
+                sections.pop(si)
+
+            if st.button("+ Add Section", key=f"_{key_prefix}_sa_{idx}"):
+                sections.append({"id": f"sec_{int(time.time() * 1000)}", "label": "", "content": "", "enabled_by_default": True})
+                st.rerun()
+
+            tpl["sections"] = sections
+
+            col_edit, col_delete = st.columns([1, 1])
+            with col_edit:
+                if st.button("Edit in Preview", key=f"_{key_prefix}_edit_{idx}"):
+                    # Save current form state first, then enter editor
+                    save_fn(templates)
+                    st.session_state[f"_{key_prefix}_editing_idx"] = idx
+                    st.rerun()
+            with col_delete:
+                if st.button("Delete Template", key=f"_{key_prefix}_del_{idx}"):
+                    templates_to_delete.append(idx)
+
+    if templates_to_delete:
+        for idx in sorted(templates_to_delete, reverse=True):
+            removed = templates.pop(idx)
+            st.toast(f"Removed template: {removed.get('name', '')}")
+        save_fn(templates)
+        st.rerun()
+
+    if st.button("Save", type="primary", key=f"_{key_prefix}_save"):
+        save_fn(templates)
+        st.toast("Templates saved!")
+
+
 # -- Sidebar ------------------------------------------------------------------
 
-with st.sidebar:
+with zones.A1:
     st.markdown("#### Templates")
     st.caption(
-        "Manage all template types — including email, cover letters, EOIR filings, "
-        "and brief sections — from one place. Changes are saved to config "
-        "and shared with other tools automatically."
+        "Manage all template types — email, letters, court filings, briefs, "
+        "declarations, filing packets, contracts, checklists, outcome "
+        "documents, and foundation layouts — from one place. Changes are "
+        "saved to config and shared with other tools automatically."
     )
-    render_tool_notes("evidence-indexer")
 
 
 # -- Tabs ---------------------------------------------------------------------
 
-tab_email, tab_client, tab_govt, tab_eoir, tab_brief = st.tabs([
-    "Email Templates",
-    "Client Cover Letters",
-    "Government Cover Letters",
-    "EOIR Templates",
-    "Brief Sections",
-])
+with zones.B2:
+    (tab_email, tab_letters, tab_court, tab_briefs, tab_decl,
+     tab_packets, tab_contracts, tab_checklists, tab_outcomes,
+     tab_merge, tab_foundations) = st.tabs([
+        "Email",
+        "Letters",
+        "Court Filings",
+        "Legal Briefs",
+        "Declarations",
+        "Filing Packets",
+        "Contracts",
+        "Checklists",
+        "Outcome Documents",
+        "Merge Fields",
+        "Foundations",
+    ])
 
 
 # =============================================================================
-# Tab 1: Email Templates
+# Tab 1: Email
 # =============================================================================
 
 def _render_email_templates() -> None:
@@ -185,29 +515,9 @@ def _render_email_templates() -> None:
         "Email button on every tool."
     )
 
-    templates = get_email_templates()
+    _render_merge_fields_expander("et")
 
-    # Merge field reference
-    with st.expander("Available merge fields"):
-        st.markdown(
-            "| Placeholder | Description |\n"
-            "|---|---|\n"
-            "| `{first_name}` | Client first name |\n"
-            "| `{last_name}` | Client last name |\n"
-            "| `{name}` | Full name |\n"
-            "| `{customer_id}` | Client number |\n"
-            "| `{a_number}` | Alien registration number |\n"
-            "| `{email}` | Client email |\n"
-            "| `{phone}` | Phone number |\n"
-            "| `{country}` | Country of origin |\n"
-            "| `{language}` | Preferred language |\n"
-            "| `{immigration_status}` | Immigration status |\n"
-            "| `{case_type}` | Legal case type |\n"
-            "| `{case_number}` | Case number |\n"
-            "| `{court}` | Immigration court |\n"
-            "| `{dob}` | Date of birth |\n"
-            "| `{spouse}` | Spouse name |\n"
-        )
+    templates = get_email_templates()
 
     # Add new template
     with st.expander("Add New Template"):
@@ -228,7 +538,6 @@ def _render_email_templates() -> None:
                 st.toast(f"Added template: {new_name.strip()}")
                 st.rerun()
 
-    # List / edit existing templates
     if not templates:
         st.info("No templates. Add one above.")
         return
@@ -262,7 +571,7 @@ with tab_email:
 
 
 # =============================================================================
-# Tab 2: Client Cover Letter Templates
+# Tab 2: Letters
 # =============================================================================
 
 def _render_client_letter_templates() -> None:
@@ -272,21 +581,9 @@ def _render_client_letter_templates() -> None:
         "merge fields."
     )
 
-    templates = get_client_letter_templates()
+    _render_merge_fields_expander("cl")
 
-    # Merge field reference
-    with st.expander("Available merge fields"):
-        st.markdown(
-            "| Placeholder | Description |\n"
-            "|---|---|\n"
-            "| `{first_name}` | Client first name |\n"
-            "| `{last_name}` | Client last name |\n"
-            "| `{name}` | Full name |\n"
-            "| `{customer_id}` | Client number |\n"
-            "| `{a_number}` | Alien registration number |\n"
-            "| `{case_type}` | Legal case type |\n"
-            "| `{country}` | Country of origin |\n"
-        )
+    templates = get_client_letter_templates()
 
     # Add new template
     with st.expander("Add New Template"):
@@ -307,7 +604,6 @@ def _render_client_letter_templates() -> None:
                 st.toast(f"Added template: {new_name.strip()}")
                 st.rerun()
 
-    # List / edit existing templates
     if not templates:
         st.info("No templates. Add one above.")
         return
@@ -331,168 +627,37 @@ def _render_client_letter_templates() -> None:
         save_client_letter_templates(templates)
         st.rerun()
 
-    if st.button("Save Client Letter Templates", type="primary", key="_cl_save"):
+    if st.button("Save Letter Templates", type="primary", key="_cl_save"):
         save_client_letter_templates(templates)
-        st.toast("Client letter templates saved!")
+        st.toast("Letter templates saved!")
 
 
-with tab_client:
+with tab_letters:
     _render_client_letter_templates()
 
 
 # =============================================================================
-# Tab 3: Government Cover Letter Templates
+# Tab 3: Court Filings (section-based — replaces old EOIR Templates)
 # =============================================================================
 
-def _render_govt_letter_templates() -> None:
-    st.caption(
-        "Templates for government cover letters used by the Filing Assembler tool. "
-        "Each case type has standard enclosed documents, purpose and closing paragraphs."
+with tab_court:
+    _render_section_based_tab(
+        caption=(
+            "Templates for court filings — motions, notices, certificates of "
+            "service, and other EOIR documents. Each template has toggleable "
+            "sections with merge field placeholders."
+        ),
+        merge_fields=None,
+        get_fn=get_court_filing_templates,
+        save_fn=save_court_filing_templates,
+        categories=COURT_FILING_CATEGORIES,
+        key_prefix="cf",
+        default_foundation="eoir_pleading",
     )
-
-    templates = get_govt_letter_templates()
-    case_types = list(templates.keys())
-
-    if not case_types:
-        st.info("No government cover letter templates found.")
-        return
-
-    selected_case_type = st.selectbox(
-        "Case Type",
-        case_types,
-        key="_govt_case_type",
-    )
-
-    tpl = templates[selected_case_type]
-
-    st.markdown(f"**{selected_case_type}**")
-
-    # Form numbers
-    form_nums_str = st.text_input(
-        "Form Numbers (comma-separated)",
-        value=", ".join(tpl.get("form_numbers", [])),
-        key="_govt_forms",
-    )
-
-    # Filing offices
-    offices_str = st.text_area(
-        "Filing Offices (one per line)",
-        value="\n".join(tpl.get("filing_offices", [])),
-        key="_govt_offices",
-        height=120,
-    )
-
-    # Standard enclosed docs
-    docs_str = st.text_area(
-        "Standard Enclosed Documents (one per line)",
-        value="\n".join(tpl.get("standard_enclosed_docs", [])),
-        key="_govt_docs",
-        height=200,
-    )
-
-    # Purpose paragraph
-    purpose = st.text_area(
-        "Purpose Paragraph",
-        value=tpl.get("purpose_paragraph", ""),
-        key="_govt_purpose",
-        height=150,
-    )
-
-    # Closing paragraph
-    closing = st.text_area(
-        "Closing Paragraph",
-        value=tpl.get("closing_paragraph", ""),
-        key="_govt_closing",
-        height=150,
-    )
-
-    if st.button("Save Government Templates", type="primary", key="_govt_save"):
-        tpl["form_numbers"] = [f.strip() for f in form_nums_str.split(",") if f.strip()]
-        tpl["filing_offices"] = [o.strip() for o in offices_str.strip().splitlines() if o.strip()]
-        tpl["standard_enclosed_docs"] = [d.strip() for d in docs_str.strip().splitlines() if d.strip()]
-        tpl["purpose_paragraph"] = purpose
-        tpl["closing_paragraph"] = closing
-        templates[selected_case_type] = tpl
-        save_govt_letter_templates(templates)
-        st.toast(f"Saved {selected_case_type} template!")
-
-
-with tab_govt:
-    _render_govt_letter_templates()
 
 
 # =============================================================================
-# Tab 4: EOIR Templates
-# =============================================================================
-
-def _render_eoir_templates() -> None:
-    st.caption(
-        "Templates for EOIR-specific filings — motions, notices, certificates "
-        "of service, and other court documents. Use {client_name}, {a_number}, "
-        "and {date} as placeholders."
-    )
-
-    templates = get_eoir_templates()
-
-    # Add new template
-    with st.expander("Add New Template"):
-        new_name = st.text_input("Template Name", key="_eoir_new_name", placeholder="e.g. Motion to Adjourn")
-        new_category = st.selectbox("Category", EOIR_CATEGORIES, key="_eoir_new_cat")
-        new_body = st.text_area("Body", key="_eoir_new_body", height=250)
-        if st.button("Add Template", type="primary", key="_eoir_add"):
-            if not new_name.strip():
-                st.warning("Template name is required.")
-            else:
-                templates.append({
-                    "id": f"eoir_{int(time.time() * 1000)}",
-                    "name": new_name.strip(),
-                    "category": new_category,
-                    "body": new_body,
-                })
-                save_eoir_templates(templates)
-                st.toast(f"Added template: {new_name.strip()}")
-                st.rerun()
-
-    # List / edit existing templates
-    if not templates:
-        st.info("No EOIR templates. Add one above.")
-        return
-
-    st.markdown(f"**{len(templates)} template{'s' if len(templates) != 1 else ''}**")
-
-    templates_to_delete: list[int] = []
-
-    for idx, tpl in enumerate(templates):
-        with st.expander(f"{tpl.get('name', f'Template {idx + 1}')} ({tpl.get('category', 'Other')})"):
-            tpl["name"] = st.text_input("Name", value=tpl.get("name", ""), key=f"_eoir_name_{idx}")
-            tpl["category"] = st.selectbox(
-                "Category",
-                EOIR_CATEGORIES,
-                index=EOIR_CATEGORIES.index(tpl.get("category", "Other")) if tpl.get("category", "Other") in EOIR_CATEGORIES else len(EOIR_CATEGORIES) - 1,
-                key=f"_eoir_cat_{idx}",
-            )
-            tpl["body"] = st.text_area("Body", value=tpl.get("body", ""), key=f"_eoir_body_{idx}", height=300)
-            if st.button("Delete", key=f"_eoir_del_{idx}"):
-                templates_to_delete.append(idx)
-
-    if templates_to_delete:
-        for idx in sorted(templates_to_delete, reverse=True):
-            removed = templates.pop(idx)
-            st.toast(f"Removed template: {removed.get('name', '')}")
-        save_eoir_templates(templates)
-        st.rerun()
-
-    if st.button("Save EOIR Templates", type="primary", key="_eoir_save"):
-        save_eoir_templates(templates)
-        st.toast("EOIR templates saved!")
-
-
-with tab_eoir:
-    _render_eoir_templates()
-
-
-# =============================================================================
-# Tab 5: Brief Sections
+# Tab 4: Legal Briefs
 # =============================================================================
 
 def _render_brief_config_editor() -> None:
@@ -623,7 +788,7 @@ def _render_brief_assembler() -> None:
 
     selected_type = st.selectbox("Brief type", type_names, key="_bs_assemble_type")
 
-    # Detect brief type change → reset canvas
+    # Detect brief type change -> reset canvas
     prev_type = st.session_state.get("_bs_prev_type", "")
     type_changed = selected_type != prev_type
     if type_changed:
@@ -769,5 +934,708 @@ def _render_brief_sections() -> None:
         _render_brief_assembler()
 
 
-with tab_brief:
+with tab_briefs:
     _render_brief_sections()
+
+
+# =============================================================================
+# Tab 5: Declarations (question-based sections)
+# =============================================================================
+
+def _render_declaration_templates() -> None:
+    st.caption(
+        "Templates for declarations — each has sections with guided questions "
+        "and tips for attorneys. Used by the Declaration Drafter tool."
+    )
+    _render_merge_fields_expander("dt")
+
+    templates = get_declaration_templates()
+
+    # Add new template
+    with st.expander("Add New Declaration Template"):
+        new_name = st.text_input("Template Name", key="_dt_new_name", placeholder="e.g. Bond Declaration")
+        if st.button("Add Template", type="primary", key="_dt_add"):
+            if not new_name.strip():
+                st.warning("Template name is required.")
+            else:
+                templates.append({
+                    "id": f"decl_{int(time.time() * 1000)}",
+                    "name": new_name.strip(),
+                    "sections": [],
+                })
+                save_declaration_templates(templates)
+                st.toast(f"Added template: {new_name.strip()}")
+                st.rerun()
+
+    if not templates:
+        st.info("No declaration templates yet. Add one above.")
+        return
+
+    st.markdown(f"**{len(templates)} template{'s' if len(templates) != 1 else ''}**")
+
+    templates_to_delete: list[int] = []
+
+    for idx, tpl in enumerate(templates):
+        with st.expander(tpl.get("name", f"Template {idx + 1}")):
+            tpl["name"] = st.text_input("Name", value=tpl.get("name", ""), key=f"_dt_name_{idx}")
+
+            sections = tpl.get("sections", [])
+            secs_to_delete: list[int] = []
+
+            for si, sec in enumerate(sections):
+                st.markdown(f"---\n**Section: {sec.get('title', '')}**")
+                sec["title"] = st.text_input("Section Title", value=sec.get("title", ""), key=f"_dt_st_{idx}_{si}")
+                sec["instructions"] = st.text_area("Instructions", value=sec.get("instructions", ""), key=f"_dt_si_{idx}_{si}", height=80)
+
+                # Questions
+                questions = sec.get("questions", [])
+                qs_to_delete: list[int] = []
+
+                for qi, q in enumerate(questions):
+                    c1, c2 = st.columns([8, 1])
+                    with c1:
+                        q["label"] = st.text_input("Question", value=q.get("label", ""), key=f"_dt_ql_{idx}_{si}_{qi}")
+                        q["tip"] = st.text_input("Tip", value=q.get("tip", ""), key=f"_dt_qt_{idx}_{si}_{qi}")
+                    with c2:
+                        st.markdown("<br><br>", unsafe_allow_html=True)
+                        if st.button("X", key=f"_dt_qd_{idx}_{si}_{qi}"):
+                            qs_to_delete.append(qi)
+
+                for qi in sorted(qs_to_delete, reverse=True):
+                    questions.pop(qi)
+
+                if st.button("+ Add Question", key=f"_dt_qa_{idx}_{si}"):
+                    questions.append({"id": f"q_{int(time.time() * 1000)}", "label": "", "tip": ""})
+                    st.rerun()
+
+                sec["questions"] = questions
+
+                if st.button("Delete Section", key=f"_dt_sd_{idx}_{si}"):
+                    secs_to_delete.append(si)
+
+            for si in sorted(secs_to_delete, reverse=True):
+                sections.pop(si)
+
+            if st.button("+ Add Section", key=f"_dt_sa_{idx}"):
+                sections.append({"id": f"sec_{int(time.time() * 1000)}", "title": "", "instructions": "", "questions": []})
+                st.rerun()
+
+            tpl["sections"] = sections
+
+            if st.button("Delete Template", key=f"_dt_del_{idx}"):
+                templates_to_delete.append(idx)
+
+    if templates_to_delete:
+        for idx in sorted(templates_to_delete, reverse=True):
+            removed = templates.pop(idx)
+            st.toast(f"Removed template: {removed.get('name', '')}")
+        save_declaration_templates(templates)
+        st.rerun()
+
+    if st.button("Save Declaration Templates", type="primary", key="_dt_save"):
+        save_declaration_templates(templates)
+        st.toast("Declaration templates saved!")
+
+
+with tab_decl:
+    _render_declaration_templates()
+
+
+# =============================================================================
+# Tab 6: Filing Packets (was Government Cover Letters)
+# =============================================================================
+
+def _render_govt_letter_templates() -> None:
+    st.caption(
+        "Templates for government cover letters used by the Filing Assembler tool. "
+        "Each case type has standard enclosed documents, purpose and closing paragraphs."
+    )
+    _render_merge_fields_expander("govt")
+
+    templates = get_govt_letter_templates()
+    case_types = list(templates.keys())
+
+    # Add new case type
+    with st.expander("Add New Case Type"):
+        new_ct_name = st.text_input("Case Type Name", key="_govt_new_ct", placeholder="e.g. Humanitarian Parole")
+        if st.button("Add Case Type", type="primary", key="_govt_add_ct"):
+            if not new_ct_name.strip():
+                st.warning("Case type name is required.")
+            elif new_ct_name.strip() in templates:
+                st.warning("Case type already exists.")
+            else:
+                templates[new_ct_name.strip()] = {
+                    "form_numbers": [],
+                    "filing_offices": [],
+                    "standard_enclosed_docs": [],
+                    "purpose_paragraph": "",
+                    "closing_paragraph": "",
+                }
+                save_govt_letter_templates(templates)
+                st.toast(f"Added case type: {new_ct_name.strip()}")
+                st.rerun()
+
+    if not case_types:
+        st.info("No government cover letter templates found. Add one above.")
+        return
+
+    selected_case_type = st.selectbox(
+        "Case Type",
+        case_types,
+        key="_govt_case_type",
+    )
+
+    tpl = templates[selected_case_type]
+
+    st.markdown(f"**{selected_case_type}**")
+
+    # Form numbers
+    form_nums_str = st.text_input(
+        "Form Numbers (comma-separated)",
+        value=", ".join(tpl.get("form_numbers", [])),
+        key="_govt_forms",
+    )
+
+    # Filing offices
+    offices_str = st.text_area(
+        "Filing Offices (one per line)",
+        value="\n".join(tpl.get("filing_offices", [])),
+        key="_govt_offices",
+        height=120,
+    )
+
+    # Standard enclosed docs
+    docs_str = st.text_area(
+        "Standard Enclosed Documents (one per line)",
+        value="\n".join(tpl.get("standard_enclosed_docs", [])),
+        key="_govt_docs",
+        height=200,
+    )
+
+    # Purpose paragraph
+    purpose = st.text_area(
+        "Purpose Paragraph",
+        value=tpl.get("purpose_paragraph", ""),
+        key="_govt_purpose",
+        height=150,
+    )
+
+    # Closing paragraph
+    closing = st.text_area(
+        "Closing Paragraph",
+        value=tpl.get("closing_paragraph", ""),
+        key="_govt_closing",
+        height=150,
+    )
+
+    if st.button("Save Filing Packet Templates", type="primary", key="_govt_save"):
+        tpl["form_numbers"] = [f.strip() for f in form_nums_str.split(",") if f.strip()]
+        tpl["filing_offices"] = [o.strip() for o in offices_str.strip().splitlines() if o.strip()]
+        tpl["standard_enclosed_docs"] = [d.strip() for d in docs_str.strip().splitlines() if d.strip()]
+        tpl["purpose_paragraph"] = purpose
+        tpl["closing_paragraph"] = closing
+        templates[selected_case_type] = tpl
+        save_govt_letter_templates(templates)
+        st.toast(f"Saved {selected_case_type} template!")
+
+
+with tab_packets:
+    _render_govt_letter_templates()
+
+
+# =============================================================================
+# Tab 7: Contracts (section-based)
+# =============================================================================
+
+with tab_contracts:
+    _render_section_based_tab(
+        caption=(
+            "Templates for retainer agreements, flat fee agreements, and "
+            "limited scope engagements. Each has toggleable sections."
+        ),
+        merge_fields=None,
+        get_fn=get_contract_templates,
+        save_fn=save_contract_templates,
+        categories=None,
+        key_prefix="ct",
+    )
+
+
+# =============================================================================
+# Tab 8: Checklists (case-type task lists)
+# =============================================================================
+
+def _render_checklist_templates() -> None:
+    st.caption(
+        "Templates for case checklists — each case type has a list of tasks "
+        "organized by category. Used by the Case Checklist tool."
+    )
+
+    templates = get_checklist_templates()
+    case_types = list(templates.keys())
+
+    if not case_types:
+        st.info("No checklist templates found.")
+        return
+
+    selected_type = st.selectbox("Case Type", case_types, key="_ck_case_type")
+    tasks = templates.get(selected_type, [])
+
+    # Group by category
+    for cat in CHECKLIST_CATEGORIES:
+        cat_tasks = [t for t in tasks if t.get("category") == cat]
+        with st.expander(f"{cat} ({len(cat_tasks)} tasks)", expanded=False):
+            tasks_to_delete: list[int] = []
+            for ti, task in enumerate(cat_tasks):
+                # Find global index
+                global_idx = tasks.index(task)
+                c1, c2 = st.columns([8, 1])
+                with c1:
+                    new_title = st.text_input(
+                        "Task",
+                        value=task.get("title", ""),
+                        key=f"_ck_t_{selected_type}_{cat}_{ti}",
+                        label_visibility="collapsed",
+                    )
+                    task["title"] = new_title
+                with c2:
+                    if st.button("X", key=f"_ck_td_{selected_type}_{cat}_{ti}"):
+                        tasks_to_delete.append(global_idx)
+
+            if tasks_to_delete:
+                for gi in sorted(tasks_to_delete, reverse=True):
+                    tasks.pop(gi)
+                templates[selected_type] = tasks
+                save_checklist_templates(templates)
+                st.rerun()
+
+            # Add task to this category
+            if st.button(f"+ Add {cat} Task", key=f"_ck_ta_{selected_type}_{cat}"):
+                tasks.append({"title": "", "category": cat})
+                templates[selected_type] = tasks
+                save_checklist_templates(templates)
+                st.rerun()
+
+    # Add new case type
+    st.divider()
+    c1, c2 = st.columns([4, 1])
+    with c1:
+        new_ct = st.text_input("New Case Type", key="_ck_new_ct", placeholder="e.g. Humanitarian Parole")
+    with c2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Add", key="_ck_add_ct") and new_ct.strip():
+            if new_ct.strip() not in templates:
+                templates[new_ct.strip()] = []
+                save_checklist_templates(templates)
+                st.toast(f"Added case type: {new_ct.strip()}")
+                st.rerun()
+
+    if st.button("Save Checklist Templates", type="primary", key="_ck_save"):
+        templates[selected_type] = tasks
+        save_checklist_templates(templates)
+        st.toast("Checklist templates saved!")
+
+
+with tab_checklists:
+    _render_checklist_templates()
+
+
+# =============================================================================
+# Tab 9: Outcome Documents (section-based)
+# =============================================================================
+
+with tab_outcomes:
+    _render_section_based_tab(
+        caption=(
+            "Templates for post-decision documents — approval letters, RFE "
+            "response covers, and denial appeal covers. Each has toggleable "
+            "sections with merge field placeholders."
+        ),
+        merge_fields=None,
+        get_fn=get_outcome_templates,
+        save_fn=save_outcome_templates,
+        categories=None,
+        key_prefix="od",
+    )
+
+
+# =============================================================================
+# Tab 10: Merge Fields
+# =============================================================================
+
+def _render_merge_fields_tab() -> None:
+    """Manage which Salesforce fields are available as merge fields."""
+    st.caption(
+        "Manage which Salesforce fields are available as merge fields "
+        "across all template tabs. Enable fields, set aliases, and "
+        "they\u2019ll appear in the \u201cAvailable merge fields\u201d "
+        "reference table on every tab."
+    )
+
+    # Refresh All button
+    if st.button("Refresh All from Salesforce", key="_mf_refresh_all"):
+        try:
+            results = refresh_all_field_caches()
+            summary = ", ".join(f"{label}: {cnt}" for label, cnt in results.items())
+            st.toast(f"Refreshed all objects ({summary})")
+            st.rerun()
+        except Exception as exc:
+            st.error(f"Failed to refresh: {exc}")
+
+    # Duplicate alias warning
+    dupes = find_duplicate_aliases()
+    if dupes:
+        lines = []
+        for alias, locs in dupes.items():
+            lines.append(f"- **{{{alias}}}** used by: {', '.join(locs)}")
+        st.warning(
+            "**Duplicate aliases detected** — these will conflict during "
+            "template resolution. Rename one of each pair:\n\n"
+            + "\n".join(lines)
+        )
+
+    config = get_merge_field_config()
+
+    # Build subtab labels with enabled counts
+    tab_labels = []
+    for obj in MANAGED_OBJECTS:
+        count = len(config.get(obj["api_name"], []))
+        tab_labels.append(f"{obj['tab_label']} ({count})")
+
+    sub_tabs = st.tabs(tab_labels)
+
+    for obj_def, sub_tab in zip(MANAGED_OBJECTS, sub_tabs):
+        with sub_tab:
+            _render_object_subtab(obj_def, config)
+
+
+def _render_object_subtab(obj_def: dict, config: dict) -> None:
+    """Render one SF object subtab inside the Merge Fields tab."""
+    api_name = obj_def["api_name"]
+    tab_label = obj_def["tab_label"]
+
+    # Refresh button
+    col_r, col_ts = st.columns([1, 3])
+    with col_r:
+        if st.button("Refresh from Salesforce", key=f"_mf_refresh_{api_name}"):
+            try:
+                fields = refresh_field_cache(api_name)
+                st.toast(f"Loaded {len(fields)} fields from {tab_label}")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Failed to refresh: {exc}")
+    with col_ts:
+        ts = config.get("_cache_timestamp")
+        if ts:
+            st.caption(f"Last refresh: {ts[:19].replace('T', ' ')} UTC")
+        else:
+            st.caption("Not yet refreshed from Salesforce")
+
+    cached_fields = get_field_cache(api_name)
+    enabled_fields: list[dict] = config.get(api_name, [])
+    enabled_map = {f["sf_api_name"]: f for f in enabled_fields}
+    enabled_api_names = set(enabled_map.keys())
+
+    if not cached_fields:
+        # Show only enabled (default) fields if no cache
+        st.info(
+            "Click \u201cRefresh from Salesforce\u201d to load all available "
+            "fields. Currently showing only pre-enabled defaults."
+        )
+        _render_enabled_fields_editor(api_name, enabled_fields, config)
+        return
+
+    # Filters
+    col_search, col_filter = st.columns([3, 1])
+    with col_search:
+        search = st.text_input(
+            "Search fields", key=f"_mf_search_{api_name}",
+            placeholder="Filter by name or label...",
+        )
+    with col_filter:
+        show_enabled_only = st.checkbox(
+            "Show only enabled", key=f"_mf_enabled_only_{api_name}",
+        )
+
+    # Build display list
+    filtered = cached_fields
+    if search:
+        q = search.lower()
+        filtered = [
+            f for f in filtered
+            if q in f["name"].lower() or q in f["label"].lower()
+        ]
+    if show_enabled_only:
+        filtered = [f for f in filtered if f["name"] in enabled_api_names]
+
+    st.markdown(f"**{len(filtered)}** fields shown \u00b7 **{len(enabled_fields)}** enabled")
+
+    # Track which enabled fields appear in the filtered view so we can
+    # preserve fields that are NOT visible (filtered out / scrolled past).
+    visible_api_names: set[str] = set()
+    new_enabled_from_view: list[dict] = []
+
+    for sf_field in filtered:
+        fname = sf_field["name"]
+        flabel = sf_field["label"]
+        ftype = sf_field.get("type", "")
+        is_enabled = fname in enabled_api_names
+        existing = enabled_map.get(fname)
+        visible_api_names.add(fname)
+
+        # Use SF API name in widget key for stable identity across refreshes
+        safe_key = fname.replace(".", "_")
+
+        col_toggle, col_info, col_alias, col_desc = st.columns([0.5, 2.5, 2, 3])
+
+        with col_toggle:
+            new_val = st.checkbox(
+                "on", value=is_enabled, label_visibility="collapsed",
+                key=f"_mf_tog_{api_name}_{safe_key}",
+            )
+        with col_info:
+            if is_enabled and existing:
+                st.markdown(f"**{flabel}**  \n`{fname}` \u00b7 {ftype} \u00b7 use as `{{{existing['alias']}}}`")
+            else:
+                st.markdown(f"**{flabel}**  \n`{fname}` \u00b7 {ftype}")
+
+        if new_val:
+            default_alias = existing["alias"] if existing else fname.lower().rstrip("__c").replace("__", "_")
+            default_label = existing["label"] if existing else flabel
+
+            with col_alias:
+                alias = st.text_input(
+                    "Alias", value=default_alias,
+                    key=f"_mf_alias_{api_name}_{safe_key}",
+                    label_visibility="collapsed",
+                    placeholder="placeholder_name",
+                    help=f"Use as {{{default_alias}}} in templates",
+                )
+            with col_desc:
+                label = st.text_input(
+                    "Description", value=default_label,
+                    key=f"_mf_desc_{api_name}_{safe_key}",
+                    label_visibility="collapsed",
+                    placeholder="Description",
+                )
+
+            new_enabled_from_view.append({
+                "sf_api_name": fname,
+                "alias": alias,
+                "label": label,
+                "type": ftype,
+            })
+
+    # Merge: keep enabled fields that weren't visible (not affected by
+    # current search/filter), plus the fields from the visible view.
+    merged: list[dict] = [
+        f for f in enabled_fields if f["sf_api_name"] not in visible_api_names
+    ]
+    merged.extend(new_enabled_from_view)
+
+    if st.button("Save", type="primary", key=f"_mf_save_{api_name}"):
+        config[api_name] = merged
+        save_merge_field_config(config)
+        st.toast(f"Saved {len(merged)} {tab_label} merge fields!")
+
+
+def _render_enabled_fields_editor(
+    api_name: str, enabled_fields: list[dict], config: dict,
+) -> None:
+    """Simplified editor when no SF cache exists — edit enabled defaults only."""
+    if not enabled_fields:
+        st.info("No fields enabled. Refresh from Salesforce to see available fields.")
+        return
+
+    st.markdown(f"**{len(enabled_fields)} enabled fields**")
+
+    fields_to_remove: list[int] = []
+    for fi, field in enumerate(enabled_fields):
+        col_x, col_api, col_alias, col_desc = st.columns([0.5, 2.5, 2, 3])
+        with col_x:
+            if st.button("X", key=f"_mf_rm_{api_name}_{fi}"):
+                fields_to_remove.append(fi)
+        with col_api:
+            st.markdown(f"`{field['sf_api_name']}` \u00b7 {field.get('type', '')} \u00b7 use as `{{{field['alias']}}}`")
+        with col_alias:
+            field["alias"] = st.text_input(
+                "Alias", value=field["alias"],
+                key=f"_mf_ea_{api_name}_{fi}",
+                label_visibility="collapsed",
+            )
+        with col_desc:
+            field["label"] = st.text_input(
+                "Desc", value=field["label"],
+                key=f"_mf_ed_{api_name}_{fi}",
+                label_visibility="collapsed",
+            )
+
+    for fi in sorted(fields_to_remove, reverse=True):
+        enabled_fields.pop(fi)
+
+    if st.button("Save", type="primary", key=f"_mf_save_{api_name}"):
+        config[api_name] = enabled_fields
+        save_merge_field_config(config)
+        st.toast("Saved!")
+
+
+with tab_merge:
+    _render_merge_fields_tab()
+
+
+# =============================================================================
+# Tab 11: Foundations
+# =============================================================================
+
+def _render_foundations_tab() -> None:
+    """Edit foundation layout templates (Cover Letter / EOIR Pleading Paper)."""
+    st.caption(
+        "Foundation templates define the structural layout for documents. "
+        "Each foundation has a set of sections (letterhead, date, recipient, body, "
+        "signature, etc.) that individual templates inherit and override."
+    )
+
+    # Foundation selector
+    foundation_choice = st.radio(
+        "Foundation",
+        ["Cover Letter", "EOIR Pleading Paper"],
+        horizontal=True,
+        key="_fnd_choice",
+    )
+    foundation_id = "cover_letter" if foundation_choice == "Cover Letter" else "eoir_pleading"
+    foundation = get_foundation_by_id(foundation_id)
+
+    # Detect foundation change for canvas reset
+    prev_fnd = st.session_state.get("_fnd_prev_id")
+    fnd_changed = prev_fnd != foundation_id
+    if fnd_changed:
+        st.session_state["_fnd_prev_id"] = foundation_id
+        st.session_state.pop("_fnd_canvas_order", None)
+        st.session_state.pop("_fnd_canvas_edits", None)
+        st.session_state.pop("_fnd_disabled_ids", None)
+
+    # -- Section list (collapsible) ----------------------------------------------
+    with st.expander("Sections", expanded=True):
+        sections = foundation.get("sections", [])
+        secs_to_delete: list[int] = []
+
+        for si, sec in enumerate(sections):
+            with st.expander(f"{si + 1}. {sec.get('label', 'Untitled')}", expanded=False):
+                sec["label"] = st.text_input(
+                    "Label", value=sec.get("label", ""),
+                    key=f"_fnd_sl_{foundation_id}_{si}",
+                )
+                sec["block_type"] = st.text_input(
+                    "Block Type", value=sec.get("block_type", "paragraph"),
+                    key=f"_fnd_bt_{foundation_id}_{si}",
+                )
+                sec["enabled_by_default"] = st.checkbox(
+                    "Enabled by default",
+                    value=sec.get("enabled_by_default", True),
+                    key=f"_fnd_en_{foundation_id}_{si}",
+                )
+                sec["default_content"] = st.text_area(
+                    "Default Content (HTML)",
+                    value=sec.get("default_content", ""),
+                    key=f"_fnd_dc_{foundation_id}_{si}",
+                    height=100,
+                )
+                if st.button("Delete Section", key=f"_fnd_sd_{foundation_id}_{si}"):
+                    secs_to_delete.append(si)
+
+        for si in sorted(secs_to_delete, reverse=True):
+            sections.pop(si)
+
+        col_add, col_save = st.columns([1, 1])
+        with col_add:
+            if st.button("+ Add Section", key=f"_fnd_sa_{foundation_id}"):
+                sections.append({
+                    "id": f"sec_{int(time.time() * 1000)}",
+                    "label": "New Section",
+                    "block_type": "paragraph",
+                    "default_content": "",
+                    "enabled_by_default": True,
+                })
+                st.rerun()
+        with col_save:
+            if st.button("Save Foundation", type="primary", key=f"_fnd_save_{foundation_id}"):
+                foundation["sections"] = sections
+                save_foundation(foundation)
+                st.toast(f"Saved {foundation['name']} foundation!")
+
+        foundation["sections"] = sections
+
+    # -- Full-width preview editor below ----------------------------------------
+    st.markdown("**Preview Editor** — click any section to edit with rich text")
+
+    canvas_sections = []
+    disabled_ids = []
+    for sec in foundation.get("sections", []):
+        canvas_sections.append({
+            "id": sec["id"],
+            "label": sec.get("label", ""),
+            "block_type": sec.get("block_type", "paragraph"),
+            "content": sec.get("default_content", ""),
+            "default_content": sec.get("default_content", ""),
+            "enabled_by_default": sec.get("enabled_by_default", True),
+        })
+        if not sec.get("enabled_by_default", True):
+            disabled_ids.append(sec["id"])
+
+    mf_list = []
+    for alias, label, source in get_enabled_merge_fields():
+        mf_list.append({"alias": alias, "label": label, "source": source})
+
+    canvas_result = _template_canvas_component(
+        foundation_id=foundation_id,
+        sections=canvas_sections,
+        block_order=st.session_state.get("_fnd_canvas_order"),
+        block_edits=st.session_state.get("_fnd_canvas_edits", {}),
+        disabled_ids=st.session_state.get("_fnd_disabled_ids", disabled_ids),
+        merge_fields=mf_list,
+        mode="page_view",
+        reset=fnd_changed,
+        _foundation_changed=fnd_changed,
+        key=f"_fnd_canvas_{foundation_id}",
+        height=800,
+    )
+
+    if canvas_result:
+        if canvas_result.get("action") == "reset":
+            st.session_state.pop("_fnd_canvas_order", None)
+            st.session_state.pop("_fnd_canvas_edits", None)
+            st.session_state.pop("_fnd_disabled_ids", None)
+            st.rerun()
+        else:
+            st.session_state["_fnd_canvas_order"] = canvas_result.get("block_order")
+            st.session_state["_fnd_canvas_edits"] = canvas_result.get("block_edits", {})
+            st.session_state["_fnd_disabled_ids"] = canvas_result.get("disabled_ids", [])
+
+    _render_export_buttons(
+        foundation_id=foundation_id,
+        canvas_sections=canvas_sections,
+        order_key="_fnd_canvas_order",
+        edits_key="_fnd_canvas_edits",
+        disabled_key="_fnd_disabled_ids",
+        default_disabled=disabled_ids,
+        key_prefix="fnd_exp",
+    )
+
+    # Save canvas edits back to the foundation
+    if st.button("Save Preview Edits to Foundation", type="primary", key=f"_fnd_cv_save_{foundation_id}"):
+        edits = st.session_state.get("_fnd_canvas_edits", {})
+        if edits:
+            sec_map = {s["id"]: s for s in foundation.get("sections", [])}
+            for sec_id, html_content in edits.items():
+                if sec_id in sec_map:
+                    sec_map[sec_id]["default_content"] = html_content
+            save_foundation(foundation)
+            st.session_state.pop("_fnd_canvas_edits", None)
+            st.toast(f"Saved preview edits to {foundation['name']}!")
+            st.rerun()
+        else:
+            st.toast("No edits to save.")
+
+
+with tab_foundations:
+    _render_foundations_tab()

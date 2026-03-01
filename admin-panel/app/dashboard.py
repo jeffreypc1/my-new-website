@@ -1261,134 +1261,223 @@ def _editor_components():
 
 
 def _editor_comp_eoir_template():
-    """Configure the EOIR cover page template used by the Filing Assembler."""
-    _DEFAULT_EOIR_TPL = """\
-{attorney_name}
-{bar_number}
-{firm_name}
-{firm_address}
-{contact_line}
-{email_line}
+    """Section-based EOIR cover page template builder with multi-template support."""
+    # Lazy import — cover-letters tool provides the store module
+    try:
+        _cl_path = str(Path(__file__).resolve().parent.parent.parent / "cover-letters")
+        if _cl_path not in sys.path:
+            sys.path.insert(0, _cl_path)
+        from app.eoir_template_store import (
+            get_eoir_cover_templates,
+            save_eoir_cover_templates,
+            EOIR_MERGE_VARIABLES,
+            DEFAULT_EOIR_COVER_TEMPLATES,
+        )
+    except ImportError:
+        st.error("Could not load EOIR template store from cover-letters tool.")
+        return
 
-UNITED STATES DEPARTMENT OF JUSTICE
-EXECUTIVE OFFICE FOR IMMIGRATION REVIEW
-IMMIGRATION COURT
-{court_location}
-{court_address}
-
-IN THE MATTERS OF:
-
-{party_block}
-
-RESPONDENT'S SUBMISSION
-{submission_line_1}
-{submission_sub_line}
-
-{submission_type}
-
-{date}
-
-The following documents are respectfully submitted to the Immigration Court
-on behalf of the above-named respondent:
-
-{document_list}
-
-Respectfully submitted,
-
-____________________________
-{attorney_name}
-{firm_name}
-Counsel for Respondent
-
-
-CERTIFICATE OF SERVICE
-
-I hereby certify that on {date}, a copy of the foregoing submission and all
-enclosed documents was served upon the Office of the Chief Counsel,
-Department of Homeland Security, by {service_method}, at the following address:
-
-{dhs_address}
-
-____________________________
-{served_by_name}
-{served_by_bar}
-"""
-
-    st.markdown("### EOIR Cover Page Template")
+    st.markdown("### EOIR Cover Page Templates")
     st.caption(
-        "Customize the EOIR submission cover page layout using `{variable}` placeholders. "
-        "The Filing Assembler replaces placeholders with live case data."
+        "Create and manage section-based EOIR submission templates. "
+        "Each template is built from ordered sections containing `{variable}` placeholders."
     )
 
-    config = load_config("components") or {}
-    saved_tpl = config.get("eoir_cover_template", "") or ""
-    current_tpl = saved_tpl if saved_tpl else _DEFAULT_EOIR_TPL
+    # ── Load templates into session state ─────────────────────────────────
+    _SS_KEY = "_admin_eoir_templates"
+    _SS_SEL = "_admin_eoir_tpl_sel"
+    _SS_DIRTY = "_admin_eoir_tpl_dirty"
 
-    _reset_col, _ = st.columns([1, 3])
-    with _reset_col:
-        if st.button("Reset to Default Template", key="_eoir_tpl_reset"):
-            config.pop("eoir_cover_template", None)
-            save_config("components", config)
-            st.toast("Template reset to default. Restart Filing Assembler to apply.")
+    if _SS_KEY not in st.session_state:
+        st.session_state[_SS_KEY] = get_eoir_cover_templates()
+    if _SS_DIRTY not in st.session_state:
+        st.session_state[_SS_DIRTY] = False
+
+    templates: list[dict] = st.session_state[_SS_KEY]
+    tpl_names = [t.get("name", t.get("id", "?")) for t in templates]
+
+    # ── Template selector row ─────────────────────────────────────────────
+    _sel_col, _new_col, _dup_col = st.columns([3, 1, 1])
+    with _sel_col:
+        _sel_idx = st.session_state.get(_SS_SEL, 0)
+        if _sel_idx >= len(tpl_names):
+            _sel_idx = 0
+        _chosen_idx = st.selectbox(
+            "Template",
+            range(len(tpl_names)),
+            format_func=lambda i: tpl_names[i],
+            index=_sel_idx,
+            key="_eoir_tpl_selector_w",
+        )
+        if _chosen_idx != st.session_state.get(_SS_SEL):
+            st.session_state[_SS_SEL] = _chosen_idx
+            st.rerun()
+    with _new_col:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("+ New", key="_eoir_tpl_new"):
+            new_tpl = {
+                "id": f"custom_{len(templates) + 1}",
+                "name": "New Template",
+                "sections": [
+                    {"id": "section_1", "label": "Section 1", "content": ""},
+                ],
+            }
+            templates.append(new_tpl)
+            st.session_state[_SS_KEY] = templates
+            st.session_state[_SS_SEL] = len(templates) - 1
+            st.session_state[_SS_DIRTY] = True
+            st.rerun()
+    with _dup_col:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Duplicate", key="_eoir_tpl_dup"):
+            import copy as _copy
+            src = _copy.deepcopy(templates[_chosen_idx])
+            src["id"] = f"{src['id']}_copy"
+            src["name"] = f"{src['name']} (Copy)"
+            templates.append(src)
+            st.session_state[_SS_KEY] = templates
+            st.session_state[_SS_SEL] = len(templates) - 1
+            st.session_state[_SS_DIRTY] = True
             st.rerun()
 
-    if "inp_admin_eoir_tpl" not in st.session_state:
-        st.session_state["inp_admin_eoir_tpl"] = current_tpl
-    _edited_tpl = st.text_area(
-        "Template",
-        key="inp_admin_eoir_tpl",
-        height=600,
-        label_visibility="collapsed",
-    )
+    # ── Current template ──────────────────────────────────────────────────
+    cur = templates[_chosen_idx]
+    _name_key = f"_eoir_tpl_name_{_chosen_idx}"
+    new_name = st.text_input("Template Name", value=cur.get("name", ""), key=_name_key)
+    if new_name != cur.get("name"):
+        cur["name"] = new_name
+        st.session_state[_SS_DIRTY] = True
 
+    # ── Sections ──────────────────────────────────────────────────────────
+    st.markdown("**Sections**")
+    sections: list[dict] = cur.get("sections", [])
+    _var_names = [v[0] for v in EOIR_MERGE_VARIABLES]
+
+    _sections_changed = False
+    for si, sec in enumerate(sections):
+        with st.container(border=True):
+            _lbl_col, _up_col, _dn_col, _del_col = st.columns([4, 0.5, 0.5, 0.5])
+            with _lbl_col:
+                _new_label = st.text_input(
+                    "Section label",
+                    value=sec.get("label", ""),
+                    key=f"_eoir_sec_lbl_{_chosen_idx}_{si}",
+                    label_visibility="collapsed",
+                    placeholder=f"Section {si + 1}",
+                )
+                if _new_label != sec.get("label"):
+                    sec["label"] = _new_label
+                    _sections_changed = True
+            with _up_col:
+                if st.button("↑", key=f"_eoir_sec_up_{_chosen_idx}_{si}", disabled=si == 0):
+                    sections[si], sections[si - 1] = sections[si - 1], sections[si]
+                    st.session_state[_SS_DIRTY] = True
+                    st.rerun()
+            with _dn_col:
+                if st.button("↓", key=f"_eoir_sec_dn_{_chosen_idx}_{si}", disabled=si == len(sections) - 1):
+                    sections[si], sections[si + 1] = sections[si + 1], sections[si]
+                    st.session_state[_SS_DIRTY] = True
+                    st.rerun()
+            with _del_col:
+                if st.button("✕", key=f"_eoir_sec_del_{_chosen_idx}_{si}", disabled=len(sections) <= 1):
+                    sections.pop(si)
+                    st.session_state[_SS_DIRTY] = True
+                    st.rerun()
+
+            _new_content = st.text_area(
+                "Content",
+                value=sec.get("content", ""),
+                key=f"_eoir_sec_content_{_chosen_idx}_{si}",
+                height=150,
+                label_visibility="collapsed",
+            )
+            if _new_content != sec.get("content"):
+                sec["content"] = _new_content
+                _sections_changed = True
+
+            # Insert Variable dropdown
+            _insert_key = f"_eoir_sec_insert_{_chosen_idx}_{si}"
+            _var_choice = st.selectbox(
+                "Insert Variable",
+                options=[""] + _var_names,
+                key=_insert_key,
+                label_visibility="collapsed",
+                format_func=lambda x: "Insert Variable..." if x == "" else f"{{{x}}}",
+            )
+            if _var_choice:
+                sec["content"] = (_new_content + f"\n{{{_var_choice}}}").lstrip("\n")
+                st.session_state[_SS_DIRTY] = True
+                st.session_state[_insert_key] = ""
+                st.rerun()
+
+    if _sections_changed:
+        st.session_state[_SS_DIRTY] = True
+
+    if st.button("+ Add Section", key="_eoir_add_section"):
+        _new_id = f"section_{len(sections) + 1}"
+        sections.append({"id": _new_id, "label": "", "content": ""})
+        st.session_state[_SS_DIRTY] = True
+        st.rerun()
+
+    # ── Action buttons ────────────────────────────────────────────────────
+    st.divider()
+    _save_col, _del_tpl_col, _reset_col = st.columns(3)
+    with _save_col:
+        if st.button("Save Template", type="primary", key="_eoir_tpl_save"):
+            # Sync any name/content changes back
+            for si, sec in enumerate(sections):
+                lbl_val = st.session_state.get(f"_eoir_sec_lbl_{_chosen_idx}_{si}")
+                if lbl_val is not None:
+                    sec["label"] = lbl_val
+                cnt_val = st.session_state.get(f"_eoir_sec_content_{_chosen_idx}_{si}")
+                if cnt_val is not None:
+                    sec["content"] = cnt_val
+            cur["sections"] = sections
+            name_val = st.session_state.get(_name_key)
+            if name_val is not None:
+                cur["name"] = name_val
+            # Generate slug id from name if still default
+            if cur.get("name") and cur["id"].startswith("custom_"):
+                cur["id"] = cur["name"].lower().replace(" ", "_").replace("(", "").replace(")", "")
+            save_eoir_cover_templates(templates)
+            st.session_state[_SS_DIRTY] = False
+            st.toast("EOIR template saved!")
+
+    with _del_tpl_col:
+        if st.button(
+            "Delete Template",
+            key="_eoir_tpl_delete",
+            disabled=len(templates) <= 1,
+        ):
+            templates.pop(_chosen_idx)
+            st.session_state[_SS_KEY] = templates
+            st.session_state[_SS_SEL] = max(0, _chosen_idx - 1)
+            save_eoir_cover_templates(templates)
+            st.session_state[_SS_DIRTY] = False
+            st.toast("Template deleted.")
+            st.rerun()
+
+    with _reset_col:
+        if st.button("Reset to Defaults", key="_eoir_tpl_reset"):
+            import copy as _copy
+            st.session_state[_SS_KEY] = _copy.deepcopy(DEFAULT_EOIR_COVER_TEMPLATES)
+            st.session_state[_SS_SEL] = 0
+            save_eoir_cover_templates(st.session_state[_SS_KEY])
+            st.session_state[_SS_DIRTY] = False
+            st.toast("All templates reset to defaults.")
+            st.rerun()
+
+    # ── Available Variables reference ─────────────────────────────────────
     with st.expander("Available Variables"):
-        st.markdown(
-            "| Placeholder | Description |\n"
-            "|---|---|\n"
-            "| `{attorney_name}` | Attorney full name |\n"
-            "| `{bar_number}` | Bar number (formatted as 'Bar No. X') |\n"
-            "| `{firm_name}` | Firm name |\n"
-            "| `{firm_address}` | Firm street address (multi-line) |\n"
-            "| `{firm_phone}` | Firm phone number |\n"
-            "| `{firm_fax}` | Firm fax number |\n"
-            "| `{firm_email}` | Firm email address |\n"
-            "| `{contact_line}` | Auto: 'Tel: X \\| Fax: Y' (omits blanks) |\n"
-            "| `{email_line}` | Auto: 'Email: X' or blank |\n"
-            "| `{court_location}` | Court city from Verify Case Details |\n"
-            "| `{court_address}` | Court address from case data |\n"
-            "| `{applicant_name}` | Primary applicant name |\n"
-            "| `{a_number}` | A-Number |\n"
-            "| `{case_type}` | Legal case type |\n"
-            "| `{party_block}` | Auto: formatted applicant + beneficiaries block |\n"
-            "| `{submission_type}` | Submission description text |\n"
-            "| `{submission_line_1}` | Submission Line 1 (SF picklist: EOIR_Submission_Line_1__c) |\n"
-            "| `{submission_sub_line}` | Custom sub-line / motion title (local field) |\n"
-            "| `{date}` | Today's date (MM/DD/YYYY) |\n"
-            "| `{document_list}` | Auto: numbered list of enclosed documents |\n"
-            "| `{dhs_address}` | DHS office address for certificate of service |\n"
-            "| `{service_method}` | Service method (mail, hand delivery, etc.) |\n"
-            "| `{served_by_name}` | Name of person serving documents |\n"
-            "| `{served_by_bar}` | Bar number of person serving documents |\n"
-            "| `{hearing_time}` | Hearing time (from Time_of_next_hearing__c) |\n"
-            "| `{judge_name}` | Immigration judge name |\n"
-            "| `{next_date_type}` | Type of next date (hearing, interview, etc.) |\n"
-            "| `{next_govt_date}` | Next government date (MM/DD/YYYY) |\n"
-            "| `{filing_method}` | Filing method (paper or eROP) |\n"
-        )
+        _rows = "| Placeholder | Description |\n|---|---|\n"
+        for vname, vdesc in EOIR_MERGE_VARIABLES:
+            _rows += f"| `{{{vname}}}` | {vdesc} |\n"
+        st.markdown(_rows)
         st.info(
             "The EOIR preview in Filing Assembler detects EOIR content by looking for "
             "'EXECUTIVE OFFICE FOR IMMIGRATION REVIEW' in the output. Make sure your "
             "template includes this text."
         )
-
-    if st.button("Save Template", type="primary", key="_eoir_tpl_save"):
-        # Save only if different from default; clear if matches default
-        if _edited_tpl.strip() == _DEFAULT_EOIR_TPL.strip():
-            config.pop("eoir_cover_template", None)
-        else:
-            config["eoir_cover_template"] = _edited_tpl
-        save_config("components", config)
-        st.toast("EOIR cover template saved! Restart Filing Assembler to apply.")
 
 
 _CASE_DETAIL_FIELD_OPTIONS = [
@@ -1915,6 +2004,57 @@ def _editor_document_templates():
         "`data/config/document-templates.json` and persist across sessions. "
         "These settings affect export formatting for DOCX and PDF output."
     )
+
+
+def _editor_letterhead():
+    """Upload / preview / remove a letterhead image for template exports."""
+    import datetime
+
+    st.subheader("Letterhead Image")
+    st.caption(
+        "Upload a letterhead image (PNG or JPG) that will appear at the top of "
+        "Word and PDF exports from the Templates tool."
+    )
+
+    config_dir = Path(__file__).resolve().parent.parent.parent / "data" / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    gs = load_config("global-settings") or {}
+    lh = gs.get("letterhead") or {}
+    current_file = lh.get("filename")
+
+    # Show current letterhead if one exists
+    if current_file:
+        current_path = config_dir / current_file
+        if current_path.exists():
+            st.image(str(current_path), caption=f"Current letterhead: {current_file}", use_container_width=True)
+            if st.button("Remove Letterhead", type="secondary"):
+                current_path.unlink(missing_ok=True)
+                gs.pop("letterhead", None)
+                save_config("global-settings", gs)
+                st.success("Letterhead removed.")
+                st.rerun()
+        else:
+            st.warning(f"Letterhead file `{current_file}` not found on disk. Please re-upload.")
+            gs.pop("letterhead", None)
+            save_config("global-settings", gs)
+
+    uploaded = st.file_uploader("Upload Letterhead Image", type=["png", "jpg", "jpeg"], key="_lh_upload")
+    if uploaded:
+        ext = Path(uploaded.name).suffix.lower()
+        dest = config_dir / f"letterhead{ext}"
+        # Remove any old letterhead files with different extensions
+        for old in config_dir.glob("letterhead.*"):
+            if old.suffix.lower() in (".png", ".jpg", ".jpeg") and old != dest:
+                old.unlink(missing_ok=True)
+        dest.write_bytes(uploaded.getvalue())
+        gs["letterhead"] = {
+            "filename": dest.name,
+            "uploaded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        save_config("global-settings", gs)
+        st.success(f"Letterhead saved as `{dest.name}`.")
+        st.rerun()
 
 
 def _editor_firm_info():
@@ -2599,7 +2739,7 @@ with tab_integrations:
     st.caption("Configure external service connections, shared components, and office data.")
     int_sub = st.radio(
         "Section",
-        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components", "Document Templates"],
+        ["Firm Info", "Staff Directory", "Client Banner", "Salesforce Fields", "Components", "Document Templates", "Letterhead"],
         horizontal=True,
         key="_tab_int_radio",
         label_visibility="collapsed",
@@ -2615,6 +2755,8 @@ with tab_integrations:
         _editor_salesforce_fields()
     elif int_sub == "Document Templates":
         _editor_document_templates()
+    elif int_sub == "Letterhead":
+        _editor_letterhead()
     else:
         _editor_components()
 
